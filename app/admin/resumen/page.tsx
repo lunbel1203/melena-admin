@@ -44,61 +44,65 @@ const currentClients = [
 
 export default function ResumenPage() {
   return (
-    <div className="min-h-full bg-zinc-50 p-8">
+    <div className="min-h-full bg-zinc-50 p-4 sm:p-6 lg:p-8">
+
       {/* Header */}
-      <div className="flex items-start justify-between mb-7">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6 lg:mb-7">
         <div>
-          <h1 className="text-3xl font-bold text-zinc-900 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 tracking-tight">
             Buenos días, Ana
           </h1>
           <p className="text-zinc-500 text-sm mt-1">
             Esto es lo que pasa hoy en el salón.
           </p>
         </div>
-        <div className="flex items-center gap-4 pt-1">
-          <span className="text-sm text-zinc-400 font-medium">Mié 2 sep 2026</span>
-          <button className="bg-zinc-900 text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-zinc-700 transition-colors">
+        <div className="flex items-center gap-3 sm:gap-4 sm:pt-1">
+          <span className="hidden sm:block text-sm text-zinc-400 font-medium">
+            Mié 2 sep 2026
+          </span>
+          <button className="bg-zinc-900 text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-zinc-700 transition-colors whitespace-nowrap">
             + Nueva cita
           </button>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4 mb-5">
-        <div className="bg-white rounded-2xl p-5 border border-zinc-100 shadow-sm">
-          <p className="text-[11px] text-zinc-400 uppercase tracking-widest font-semibold mb-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-5">
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-zinc-100 shadow-sm">
+          <p className="text-[10px] sm:text-[11px] text-zinc-400 uppercase tracking-widest font-semibold mb-2 sm:mb-3">
             Citas hoy
           </p>
-          <p className="text-4xl font-bold text-zinc-900">14</p>
+          <p className="text-3xl sm:text-4xl font-bold text-zinc-900">14</p>
         </div>
-        <div className="bg-white rounded-2xl p-5 border border-zinc-100 shadow-sm">
-          <p className="text-[11px] text-zinc-400 uppercase tracking-widest font-semibold mb-3">
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-zinc-100 shadow-sm">
+          <p className="text-[10px] sm:text-[11px] text-zinc-400 uppercase tracking-widest font-semibold mb-2 sm:mb-3">
             Clientas activas
           </p>
-          <p className="text-4xl font-bold text-zinc-900">148</p>
+          <p className="text-3xl sm:text-4xl font-bold text-zinc-900">148</p>
         </div>
-        <div className="bg-white rounded-2xl p-5 border border-zinc-100 shadow-sm">
-          <p className="text-[11px] text-zinc-400 uppercase tracking-widest font-semibold mb-3">
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-zinc-100 shadow-sm">
+          <p className="text-[10px] sm:text-[11px] text-zinc-400 uppercase tracking-widest font-semibold mb-2 sm:mb-3">
             Ocupación
           </p>
-          <p className="text-4xl font-bold text-zinc-900">82%</p>
+          <p className="text-3xl sm:text-4xl font-bold text-zinc-900">82%</p>
         </div>
-        <div className="bg-zinc-900 rounded-2xl p-5 shadow-sm">
-          <p className="text-[11px] text-zinc-400 uppercase tracking-widest font-semibold mb-3">
+        <div className="bg-zinc-900 rounded-2xl p-4 sm:p-5 shadow-sm col-span-2 lg:col-span-1">
+          <p className="text-[10px] sm:text-[11px] text-zinc-400 uppercase tracking-widest font-semibold mb-2 sm:mb-3">
             Ingreso del mes
           </p>
-          <p className="text-4xl font-bold text-white">RD$412K</p>
+          <p className="text-3xl sm:text-4xl font-bold text-white">RD$412K</p>
         </div>
       </div>
 
       {/* Charts row */}
-      <div className="grid grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 mb-3 sm:mb-4">
+
         {/* Bar chart */}
-        <div className="bg-white rounded-2xl p-6 border border-zinc-100 shadow-sm">
-          <h2 className="text-sm font-semibold text-zinc-900 mb-6">
+        <div className="bg-white rounded-2xl p-4 sm:p-6 border border-zinc-100 shadow-sm">
+          <h2 className="text-sm font-semibold text-zinc-900 mb-5 sm:mb-6">
             Facturación por día
           </h2>
-          <div className="flex items-end gap-2 h-40">
+          <div className="flex items-end gap-2 h-36 sm:h-40">
             {dailyData.map(({ value, isToday }, i) => (
               <div
                 key={i}
@@ -119,11 +123,11 @@ export default function ResumenPage() {
         </div>
 
         {/* Stylists occupancy */}
-        <div className="bg-white rounded-2xl p-6 border border-zinc-100 shadow-sm">
-          <h2 className="text-sm font-semibold text-zinc-900 mb-5">
+        <div className="bg-white rounded-2xl p-4 sm:p-6 border border-zinc-100 shadow-sm">
+          <h2 className="text-sm font-semibold text-zinc-900 mb-4 sm:mb-5">
             Ocupación por estilista
           </h2>
-          <div className="space-y-5">
+          <div className="space-y-4 sm:space-y-5">
             {stylists.map(({ name, percentage, blocked, barColor }) => (
               <div key={name}>
                 <div className="flex justify-between items-center mb-1.5">
@@ -151,31 +155,32 @@ export default function ResumenPage() {
       </div>
 
       {/* Bottom row */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+
         {/* Requires action */}
-        <div className="bg-white rounded-2xl p-6 border border-zinc-100 shadow-sm">
-          <div className="flex items-center justify-between mb-5">
+        <div className="bg-white rounded-2xl p-4 sm:p-6 border border-zinc-100 shadow-sm">
+          <div className="flex items-center justify-between mb-4 sm:mb-5">
             <h2 className="text-sm font-semibold text-zinc-900">Requiere acción</h2>
             <span className="text-xs font-semibold text-orange-500 bg-orange-50 px-2.5 py-1 rounded-full">
               6 pendientes
             </span>
           </div>
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3">
               <span className="text-sm text-zinc-600">3 depósitos por validar</span>
-              <button className="bg-zinc-900 text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-zinc-700 transition-colors">
+              <button className="bg-zinc-900 text-white text-xs font-semibold px-3 sm:px-4 py-2 rounded-lg hover:bg-zinc-700 transition-colors shrink-0">
                 Revisar
               </button>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3">
               <span className="text-sm text-zinc-600">2 tickets de molestia abiertos</span>
-              <button className="border border-zinc-200 text-zinc-700 text-xs font-semibold px-4 py-2 rounded-lg hover:bg-zinc-50 transition-colors">
+              <button className="border border-zinc-200 text-zinc-700 text-xs font-semibold px-3 sm:px-4 py-2 rounded-lg hover:bg-zinc-50 transition-colors shrink-0">
                 Ver
               </button>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3">
               <span className="text-sm text-zinc-600">1 estilista sin disponibilidad</span>
-              <button className="border border-zinc-200 text-zinc-700 text-xs font-semibold px-4 py-2 rounded-lg hover:bg-zinc-50 transition-colors">
+              <button className="border border-zinc-200 text-zinc-700 text-xs font-semibold px-3 sm:px-4 py-2 rounded-lg hover:bg-zinc-50 transition-colors shrink-0">
                 Configurar
               </button>
             </div>
@@ -183,8 +188,8 @@ export default function ResumenPage() {
         </div>
 
         {/* In salon now */}
-        <div className="bg-white rounded-2xl p-6 border border-zinc-100 shadow-sm">
-          <h2 className="text-sm font-semibold text-zinc-900 mb-5">
+        <div className="bg-white rounded-2xl p-4 sm:p-6 border border-zinc-100 shadow-sm">
+          <h2 className="text-sm font-semibold text-zinc-900 mb-4 sm:mb-5">
             En el salón ahora
           </h2>
           <div className="space-y-4">
@@ -196,7 +201,7 @@ export default function ResumenPage() {
                   {initial}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold text-zinc-900">{name}</div>
+                  <div className="text-sm font-semibold text-zinc-900 truncate">{name}</div>
                   <div className="text-xs text-zinc-400 mt-0.5">{detail}</div>
                 </div>
                 <span
