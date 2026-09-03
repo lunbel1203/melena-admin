@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 /* ── Iconos ── */
 function ChevronLeftIcon() {
@@ -104,21 +105,21 @@ function GridCard({ appt }: { appt: Appointment }) {
   }
   if (variant === "current") {
     return (
-      <div className="bg-zinc-900 rounded-xl p-3 cursor-pointer">
+      <Link href={`/admin/agenda/${appt.id}`} className="block bg-zinc-900 rounded-xl p-3 hover:bg-zinc-800 transition-colors">
         <div className="text-xs text-zinc-500">{appt.time}</div>
         <div className="text-sm font-bold text-white mt-0.5 leading-snug">{appt.name}</div>
         <div className="text-xs text-zinc-400 mt-0.5">{appt.service}</div>
-      </div>
+      </Link>
     );
   }
   return (
-    <div className="bg-white border border-zinc-200 rounded-xl p-3 hover:border-zinc-300 hover:shadow-sm transition-all cursor-pointer">
+    <Link href={`/admin/agenda/${appt.id}`} className="block bg-white border border-zinc-200 rounded-xl p-3 hover:border-zinc-300 hover:shadow-sm transition-all">
       <div className="text-xs text-zinc-400">{appt.time}</div>
       <div className="text-sm font-bold text-zinc-900 mt-0.5 leading-snug">{appt.name}</div>
       <div className={`text-xs mt-0.5 ${variant === "warning" ? "text-orange-500 font-medium" : "text-zinc-400"}`}>
         {appt.service}
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -139,17 +140,17 @@ function ListItem({ appt }: { appt: Appointment }) {
   }
   if (variant === "current") {
     return (
-      <div className="bg-zinc-900 rounded-xl p-4 flex items-center gap-4 cursor-pointer">
+      <Link href={`/admin/agenda/${appt.id}`} className="bg-zinc-900 rounded-xl p-4 flex items-center gap-4 hover:bg-zinc-800 transition-colors">
         <span className="text-sm font-semibold text-zinc-400 w-12 shrink-0 tabular-nums">{appt.time}</span>
         <div className="flex-1 min-w-0">
           <div className="text-sm font-bold text-white">{appt.name}</div>
           <div className="text-xs text-zinc-400 mt-0.5">{appt.service}</div>
         </div>
-      </div>
+      </Link>
     );
   }
   return (
-    <div className="bg-white border border-zinc-200 rounded-xl p-4 flex items-center gap-4 hover:border-zinc-300 transition-colors cursor-pointer">
+    <Link href={`/admin/agenda/${appt.id}`} className="bg-white border border-zinc-200 rounded-xl p-4 flex items-center gap-4 hover:border-zinc-300 transition-colors">
       <span className="text-sm font-semibold text-zinc-400 w-12 shrink-0 tabular-nums">{appt.time}</span>
       <div className="flex-1 min-w-0">
         <div className="text-sm font-bold text-zinc-900">{appt.name}</div>
@@ -157,7 +158,7 @@ function ListItem({ appt }: { appt: Appointment }) {
           {appt.service}
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -234,9 +235,12 @@ export default function AgendaPage() {
           {/* Filters — desktop */}
           <div className="hidden lg:flex">{filterDots}</div>
 
-          <button className="bg-zinc-900 text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-zinc-700 transition-colors whitespace-nowrap">
+          <Link
+            href="/admin/agenda/nueva"
+            className="bg-zinc-900 text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-zinc-700 transition-colors whitespace-nowrap"
+          >
             + Nueva cita
-          </button>
+          </Link>
         </div>
 
         {/* Segunda fila — mobile y tablet */}

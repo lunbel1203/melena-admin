@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const dailyData = [
   { day: "L", value: 42, isToday: false },
   { day: "M", value: 62, isToday: false },
@@ -60,9 +62,12 @@ export default function ResumenPage() {
           <span className="hidden sm:block text-sm text-zinc-400 font-medium">
             Mié 2 sep 2026
           </span>
-          <button className="bg-zinc-900 text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-zinc-700 transition-colors whitespace-nowrap">
+          <Link
+            href="/admin/agenda/nueva"
+            className="bg-zinc-900 text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-zinc-700 transition-colors whitespace-nowrap"
+          >
             + Nueva cita
-          </button>
+          </Link>
         </div>
       </div>
 
