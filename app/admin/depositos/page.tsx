@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 /* ── Icons ── */
 function ImagePlaceholderIcon() {
@@ -9,6 +9,16 @@ function ImagePlaceholderIcon() {
       <rect x="3" y="3" width="30" height="30" rx="4" />
       <circle cx="12" cy="12" r="3.5" />
       <path d="M3 25l9-9 6 6 4-4 11 11" />
+    </svg>
+  );
+}
+function TrashIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6l-1 14H6L5 6" />
+      <path d="M10 11v6M14 11v6" />
+      <path d="M9 6V4h6v2" />
     </svg>
   );
 }
@@ -100,6 +110,8 @@ const deposits: Deposit[] = [
 export default function DepositosPage() {
   const [activeTab, setActiveTab] = useState<TabId>("pendientes");
   const [selectedId, setSelectedId] = useState<string>("d1");
+  const [comprobanteImgs, setComprobanteImgs] = useState<Record<string, string>>({});
+  const comprobanteRef = useRef<HTMLInputElement>(null);
 
   const pendientes = deposits.filter((d) => d.status === "pendiente");
   const validadosHoy = deposits.filter((d) => d.status === "validado");
@@ -282,12 +294,56 @@ export default function DepositosPage() {
               {selected.service} · {selected.date.toLowerCase()} sep, {selected.time} · {selected.stylist}
             </p>
 
-            {/* Image placeholder */}
-            <div className="border-2 border-dashed border-zinc-200 rounded-xl py-10 flex flex-col items-center gap-2 mb-4 hover:border-zinc-300 hover:bg-zinc-50 transition-all cursor-pointer">
-              <ImagePlaceholderIcon />
-              <p className="text-sm text-zinc-500 font-medium mt-1">Comprobante de transferencia</p>
-              <p className="text-xs text-zinc-400">or browse files</p>
-            </div>
+            {/* Comprobante de transferencia */}
+            <input
+              ref={comprobanteRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                setComprobanteImgs((prev) => ({
+                  ...prev,
+                  [selected.id]: URL.createObjectURL(file),
+                }));
+              }}
+            />
+
+            {comprobanteImgs[selected.id] ? (
+              <div className="relative mb-4 rounded-xl overflow-hidden border border-zinc-200">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={comprobanteImgs[selected.id]}
+                  alt="Comprobante de transferencia"
+                  className="w-full max-h-52 object-contain bg-zinc-50"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setComprobanteImgs((prev) => {
+                      const next = { ...prev };
+                      delete next[selected.id];
+                      return next;
+                    });
+                    if (comprobanteRef.current) comprobanteRef.current.value = "";
+                  }}
+                  className="absolute top-2 right-2 bg-white border border-zinc-200 rounded-full p-1.5 text-zinc-500 hover:text-red-500 hover:border-red-200 shadow-sm transition-colors"
+                  title="Eliminar imagen"
+                >
+                  <TrashIcon />
+                </button>
+              </div>
+            ) : (
+              <div
+                onClick={() => comprobanteRef.current?.click()}
+                className="border-2 border-dashed border-zinc-200 rounded-xl py-10 flex flex-col items-center gap-2 mb-4 hover:border-zinc-300 hover:bg-zinc-50 transition-all cursor-pointer"
+              >
+                <ImagePlaceholderIcon />
+                <p className="text-sm text-zinc-500 font-medium mt-1">Comprobante de transferencia</p>
+                <p className="text-xs text-zinc-400">Haz clic para subir</p>
+              </div>
+            )}
 
             {/* Meta */}
             <div className="space-y-3 mb-5">

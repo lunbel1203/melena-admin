@@ -3,7 +3,6 @@
 import { useState } from "react";
 
 /* ── Types ── */
-type PeriodId = "semana" | "mes" | "año";
 
 interface StaffMember {
   id: string;
@@ -70,7 +69,6 @@ const totalCommission = "RD$75,625";
 
 /* ── Page ── */
 export default function PersonalPage() {
-  const [period, setPeriod] = useState<PeriodId>("mes");
   const [selectedId, setSelectedId] = useState<string>("p1");
   const [selectedDay, setSelectedDay] = useState<number>(TODAY);
   const [blockedMap, setBlockedMap] = useState<Record<string, Set<number>>>(
@@ -80,19 +78,13 @@ export default function PersonalPage() {
   const selected = staffList.find((s) => s.id === selectedId) ?? staffList[0];
   const blocked = blockedMap[selectedId] ?? new Set<number>();
 
-  const toggleDay = (day: number) => {
+  const toggleBlockSelected = () => {
     setBlockedMap((prev) => {
       const next = new Set(prev[selectedId]);
-      next.has(day) ? next.delete(day) : next.add(day);
+      next.has(selectedDay) ? next.delete(selectedDay) : next.add(selectedDay);
       return { ...prev, [selectedId]: next };
     });
   };
-
-  const periods: { id: PeriodId; label: string }[] = [
-    { id: "semana", label: "Semana" },
-    { id: "mes",    label: "Mes" },
-    { id: "año",    label: "Año" },
-  ];
 
   /* Calendar: rows of 7 */
   const days = Array.from({ length: MONTH_DAYS }, (_, i) => i + 1);
@@ -110,24 +102,8 @@ export default function PersonalPage() {
         </div>
 
         <div className="flex items-center gap-2 self-start">
-          {/* Period tabs */}
-          <div className="flex items-center bg-zinc-100 rounded-xl p-1">
-            {periods.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => setPeriod(p.id)}
-                className={`px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all ${
-                  period === p.id
-                    ? "bg-zinc-900 text-white shadow-sm"
-                    : "text-zinc-500 hover:text-zinc-700"
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
           <button className="bg-zinc-900 text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-zinc-700 transition-colors whitespace-nowrap">
-            + Empleada
+            + Nuevo empleado/a
           </button>
         </div>
       </div>
@@ -205,8 +181,15 @@ export default function PersonalPage() {
               {selected.name}
               <span className="text-zinc-400 font-normal"> · {MONTH_NAME}</span>
             </h2>
-            <button className="text-xs font-semibold text-zinc-600 border border-zinc-200 px-3 py-1.5 rounded-lg hover:bg-zinc-50 transition-colors whitespace-nowrap">
-              Bloquear día
+            <button
+              onClick={toggleBlockSelected}
+              className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors whitespace-nowrap ${
+                blocked.has(selectedDay)
+                  ? "text-red-600 border-red-200 bg-red-50 hover:bg-red-100"
+                  : "text-zinc-600 border-zinc-200 hover:bg-zinc-50"
+              }`}
+            >
+              {blocked.has(selectedDay) ? "Desbloquear día" : "Bloquear día"}
             </button>
           </div>
 
@@ -221,8 +204,8 @@ export default function PersonalPage() {
                   return (
                     <button
                       key={day}
-                      onClick={() => { setSelectedDay(day); toggleDay(day); }}
-                      className={`flex-1 aspect-square max-w-[40px] rounded-lg text-sm font-semibold transition-all ${
+                      onClick={() => setSelectedDay(day)}
+                      className={`flex-1 aspect-square max-w-[40px] rounded-lg font-semibold transition-all flex flex-col items-center justify-center gap-0 ${
                         isSelected
                           ? "bg-zinc-900 text-white"
                           : isBlocked
@@ -232,7 +215,12 @@ export default function PersonalPage() {
                           : "bg-zinc-50 text-zinc-600 hover:bg-zinc-100"
                       }`}
                     >
-                      {day}
+                      <span className={isBlocked ? "text-xs leading-none" : "text-sm leading-none"}>
+                        {day}
+                      </span>
+                      {isBlocked && (
+                        <span className="text-[11px] leading-none mt-0.5 font-bold">✕</span>
+                      )}
                     </button>
                   );
                 })}

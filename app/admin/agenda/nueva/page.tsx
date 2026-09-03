@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 
 /* ── Icons ── */
@@ -32,6 +32,16 @@ function WarnIcon() {
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#d97706" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M8 2L1.5 13.5h13L8 2z" />
       <path d="M8 6.5v3M8 11.5v.5" />
+    </svg>
+  );
+}
+function TrashIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6l-1 14H6L5 6" />
+      <path d="M10 11v6M14 11v6" />
+      <path d="M9 6V4h6v2" />
     </svg>
   );
 }
@@ -96,6 +106,8 @@ export default function NuevaCitaPage() {
   const [selectedDay, setSelectedDay] = useState<string | null>("d3");
   const [selectedTime, setSelectedTime] = useState<string | null>("11:00");
   const [payInSalon, setPayInSalon] = useState(false);
+  const [comprobante, setComprobante] = useState<string | null>(null);
+  const comprobanteRef = useRef<HTMLInputElement>(null);
   const [note, setNote] = useState("");
 
   const selectedStaffName = staff.find((p) => p.id === selectedStaff)?.name.split(" ")[0] ?? "Personal";
@@ -309,24 +321,73 @@ export default function NuevaCitaPage() {
             <div className="p-5 border-b border-zinc-100">
               <SectionLabel>5 · Depósito de reserva</SectionLabel>
 
-              {/* Amount */}
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm text-zinc-600">Monto requerido</span>
-                <span className="text-base font-bold text-zinc-900">RD$1,000</span>
-              </div>
+              {!payInSalon && (
+                <>
+                  {/* Amount */}
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm text-zinc-600">Monto requerido</span>
+                    <span className="text-base font-bold text-zinc-900">RD$1,000</span>
+                  </div>
 
-              {/* Upload */}
-              <button className="w-full border-2 border-dashed border-zinc-200 rounded-xl py-4 flex flex-col items-center gap-1.5 hover:border-zinc-300 hover:bg-zinc-50 transition-all mb-3">
-                <span className="text-zinc-400"><UploadIcon /></span>
-                <span className="text-sm text-zinc-500 font-medium">Adjuntar comprobante</span>
-              </button>
+                  {/* Upload area */}
+                  <input
+                    ref={comprobanteRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setComprobante(URL.createObjectURL(file));
+                    }}
+                  />
+
+                  {comprobante ? (
+                    /* Preview with delete */
+                    <div className="relative mb-3 rounded-xl overflow-hidden border border-zinc-200 group">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={comprobante}
+                        alt="Comprobante"
+                        className="w-full max-h-48 object-contain bg-zinc-50"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setComprobante(null);
+                          if (comprobanteRef.current) comprobanteRef.current.value = "";
+                        }}
+                        className="absolute top-2 right-2 bg-white border border-zinc-200 rounded-full p-1.5 text-zinc-500 hover:text-red-500 hover:border-red-200 shadow-sm transition-colors"
+                        title="Eliminar imagen"
+                      >
+                        <TrashIcon />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => comprobanteRef.current?.click()}
+                      className="w-full border-2 border-dashed border-zinc-200 rounded-xl py-4 flex flex-col items-center gap-1.5 hover:border-zinc-300 hover:bg-zinc-50 transition-all mb-3"
+                    >
+                      <span className="text-zinc-400"><UploadIcon /></span>
+                      <span className="text-sm text-zinc-500 font-medium">Adjuntar comprobante</span>
+                    </button>
+                  )}
+                </>
+              )}
 
               {/* Checkbox */}
               <label className="flex items-center gap-2.5 cursor-pointer group">
                 <input
                   type="checkbox"
                   checked={payInSalon}
-                  onChange={(e) => setPayInSalon(e.target.checked)}
+                  onChange={(e) => {
+                    setPayInSalon(e.target.checked);
+                    if (e.target.checked) {
+                      setComprobante(null);
+                      if (comprobanteRef.current) comprobanteRef.current.value = "";
+                    }
+                  }}
                   className="w-4 h-4 rounded border-zinc-300 accent-zinc-900 cursor-pointer"
                 />
                 <span className="text-sm text-zinc-600 group-hover:text-zinc-800 transition-colors">
