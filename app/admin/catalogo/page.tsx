@@ -1,12 +1,23 @@
 "use client";
 
-/* ── Icon ── */
+import { useRef, useState } from "react";
+
+/* ── Icons ── */
 function ImageIcon() {
   return (
     <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-300">
       <rect x="2" y="2" width="24" height="24" rx="3" />
       <circle cx="9.5" cy="9.5" r="2.5" />
       <path d="M2 19l7-7 5 5 3-3 9 9" />
+    </svg>
+  );
+}
+
+function CameraIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+      <circle cx="12" cy="13" r="4" />
     </svg>
   );
 }
@@ -58,6 +69,63 @@ const categoryStyles: Record<CategoryId, { label: string; className: string }> =
 };
 
 const stockLowCount = products.filter((p) => p.stockLow).length;
+
+/* ── Product Image Upload Card ── */
+function ProductImageArea({ productId }: { productId: string }) {
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setImageSrc(url);
+  }
+
+  function handleClick() {
+    inputRef.current?.click();
+  }
+
+  return (
+    <div
+      className="relative border-b border-zinc-100 aspect-[4/3] flex flex-col items-center justify-center gap-1.5 bg-zinc-50 cursor-pointer group overflow-hidden"
+      onClick={handleClick}
+      title="Haz clic para subir una imagen"
+    >
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileChange}
+        aria-label={`Subir imagen para producto ${productId}`}
+      />
+
+      {imageSrc ? (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={imageSrc}
+            alt="Imagen del producto"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          {/* Hover overlay to change image */}
+          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 text-white">
+            <CameraIcon />
+            <span className="text-xs font-medium">Cambiar imagen</span>
+          </div>
+        </>
+      ) : (
+        <>
+          <ImageIcon />
+          <span className="text-xs text-zinc-400 group-hover:text-zinc-600 transition-colors">
+            Haz clic para subir
+          </span>
+        </>
+      )}
+    </div>
+  );
+}
 
 /* ── Page ── */
 export default function CatalogoPage() {
@@ -143,10 +211,7 @@ export default function CatalogoPage() {
                 className="bg-white rounded-2xl border border-zinc-200 overflow-hidden hover:shadow-sm hover:border-zinc-300 transition-all cursor-pointer"
               >
                 {/* Image area */}
-                <div className="border-b border-zinc-100 aspect-[4/3] flex flex-col items-center justify-center gap-1.5 bg-zinc-50">
-                  <ImageIcon />
-                  <span className="text-xs text-zinc-400">or browse files</span>
-                </div>
+                <ProductImageArea productId={p.id} />
 
                 {/* Info */}
                 <div className="p-3.5">
