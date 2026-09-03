@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 /* ── Types ── */
 
@@ -74,6 +75,10 @@ export default function PersonalPage() {
   const [blockedMap, setBlockedMap] = useState<Record<string, Set<number>>>(
     () => Object.fromEntries(staffList.map((s) => [s.id, new Set(s.blockedDays)]))
   );
+  const [calFilter, setCalFilter] = useState<"all" | "disponible" | "bloqueado">("all");
+
+  const toggleCalFilter = (f: "disponible" | "bloqueado") =>
+    setCalFilter((prev) => (prev === f ? "all" : f));
 
   const selected = staffList.find((s) => s.id === selectedId) ?? staffList[0];
   const blocked = blockedMap[selectedId] ?? new Set<number>();
@@ -102,9 +107,12 @@ export default function PersonalPage() {
         </div>
 
         <div className="flex items-center gap-2 self-start">
-          <button className="bg-zinc-900 text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-zinc-700 transition-colors whitespace-nowrap">
+          <Link
+            href="/admin/personal/empleado-nuevo"
+            className="bg-zinc-900 text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-zinc-700 transition-colors whitespace-nowrap"
+          >
             + Nuevo empleado/a
-          </button>
+          </Link>
         </div>
       </div>
 
@@ -201,12 +209,19 @@ export default function PersonalPage() {
                   const isBlocked = blocked.has(day);
                   const isSelected = selectedDay === day;
                   const isToday = day === TODAY;
+
+                  const dimmed =
+                    (calFilter === "disponible" && isBlocked) ||
+                    (calFilter === "bloqueado" && !isBlocked);
+
                   return (
                     <button
                       key={day}
                       onClick={() => setSelectedDay(day)}
                       className={`flex-1 aspect-square max-w-[40px] rounded-lg font-semibold transition-all flex flex-col items-center justify-center gap-0 ${
-                        isSelected
+                        dimmed
+                          ? "opacity-20 cursor-default"
+                          : isSelected
                           ? "bg-zinc-900 text-white"
                           : isBlocked
                           ? "bg-zinc-200 text-zinc-400"
@@ -234,16 +249,30 @@ export default function PersonalPage() {
             ))}
           </div>
 
-          {/* Legend */}
-          <div className="flex items-center gap-5">
-            <label className="flex items-center gap-1.5 text-xs text-zinc-500 cursor-pointer">
-              <span className="w-3.5 h-3.5 rounded border border-zinc-300 bg-zinc-50 inline-block" />
+          {/* Legend / filters */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => toggleCalFilter("disponible")}
+              className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all ${
+                calFilter === "disponible"
+                  ? "border-zinc-900 text-zinc-900 bg-zinc-100"
+                  : "border-zinc-200 text-zinc-500 hover:border-zinc-300"
+              }`}
+            >
+              <span className="w-3 h-3 rounded border border-zinc-300 bg-zinc-50 inline-block shrink-0" />
               Disponible
-            </label>
-            <label className="flex items-center gap-1.5 text-xs text-zinc-500 cursor-pointer">
-              <span className="w-3.5 h-3.5 rounded border border-zinc-300 bg-zinc-200 inline-block" />
+            </button>
+            <button
+              onClick={() => toggleCalFilter("bloqueado")}
+              className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all ${
+                calFilter === "bloqueado"
+                  ? "border-zinc-900 text-zinc-900 bg-zinc-100"
+                  : "border-zinc-200 text-zinc-500 hover:border-zinc-300"
+              }`}
+            >
+              <span className="w-3 h-3 rounded border border-zinc-300 bg-zinc-200 inline-block shrink-0" />
               Bloqueado
-            </label>
+            </button>
           </div>
         </div>
 

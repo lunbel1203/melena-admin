@@ -83,9 +83,12 @@ export default function ClientasPage() {
             <span className="hidden md:block text-sm text-zinc-400 font-medium">
               Mié 2 sep 2026
             </span>
-            <button className="bg-zinc-900 text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-zinc-700 transition-colors whitespace-nowrap">
+            <Link
+              href="/admin/clientas/nueva"
+              className="bg-zinc-900 text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-zinc-700 transition-colors whitespace-nowrap"
+            >
               + Nueva clienta
-            </button>
+            </Link>
           </div>
         </div>
 

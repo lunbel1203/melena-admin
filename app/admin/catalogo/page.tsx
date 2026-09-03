@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 
 /* ── Icons ── */
 function ImageIcon() {
@@ -140,12 +141,18 @@ export default function CatalogoPage() {
         </div>
 
         <div className="flex items-center gap-2 self-start">
-          <button className="text-sm font-semibold text-zinc-700 border border-zinc-200 px-4 py-2 rounded-xl hover:bg-zinc-50 transition-colors whitespace-nowrap">
+          <Link
+            href="/admin/catalogo/producto-nuevo"
+            className="text-sm font-semibold text-zinc-700 border border-zinc-200 px-4 py-2 rounded-xl hover:bg-zinc-50 transition-colors whitespace-nowrap"
+          >
             + Producto
-          </button>
-          <button className="text-sm font-semibold text-white bg-zinc-900 px-4 py-2 rounded-xl hover:bg-zinc-700 transition-colors whitespace-nowrap">
+          </Link>
+          <Link
+            href="/admin/catalogo/servicio-nuevo"
+            className="text-sm font-semibold text-white bg-zinc-900 px-4 py-2 rounded-xl hover:bg-zinc-700 transition-colors whitespace-nowrap"
+          >
             + Servicio
-          </button>
+          </Link>
         </div>
       </div>
 
