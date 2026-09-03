@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -97,16 +98,15 @@ export default function Sidebar() {
     <aside className="w-52 bg-zinc-900 flex flex-col shrink-0">
       {/* Logo */}
       <div className="px-4 pt-5 pb-4 flex items-center gap-3">
-        <div className="w-9 h-9 bg-zinc-800 border border-zinc-700 rounded-lg flex items-center justify-center shrink-0">
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <path d="M9 2L16 8.5L9 15L2 8.5L9 2Z" fill="white" />
-            <path d="M9 6L12 8.5L9 11L6 8.5L9 6Z" fill="rgba(0,0,0,0.35)" />
-          </svg>
-        </div>
-        <div>
-          <div className="text-white text-sm font-bold tracking-[0.18em]">MELENA</div>
-          <div className="text-zinc-500 text-xs font-medium tracking-widest">ADMIN</div>
-        </div>
+        <Image
+          src="/Melena logo blanco.png"
+          alt="Melena"
+          width={120}
+          height={36}
+          className="object-contain"
+          priority
+        />
+        <span className="text-zinc-500 text-xs font-medium tracking-widest">ADMIN</span>
       </div>
 
       {/* Navigation */}
