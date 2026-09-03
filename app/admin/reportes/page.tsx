@@ -118,26 +118,25 @@ export default function ReportesPage() {
           <span className="text-xs text-zinc-400">RD$ · agosto 2026</span>
         </div>
 
-        {/* Bars — each column is relative so the value label can sit at bar top */}
-        <div className="flex items-end gap-3 h-36">
+        {/* Bars — pixel heights so el porcentaje nunca depende de un flex sin altura definida */}
+        <div className="flex gap-3" style={{ height: 160 }}>
           {weekBars.map((bar) => {
-            const heightPct = (bar.value / maxBar) * 100;
+            const CHART_H = 160;
+            const barH = Math.round((bar.value / maxBar) * CHART_H);
+            const labelTop = CHART_H - barH - 22;
             return (
-              <div
-                key={bar.label}
-                className="relative flex-1 h-full flex items-end"
-              >
-                {/* Value label floats just above the bar */}
+              <div key={bar.label} className="relative flex-1" style={{ height: CHART_H }}>
+                {/* Value label just above the bar */}
                 <span
                   className="absolute left-0 right-0 text-center text-xs font-semibold text-zinc-500"
-                  style={{ bottom: `${heightPct}%`, paddingBottom: "6px" }}
+                  style={{ top: Math.max(0, labelTop) }}
                 >
                   {bar.display}
                 </span>
-                {/* Bar */}
+                {/* Bar anchored to bottom */}
                 <div
-                  className={`w-full rounded-t-lg ${bar.dark ? "bg-zinc-900" : "bg-zinc-200"}`}
-                  style={{ height: `${heightPct}%` }}
+                  className={`absolute bottom-0 left-0 right-0 rounded-t-lg ${bar.dark ? "bg-zinc-900" : "bg-zinc-200"}`}
+                  style={{ height: barH }}
                 />
               </div>
             );
