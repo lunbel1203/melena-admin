@@ -1,5 +1,13 @@
 import Link from "next/link";
 
+function slugify(name: string) {
+  return name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/\s+/g, "-");
+}
+
 function SearchIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
@@ -9,54 +17,82 @@ function SearchIcon() {
   );
 }
 
-function PhotoIcon() {
+function ChevronIcon() {
   return (
-    <svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="4" width="22" height="18" rx="2.5" />
-      <circle cx="8.5" cy="11" r="2" />
-      <path d="M2 19l6-6 4 4 3-3 9 8" />
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 4l4 4-4 4" />
     </svg>
   );
 }
 
-const agendaItems = [
-  { time: "09:00", name: "Camila Santos", service: "Retoque tape-in", active: false },
-  { time: "11:00", name: "Valentina Reyes", service: 'Tape-in 20"', active: true },
-  { time: "13:00", name: "Andrea Peña", service: "Nano ring", active: false },
-  { time: "15:00", name: "Sofía Guerrero", service: "Ponytail", active: false },
-];
-
 const clientRows = [
   {
     initial: "V",
-    avatarClass: "bg-zinc-800 text-white",
     name: "Valentina Reyes",
-    service: "Tape-in",
-    progress: 80,
-    progressColor: "bg-zinc-900",
-    next: "3 oct",
+    phone: "809 555 0142",
+    service: 'Tape-in 20"',
+    progress: 90,
+    lastVisit: "24 ago",
+    nextAppt: "3 sep",
+    status: "Activa",
+    statusClass: "bg-green-50 text-green-700",
   },
   {
     initial: "C",
-    avatarClass: "bg-zinc-200 text-zinc-600",
     name: "Camila Santos",
+    phone: "809 555 0188",
     service: "Retoque",
-    progress: 48,
-    progressColor: "bg-zinc-500",
-    next: "18 sep",
+    progress: 50,
+    lastVisit: "18 ago",
+    nextAppt: "18 sep",
+    status: "Activa",
+    statusClass: "bg-green-50 text-green-700",
   },
   {
     initial: "A",
-    avatarClass: "bg-zinc-100 text-zinc-500",
     name: "Andrea Peña",
+    phone: "809 555 0231",
     service: "Nano ring",
-    progress: 25,
-    progressColor: "bg-zinc-400",
-    next: "24 sep",
+    progress: 30,
+    lastVisit: "12 ago",
+    nextAppt: "24 sep",
+    status: "Activa",
+    statusClass: "bg-green-50 text-green-700",
+  },
+  {
+    initial: "R",
+    name: "Renata Morales",
+    phone: "809 555 0377",
+    service: 'Tape-in 18"',
+    progress: 18,
+    lastVisit: "2 sep",
+    nextAppt: "Sin agendar",
+    status: "Molestia",
+    statusClass: "bg-orange-50 text-orange-600",
+  },
+  {
+    initial: "L",
+    name: "Lucia Ferrer",
+    phone: "809 555 0410",
+    service: "Nano ring",
+    progress: 8,
+    lastVisit: "—",
+    nextAppt: "2 sep",
+    status: "Nueva",
+    statusClass: "bg-zinc-100 text-zinc-600",
+  },
+  {
+    initial: "D",
+    name: "Daniela Paz",
+    phone: "809 555 0522",
+    service: "Sin servicio",
+    progress: 55,
+    lastVisit: "4 may",
+    nextAppt: "Sin agendar",
+    status: "Inactiva",
+    statusClass: "bg-zinc-100 text-zinc-500",
   },
 ];
-
-const photoStages = ["Antes", "Mes 1", "Mes 2", "Hoy"];
 
 export default function ClientasPage() {
   return (
@@ -67,7 +103,6 @@ export default function ClientasPage() {
         <div className="flex items-center gap-3">
           <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 shrink-0">Clientas</h1>
 
-          {/* Search — visible en sm+ */}
           <div className="relative hidden sm:flex items-center ml-1">
             <span className="absolute left-3 text-zinc-400 pointer-events-none">
               <SearchIcon />
@@ -83,13 +118,15 @@ export default function ClientasPage() {
             <span className="hidden md:block text-sm text-zinc-400 font-medium">
               Mié 2 sep 2026
             </span>
-            <button className="bg-zinc-900 text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-zinc-700 transition-colors whitespace-nowrap">
+            <Link
+              href="/admin/clientas/nueva"
+              className="bg-zinc-900 text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-zinc-700 transition-colors whitespace-nowrap"
+            >
               + Nueva clienta
-            </button>
+            </Link>
           </div>
         </div>
 
-        {/* Search — solo mobile */}
         <div className="mt-3 sm:hidden relative flex items-center">
           <span className="absolute left-3 text-zinc-400 pointer-events-none">
             <SearchIcon />
@@ -103,239 +140,87 @@ export default function ClientasPage() {
       </div>
 
       {/* ── Stats ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-5">
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-zinc-100 shadow-sm">
-          <p className="text-[10px] sm:text-[11px] text-zinc-400 uppercase tracking-widest font-semibold mb-2 sm:mb-3">
-            Citas hoy
-          </p>
-          <p className="text-3xl sm:text-4xl font-bold text-zinc-900">14</p>
-        </div>
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-zinc-100 shadow-sm">
+      <div className="flex gap-3 sm:gap-4 mb-5 sm:mb-6">
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-zinc-100 shadow-sm min-w-[140px]">
           <p className="text-[10px] sm:text-[11px] text-zinc-400 uppercase tracking-widest font-semibold mb-2 sm:mb-3">
             Clientas activas
           </p>
           <p className="text-3xl sm:text-4xl font-bold text-zinc-900">148</p>
         </div>
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-zinc-100 shadow-sm">
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-zinc-100 shadow-sm min-w-[120px]">
           <p className="text-[10px] sm:text-[11px] text-zinc-400 uppercase tracking-widest font-semibold mb-2 sm:mb-3">
-            Servicios / semana
+            Citas hoy
           </p>
-          <p className="text-3xl sm:text-4xl font-bold text-zinc-900">63</p>
-        </div>
-        <div className="bg-zinc-900 rounded-2xl p-4 sm:p-5 shadow-sm col-span-2 lg:col-span-1">
-          <p className="text-[10px] sm:text-[11px] text-zinc-400 uppercase tracking-widest font-semibold mb-2 sm:mb-3">
-            Ingreso del mes
-          </p>
-          <p className="text-3xl sm:text-4xl font-bold text-white">RD$412K</p>
+          <p className="text-3xl sm:text-4xl font-bold text-zinc-900">14</p>
         </div>
       </div>
 
-      {/* ── Main content ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
-        {/* ── Columna izquierda ── */}
-        <div className="space-y-4">
-
-          {/* Agenda de hoy */}
-          <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100">
-              <h2 className="text-sm font-semibold text-zinc-900">Agenda de hoy</h2>
-              <Link
-                href="/admin/agenda"
-                className="text-xs text-zinc-400 hover:text-zinc-700 transition-colors"
-              >
-                Ver todas ›
-              </Link>
-            </div>
-            {agendaItems.map(({ time, name, service, active }) => (
-              <div
-                key={name}
-                className={`flex items-center gap-3 sm:gap-4 px-5 py-3.5 border-b border-zinc-50 last:border-0 ${
-                  active ? "bg-zinc-50" : "hover:bg-zinc-50/60"
-                } transition-colors`}
-              >
-                <span
-                  className={`text-sm tabular-nums w-10 shrink-0 ${
-                    active ? "font-bold text-zinc-900" : "text-zinc-400"
-                  }`}
-                >
-                  {time}
-                </span>
-                <span
-                  className={`text-sm flex-1 ${
-                    active ? "font-bold text-zinc-900" : "text-zinc-700"
-                  }`}
-                >
-                  {name}
-                </span>
-                <span
-                  className={`text-sm text-right shrink-0 ${
-                    active ? "text-zinc-600" : "text-zinc-400"
-                  }`}
-                >
-                  {service}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          {/* Tabla Clientas */}
-          <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-zinc-100">
-              <h2 className="text-sm font-semibold text-zinc-900">Clientas</h2>
-            </div>
-
-            {/* Header columnas */}
-            <div className="grid grid-cols-[1fr_auto_auto] sm:grid-cols-[1fr_80px_1fr_64px] gap-x-3 px-5 py-2.5 border-b border-zinc-50">
-              <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">
-                Clienta
-              </span>
-              <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">
-                Servicio
-              </span>
-              <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest hidden sm:block">
-                Progreso
-              </span>
-              <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest text-right">
-                Próxima
-              </span>
-            </div>
-
-            {/* Filas */}
-            {clientRows.map(({ initial, avatarClass, name, service, progress, progressColor, next }) => (
-              <div
-                key={name}
-                className="grid grid-cols-[1fr_auto_auto] sm:grid-cols-[1fr_80px_1fr_64px] gap-x-3 items-center px-5 py-4 border-b border-zinc-50 last:border-0 hover:bg-zinc-50/60 transition-colors cursor-pointer"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 ${avatarClass}`}
-                  >
-                    {initial}
-                  </div>
-                  <span className="text-sm text-zinc-800 font-medium truncate">{name}</span>
-                </div>
-
-                <span className="text-sm text-zinc-500">{service}</span>
-
-                <div className="hidden sm:flex items-center">
-                  <div className="w-full h-1.5 bg-zinc-100 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${progressColor}`}
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-                </div>
-
-                <span className="text-sm text-zinc-400 text-right whitespace-nowrap">{next}</span>
-              </div>
-            ))}
-          </div>
+      {/* ── Tabla todas las clientas ── */}
+      <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-zinc-100">
+          <h2 className="text-sm font-semibold text-zinc-900">Todas las clientas</h2>
+          <span className="text-xs text-zinc-400">148 clientas · mostrando 6</span>
         </div>
 
-        {/* ── Columna derecha — Perfil ── */}
-        <div>
-          <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-5 space-y-5">
+        {/* Columnas header */}
+        <div className="hidden sm:grid grid-cols-[2fr_1.2fr_1fr_1fr_1fr_auto_28px] gap-x-4 px-5 sm:px-6 py-2.5 border-b border-zinc-50">
+          <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">Clienta</span>
+          <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">Servicio actual</span>
+          <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">Progreso</span>
+          <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">Última visita</span>
+          <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">Próxima cita</span>
+          <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">Estado</span>
+          <span />
+        </div>
 
-            {/* Encabezado clienta */}
-            <div className="flex items-start gap-4">
-              <div className="w-14 h-14 rounded-full bg-zinc-900 flex items-center justify-center text-white text-xl font-bold shrink-0">
-                V
+        {/* Filas */}
+        {clientRows.map(({ initial, name, phone, service, progress, lastVisit, nextAppt, status, statusClass }) => (
+          <Link
+            key={name}
+            href={`/admin/clientas/${slugify(name)}`}
+            className="flex sm:grid sm:grid-cols-[2fr_1.2fr_1fr_1fr_1fr_auto_28px] gap-x-4 items-center px-5 sm:px-6 py-4 border-b border-zinc-50 last:border-0 hover:bg-zinc-50/70 transition-colors cursor-pointer"
+          >
+            {/* Clienta */}
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-zinc-200 flex items-center justify-center text-sm font-semibold text-zinc-600 shrink-0">
+                {initial}
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h3 className="text-lg font-bold text-zinc-900 leading-tight">
-                      Valentina Reyes
-                    </h3>
-                    <p className="text-xs text-zinc-400 mt-1">
-                      Clienta desde mar 2024 · 8 visitas
-                    </p>
-                  </div>
-                  <span className="text-xs font-semibold text-green-600 bg-green-50 px-2.5 py-1 rounded-full shrink-0">
-                    Activa
-                  </span>
-                </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-zinc-900 truncate">{name}</p>
+                <p className="text-xs text-zinc-400">{phone}</p>
               </div>
             </div>
 
-            {/* Evolución fotográfica */}
-            <div>
-              <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-3">
-                Evolución fotográfica
-              </p>
-              <div className="grid grid-cols-4 gap-2">
-                {photoStages.map((stage) => (
-                  <button
-                    key={stage}
-                    className="border-2 border-dashed border-zinc-200 rounded-xl py-4 flex flex-col items-center gap-1.5 hover:border-zinc-300 hover:bg-zinc-50 transition-colors"
-                  >
-                    <PhotoIcon />
-                    <span className="text-[10px] font-medium text-zinc-500">{stage}</span>
-                    <span className="text-[9px] text-zinc-400 underline">or browse files</span>
-                  </button>
-                ))}
+            {/* Servicio */}
+            <span className="hidden sm:block text-sm text-zinc-600">{service}</span>
+
+            {/* Progreso */}
+            <div className="hidden sm:flex items-center">
+              <div className="w-full h-1.5 bg-zinc-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-zinc-800"
+                  style={{ width: `${progress}%` }}
+                />
               </div>
             </div>
 
-            {/* Sesiones + Ficha */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-zinc-50 rounded-xl p-4">
-                <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-2">
-                  Sesiones
-                </p>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-bold text-zinc-900">6</span>
-                  <span className="text-sm text-zinc-400 font-medium">/10</span>
-                </div>
-              </div>
-              <div className="bg-zinc-50 rounded-xl p-4">
-                <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-2">
-                  Ficha
-                </p>
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-zinc-500">Largo</span>
-                    <span className="text-sm font-semibold text-zinc-900">20"</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-zinc-500">Color</span>
-                    <span className="text-sm font-semibold text-zinc-900">Ombré</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            {/* Última visita */}
+            <span className="hidden sm:block text-sm text-zinc-500">{lastVisit}</span>
 
             {/* Próxima cita */}
-            <div className="bg-zinc-900 rounded-xl p-4 flex items-center gap-4">
-              <div className="text-center shrink-0 min-w-[36px]">
-                <div className="text-zinc-500 text-[9px] font-bold uppercase tracking-widest leading-none mb-1">
-                  SEP
-                </div>
-                <div className="text-white text-3xl font-bold leading-none">03</div>
-              </div>
-              <div className="w-px h-10 bg-zinc-700 shrink-0" />
-              <div className="min-w-0">
-                <div className="text-zinc-500 text-[9px] font-bold uppercase tracking-widest mb-1">
-                  Próxima cita
-                </div>
-                <div className="text-white text-sm font-medium">
-                  11:00 am · Tape-in con Mariana
-                </div>
-              </div>
-            </div>
+            <span className="hidden sm:block text-sm text-zinc-500">{nextAppt}</span>
 
-            {/* Botones */}
-            <div className="grid grid-cols-2 gap-3">
-              <button className="border border-zinc-200 text-zinc-700 text-sm font-semibold py-3 rounded-xl hover:bg-zinc-50 transition-colors">
-                Mensaje
-              </button>
-              <button className="bg-zinc-900 text-white text-sm font-semibold py-3 rounded-xl hover:bg-zinc-700 transition-colors">
-                Registrar servicio
-              </button>
-            </div>
-          </div>
-        </div>
+            {/* Estado */}
+            <span className={`hidden sm:inline-block text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${statusClass}`}>
+              {status}
+            </span>
+
+            {/* Chevron */}
+            <span className="text-zinc-300 ml-auto sm:ml-0 shrink-0">
+              <ChevronIcon />
+            </span>
+          </Link>
+        ))}
       </div>
     </div>
   );
