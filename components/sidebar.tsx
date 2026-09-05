@@ -184,15 +184,21 @@ export default function Sidebar() {
       </nav>
 
       {/* User */}
-      <div className="border-t border-zinc-800 px-4 py-4 flex items-center gap-3">
-        <div className="w-8 h-8 rounded-full bg-zinc-600 flex items-center justify-center text-white text-sm font-semibold shrink-0">
+      <Link
+        href="/admin/perfil"
+        className="border-t border-zinc-800 px-4 py-4 flex items-center gap-3 hover:bg-zinc-800 transition-colors group"
+      >
+        <div className="w-8 h-8 rounded-full bg-zinc-600 flex items-center justify-center text-white text-sm font-semibold shrink-0 overflow-hidden">
           A
         </div>
-        <div className="min-w-0">
-          <div className="text-white text-sm font-medium truncate">Ana Beltré</div>
+        <div className="min-w-0 flex-1">
+          <div className="text-white text-sm font-medium truncate group-hover:text-zinc-100">Ana Beltré</div>
           <div className="text-zinc-400 text-xs">Gerente</div>
         </div>
-      </div>
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-600 group-hover:text-zinc-400 shrink-0">
+          <path d="M5 3l4 4-4 4" />
+        </svg>
+      </Link>
     </aside>
   );
 }

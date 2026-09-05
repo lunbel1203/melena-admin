@@ -8,6 +8,7 @@ type Tab = "salon" | "cerradas";
 
 type ClientCard = {
   id: string;
+  facturaId?: string;
   initial: string;
   name: string;
   status: Status;
@@ -39,21 +40,21 @@ const statusClass: Record<Status, string> = {
 
 const clients: ClientCard[] = [
   {
-    id: "c1", initial: "V", name: "Valentina Reyes",
+    id: "c1", facturaId: "FAC-1042", initial: "V", name: "Valentina Reyes",
     status: "en-atencion", timeLabel: "Desde", time: "11:02 am",
     visits: "8 visitas · cita 11:00 am",
     servicio: 'Tape-in 20"', estilista: "Mariana Ríos",
     deposito: "RD$1,000 pagado", resta: "RD$2,200",
   },
   {
-    id: "c2", initial: "D", name: "Daniela Paz",
+    id: "c2", facturaId: "FAC-1041", initial: "D", name: "Daniela Paz",
     status: "en-atencion", timeLabel: "Desde", time: "10:15 am",
     visits: "3 visitas · cita 10:00 am",
     servicio: "Nano ring", estilista: "Sofía Luna",
     deposito: "RD$1,000 pagado", resta: "RD$3,800",
   },
   {
-    id: "c3", initial: "C", name: "Camila Santos",
+    id: "c3", facturaId: "FAC-1040", initial: "C", name: "Camila Santos",
     status: "por-cobrar", timeLabel: "Terminó", time: "11:40 am",
     visits: "5 visitas · cita 9:00 am",
     servicio: "Retoque tape-in", extra: "Sellador · RD$450",
@@ -157,9 +158,12 @@ function ClientCardView({ c }: { c: ClientCard }) {
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <button className="py-2.5 text-sm font-semibold text-zinc-700 bg-white border border-zinc-200 rounded-xl hover:bg-zinc-50 transition-colors">
+          <Link
+            href={`/admin/facturacion/${c.facturaId ?? c.id}`}
+            className="py-2.5 text-sm font-semibold text-zinc-700 bg-white border border-zinc-200 rounded-xl hover:bg-zinc-50 transition-colors text-center"
+          >
             Ver detalle
-          </button>
+          </Link>
           <button className="py-2.5 text-sm font-semibold text-white bg-zinc-900 rounded-xl hover:bg-zinc-700 transition-colors">
             Cobrar
           </button>
@@ -223,9 +227,12 @@ function ClientCardView({ c }: { c: ClientCard }) {
 
       {c.status === "en-atencion" && (
         <div className="grid grid-cols-2 gap-2">
-          <button className="py-2.5 text-sm font-semibold text-zinc-700 bg-white border border-zinc-200 rounded-xl hover:bg-zinc-50 transition-colors">
-            + Servicio
-          </button>
+          <Link
+            href={`/admin/facturacion/${c.facturaId ?? c.id}`}
+            className="py-2.5 text-sm font-semibold text-zinc-700 bg-white border border-zinc-200 rounded-xl hover:bg-zinc-50 transition-colors text-center"
+          >
+            Ver detalle
+          </Link>
           <button className="py-2.5 text-sm font-semibold text-white bg-zinc-900 rounded-xl hover:bg-zinc-700 transition-colors">
             Cerrar y cobrar
           </button>
