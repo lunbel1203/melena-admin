@@ -74,14 +74,36 @@ function ChartIcon() {
   );
 }
 
+function TruckIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="1" y="3.5" width="9" height="7" rx="1" />
+      <path d="M10 6h2.5l2 3v2.5H10V6z" />
+      <circle cx="3.5" cy="11.5" r="1.5" />
+      <circle cx="12" cy="11.5" r="1.5" />
+    </svg>
+  );
+}
+
+function ReceiptIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 1.5h10v13l-1.5-1-2 1.5-2-1.5-2 1.5L3 14.5V1.5z" />
+      <path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3" />
+    </svg>
+  );
+}
+
 const navItems = [
-  { name: "Resumen", href: "/admin/resumen", icon: GridIcon },
-  { name: "Agenda", href: "/admin/agenda", icon: CalendarIcon },
-  { name: "Clientas", href: "/admin/clientas", icon: UserIcon },
-  { name: "Depósitos", href: "/admin/depositos", icon: InboxIcon },
-  { name: "Personal", href: "/admin/personal", icon: UsersIcon },
-  { name: "Catálogo", href: "/admin/catalogo", icon: LayersIcon },
-  { name: "Reportes", href: "/admin/reportes", icon: ChartIcon },
+  { name: "Resumen",     href: "/admin/resumen",     icon: GridIcon },
+  { name: "Agenda",      href: "/admin/agenda",      icon: CalendarIcon },
+  { name: "Clientas",    href: "/admin/clientas",    icon: UserIcon },
+  { name: "Depósitos",   href: "/admin/depositos",   icon: InboxIcon },
+  { name: "Personal",    href: "/admin/personal",    icon: UsersIcon },
+  { name: "Catálogo",    href: "/admin/catalogo",    icon: LayersIcon },
+  { name: "Proveedores", href: "/admin/proveedores",  icon: TruckIcon },
+  { name: "Facturación", href: "/admin/facturacion", icon: ReceiptIcon },
+  { name: "Reportes",    href: "/admin/reportes",    icon: ChartIcon },
 ];
 
 const services = [
