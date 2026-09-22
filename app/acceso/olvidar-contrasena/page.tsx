@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 function ChevronLeft() {
   return (
@@ -22,8 +23,30 @@ function MailIcon() {
 }
 
 export default function OlvidarContrasenaPage() {
+  const supabase = createClient();
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
+  const [cargando, setCargando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function enviarInstrucciones() {
+    if (!email) return;
+    setCargando(true);
+    setError(null);
+
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/confirm?next=/acceso/restablecer-contrasena`,
+    });
+
+    setCargando(false);
+
+    if (resetError) {
+      setError("No se pudo enviar el correo. Intenta de nuevo.");
+      return;
+    }
+
+    setSent(true);
+  }
 
   return (
     <div className="min-h-screen flex">
@@ -102,13 +125,16 @@ export default function OlvidarContrasenaPage() {
                   />
                 </div>
 
+                {/* Error */}
+                {error && <p className="text-xs text-red-500">{error}</p>}
+
                 {/* Botón */}
                 <button
-                  onClick={() => email && setSent(true)}
+                  onClick={enviarInstrucciones}
                   className="w-full py-3 text-sm font-semibold text-white bg-zinc-900 rounded-xl hover:bg-zinc-700 transition-colors disabled:opacity-40"
-                  disabled={!email}
+                  disabled={!email || cargando}
                 >
-                  Enviar instrucciones
+                  {cargando ? "Enviando…" : "Enviar instrucciones"}
                 </button>
 
                 {/* Volver */}

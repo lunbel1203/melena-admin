@@ -27,7 +27,8 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isAccessRoute = request.nextUrl.pathname.startsWith("/acceso");
+  const isResetPasswordRoute = request.nextUrl.pathname.startsWith("/acceso/restablecer-contrasena");
+  const isAccessRoute = request.nextUrl.pathname.startsWith("/acceso") && !isResetPasswordRoute;
   const isAdminRoute = request.nextUrl.pathname.startsWith("/admin");
 
   if (!user && isAdminRoute) {

@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 function ChevronLeft() {
   return (
@@ -106,9 +108,17 @@ function PasswordField({ label }: { label: string }) {
 }
 
 export default function PerfilPage() {
+  const router = useRouter();
+  const supabase = createClient();
   const [nombre, setNombre] = useState("Ana Beltré");
   const [correo, setCorreo] = useState("ana.beltre@melenahumanhair.com");
   const [telefono, setTelefono] = useState("809 555 0001");
+
+  async function cerrarSesion() {
+    await supabase.auth.signOut();
+    router.push("/acceso");
+    router.refresh();
+  }
 
   return (
     <div className="min-h-full bg-zinc-50 p-5 sm:p-7 lg:p-8">
@@ -227,12 +237,12 @@ export default function PerfilPage() {
                 <span className="text-zinc-700 font-medium">Gerente</span>
               </div>
             </div>
-            <Link
-              href="/acceso"
+            <button
+              onClick={cerrarSesion}
               className="w-full py-2.5 text-sm font-semibold text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition-colors flex items-center justify-center"
             >
               Cerrar sesión
-            </Link>
+            </button>
           </div>
         </div>
       </div>
