@@ -54,6 +54,7 @@ interface Servicio {
 interface Estilista {
   id: string;
   nombre: string;
+  puesto: string | null;
 }
 
 function formatDuracion(min: number) {
@@ -152,7 +153,7 @@ export default function NuevaCitaPage() {
     (async () => {
       const [{ data: srv }, { data: emp }] = await Promise.all([
         supabase.from("servicios").select("id, nombre, duracion_minutos, precio").eq("activo", true).order("nombre"),
-        supabase.from("empleados").select("id, nombre").eq("rol", "estilista").eq("activo", true).order("nombre"),
+        supabase.from("empleados").select("id, nombre, puesto").eq("rol", "estilista").eq("activo", true).order("nombre"),
       ]);
       setServicios(srv ?? []);
       setEstilistas(emp ?? []);
@@ -416,9 +417,7 @@ export default function NuevaCitaPage() {
 
           {/* 3 · Personal disponible */}
           <div className="bg-white rounded-2xl border border-zinc-200 p-5">
-            <SectionLabel>
-              3 · Personal disponible {selectedServicio && `· ${diaAbbr(selectedDate)} ${selectedDate.getDate()}`}
-            </SectionLabel>
+            <SectionLabel>3 · Personal disponible</SectionLabel>
             {!selectedServicio ? (
               <p className="text-sm text-zinc-400">Elige un servicio primero.</p>
             ) : estilistas.length === 0 ? (
@@ -450,6 +449,7 @@ export default function NuevaCitaPage() {
                         <div className={`text-sm font-semibold ${disponible ? "text-zinc-900" : "text-zinc-400"}`}>
                           {p.nombre}
                         </div>
+                        {p.puesto && <div className="text-xs text-zinc-400 mt-0.5">{p.puesto}</div>}
                       </div>
                       {cargandoHorarios ? (
                         <span className="text-xs font-medium text-zinc-300 shrink-0">…</span>

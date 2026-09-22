@@ -108,6 +108,8 @@ export type Database = {
           id: string
           notas: string | null
           rango: unknown
+          recordatorio_24h_enviado: boolean
+          recordatorio_2h_enviado: boolean
           servicio_id: string
           updated_at: string
         }
@@ -122,6 +124,8 @@ export type Database = {
           id?: string
           notas?: string | null
           rango?: unknown
+          recordatorio_24h_enviado?: boolean
+          recordatorio_2h_enviado?: boolean
           servicio_id: string
           updated_at?: string
         }
@@ -136,6 +140,8 @@ export type Database = {
           id?: string
           notas?: string | null
           rango?: unknown
+          recordatorio_24h_enviado?: boolean
+          recordatorio_2h_enviado?: boolean
           servicio_id?: string
           updated_at?: string
         }
@@ -343,6 +349,45 @@ export type Database = {
           },
         ]
       }
+      dispositivos_push: {
+        Row: {
+          clienta_id: string | null
+          created_at: string
+          empleado_id: string | null
+          expo_push_token: string
+          id: string
+        }
+        Insert: {
+          clienta_id?: string | null
+          created_at?: string
+          empleado_id?: string | null
+          expo_push_token: string
+          id?: string
+        }
+        Update: {
+          clienta_id?: string | null
+          created_at?: string
+          empleado_id?: string | null
+          expo_push_token?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispositivos_push_clienta_id_fkey"
+            columns: ["clienta_id"]
+            isOneToOne: false
+            referencedRelation: "clientas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispositivos_push_empleado_id_fkey"
+            columns: ["empleado_id"]
+            isOneToOne: false
+            referencedRelation: "empleados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       empleados: {
         Row: {
           activo: boolean
@@ -352,6 +397,7 @@ export type Database = {
           id: string
           nombre: string
           porcentaje_comision: number
+          puesto: string | null
           rol: Database["public"]["Enums"]["rol_empleado"]
           telefono: string | null
           user_id: string | null
@@ -364,6 +410,7 @@ export type Database = {
           id?: string
           nombre: string
           porcentaje_comision?: number
+          puesto?: string | null
           rol: Database["public"]["Enums"]["rol_empleado"]
           telefono?: string | null
           user_id?: string | null
@@ -376,6 +423,7 @@ export type Database = {
           id?: string
           nombre?: string
           porcentaje_comision?: number
+          puesto?: string | null
           rol?: Database["public"]["Enums"]["rol_empleado"]
           telefono?: string | null
           user_id?: string | null
