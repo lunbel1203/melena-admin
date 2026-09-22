@@ -1,7 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { addDays, diaAbbr, minutosAHora, horaAMinutos, toISODate } from "@/lib/dates";
 
 /* ── Icons ── */
 function BackIcon() {
@@ -36,36 +39,33 @@ function WarnIcon() {
   );
 }
 
-/* ── Data ── */
-const clients = [
-  { id: "c1", name: "Valentina Reyes", phone: "809 555 0142", visits: 8 },
-];
+/* ── Tipos ── */
+interface Clienta {
+  id: string;
+  nombre: string;
+  telefono: string;
+}
+interface Servicio {
+  id: string;
+  nombre: string;
+  duracion_minutos: number;
+  precio: number;
+}
+interface Estilista {
+  id: string;
+  nombre: string;
+}
 
-const services = [
-  { id: "s1", name: "Tape-in",  duration: "1.5 h",   price: "RD$3,200" },
-  { id: "s2", name: "Nano ring", duration: "3 h",    price: "RD$4,800" },
-  { id: "s3", name: "Ponytail", duration: "30 min",  price: "RD$1,900" },
-  { id: "s4", name: "Retiro",   duration: "45 min",  price: "RD$1,200" },
-];
+function formatDuracion(min: number) {
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60);
+  const resto = min % 60;
+  return resto === 0 ? `${h} h` : `${h}.${Math.round((resto / 60) * 10)} h`;
+}
 
-const staff = [
-  { id: "p1", name: "Mariana Ríos",  role: "Especialista en tape-in", freeDays: 4, available: true },
-  { id: "p2", name: "Sofía Luna",    role: "Tape-in · bulk",          freeDays: 6, available: true },
-  { id: "p3", name: "Camila Torres", role: "Vacaciones al 5 sep",     freeDays: 0, available: false },
-];
-
-const days = [
-  { id: "d1", abbr: "Lun", num: 1 },
-  { id: "d2", abbr: "Mar", num: 2 },
-  { id: "d3", abbr: "Mié", num: 3 },
-  { id: "d4", abbr: "Jue", num: 4 },
-  { id: "d5", abbr: "Vie", num: 5 },
-  { id: "d6", abbr: "Sáb", num: 6 },
-  { id: "d7", abbr: "Lun", num: 8 },
-  { id: "d8", abbr: "Mar", num: 9 },
-];
-
-const timeSlots = ["9:00", "11:00", "13:00", "15:00", "16:30", "18:00"];
+function formatPrecio(precio: number) {
+  return `RD$${precio.toLocaleString("es-DO")}`;
+}
 
 /* ── Avatar ── */
 function Avatar({ name, size = "md" }: { name: string; size?: "sm" | "md" }) {
@@ -87,27 +87,207 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
+const DIAS_A_MOSTRAR = 14;
+
 /* ── Page ── */
 export default function NuevaCitaPage() {
+  const supabase = useMemo(() => createClient(), []);
+  const router = useRouter();
+
+  /* Paso 1: clienta */
   const [search, setSearch] = useState("");
-  const [selectedClient, setSelectedClient] = useState<string | null>("c1");
-  const [selectedService, setSelectedService] = useState<string | null>("s1");
-  const [selectedStaff, setSelectedStaff] = useState<string | null>("p1");
-  const [selectedDay, setSelectedDay] = useState<string | null>("d3");
-  const [selectedTime, setSelectedTime] = useState<string | null>("11:00");
+  const [resultados, setResultados] = useState<Clienta[]>([]);
+  const [buscando, setBuscando] = useState(false);
+  const [selectedClienta, setSelectedClienta] = useState<Clienta | null>(null);
+  const [modoNueva, setModoNueva] = useState(false);
+  const [nuevoNombre, setNuevoNombre] = useState("");
+  const [nuevoTelefono, setNuevoTelefono] = useState("");
+
+  useEffect(() => {
+    if (search.trim().length < 2) {
+      setResultados([]);
+      return;
+    }
+    setBuscando(true);
+    const timeout = setTimeout(async () => {
+      const { data } = await supabase
+        .from("clientas")
+        .select("id, nombre, telefono")
+        .or(`nombre.ilike.%${search}%,telefono.ilike.%${search}%`)
+        .limit(6);
+      setResultados(data ?? []);
+      setBuscando(false);
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [search, supabase]);
+
+  /* Paso 2: servicio */
+  const [servicios, setServicios] = useState<Servicio[]>([]);
+  const [selectedServicioId, setSelectedServicioId] = useState<string | null>(null);
+  const selectedServicio = servicios.find((s) => s.id === selectedServicioId) ?? null;
+
+  /* Paso 3/4: personal, fecha y hora */
+  const [estilistas, setEstilistas] = useState<Estilista[]>([]);
+  const [selectedEstilistaId, setSelectedEstilistaId] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const hoy = new Date();
+    return hoy.getDay() === 0 ? addDays(hoy, 1) : hoy;
+  });
+  const [horariosPorEstilista, setHorariosPorEstilista] = useState<Map<string, string[]>>(new Map());
+  const [cargandoHorarios, setCargandoHorarios] = useState(false);
+  const [selectedHora, setSelectedHora] = useState<string | null>(null);
+
+  const dias = useMemo(() => {
+    const lista: Date[] = [];
+    let d = new Date();
+    while (lista.length < DIAS_A_MOSTRAR) {
+      if (d.getDay() !== 0) lista.push(new Date(d));
+      d = addDays(d, 1);
+    }
+    return lista;
+  }, []);
+
+  /* Catálogo inicial */
+  useEffect(() => {
+    (async () => {
+      const [{ data: srv }, { data: emp }] = await Promise.all([
+        supabase.from("servicios").select("id, nombre, duracion_minutos, precio").eq("activo", true).order("nombre"),
+        supabase.from("empleados").select("id, nombre").eq("rol", "estilista").eq("activo", true).order("nombre"),
+      ]);
+      setServicios(srv ?? []);
+      setEstilistas(emp ?? []);
+    })();
+  }, [supabase]);
+
+  /* Disponibilidad de todas las estilistas para el servicio + día elegidos */
+  useEffect(() => {
+    if (!selectedServicio || estilistas.length === 0) {
+      setHorariosPorEstilista(new Map());
+      return;
+    }
+    let cancelado = false;
+    (async () => {
+      setCargandoHorarios(true);
+      setSelectedHora(null);
+      const fechaISO = toISODate(selectedDate);
+      const resultados = await Promise.all(
+        estilistas.map((e) =>
+          supabase.rpc("horarios_disponibles_estilista", {
+            p_empleado_id: e.id,
+            p_fecha: fechaISO,
+            p_duracion_minutos: selectedServicio.duracion_minutos,
+          }),
+        ),
+      );
+      if (cancelado) return;
+      const mapa = new Map<string, string[]>();
+      estilistas.forEach((e, i) => {
+        const slots = (resultados[i].data ?? []).map((s: { hora_inicio: string }) => s.hora_inicio.slice(0, 5));
+        mapa.set(e.id, slots);
+      });
+      setHorariosPorEstilista(mapa);
+      setCargandoHorarios(false);
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [supabase, selectedServicio, selectedDate, estilistas]);
+
+  const horasEstilistaSeleccionada = selectedEstilistaId ? horariosPorEstilista.get(selectedEstilistaId) ?? [] : [];
+  const otrasConEspacio = estilistas.filter(
+    (e) => e.id !== selectedEstilistaId && (horariosPorEstilista.get(e.id)?.length ?? 0) > 0,
+  );
+
+  /* Paso 5: depósito */
   const [payInSalon, setPayInSalon] = useState(false);
+  const [comprobante, setComprobante] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [note, setNote] = useState("");
 
-  const selectedStaffName = staff.find((p) => p.id === selectedStaff)?.name.split(" ")[0] ?? "Personal";
+  const [enviando, setEnviando] = useState(false);
+  const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
+
+  const clientaLista = selectedClienta || (modoNueva && nuevoNombre.trim() && nuevoTelefono.trim());
+  const puedeEnviar =
+    clientaLista &&
+    selectedServicio &&
+    selectedEstilistaId &&
+    selectedHora &&
+    (payInSalon || comprobante) &&
+    !enviando;
+
+  async function crearCita() {
+    if (!selectedServicio || !selectedEstilistaId || !selectedHora) return;
+    setEnviando(true);
+    setErrorEnvio(null);
+
+    try {
+      let clientaId = selectedClienta?.id ?? null;
+
+      if (!clientaId && modoNueva) {
+        const { data: nueva, error } = await supabase
+          .from("clientas")
+          .insert({ nombre: nuevoNombre.trim(), telefono: nuevoTelefono.trim() })
+          .select("id")
+          .single();
+        if (error) throw new Error(error.code === "23505" ? "Ya existe una clienta con ese teléfono." : error.message);
+        clientaId = nueva.id;
+      }
+
+      if (!clientaId) throw new Error("Selecciona o crea una clienta.");
+
+      const horaInicio = selectedHora;
+      const horaFin = minutosAHora(horaAMinutos(selectedHora) + selectedServicio.duracion_minutos);
+      const fechaISO = toISODate(selectedDate);
+
+      const { data: cita, error: citaError } = await supabase
+        .from("citas")
+        .insert({
+          clienta_id: clientaId,
+          servicio_id: selectedServicio.id,
+          empleado_id: selectedEstilistaId,
+          fecha: fechaISO,
+          hora_inicio: horaInicio,
+          hora_fin: horaFin,
+          estado: payInSalon ? "confirmada" : "pendiente_confirmacion",
+          notas: note.trim() || null,
+        })
+        .select("id")
+        .single();
+
+      if (citaError) {
+        if (citaError.code === "23P01") throw new Error("Ese horario ya no está disponible. Elige otro.");
+        throw new Error(citaError.message);
+      }
+
+      if (!payInSalon && comprobante) {
+        const ext = comprobante.name.split(".").pop();
+        const path = `${cita.id}/comprobante-${Date.now()}.${ext}`;
+        const { error: uploadError } = await supabase.storage.from("comprobantes-deposito").upload(path, comprobante);
+        if (!uploadError) {
+          const { data: signed } = await supabase.storage
+            .from("comprobantes-deposito")
+            .createSignedUrl(path, 60 * 60 * 24 * 365);
+          if (signed?.signedUrl) {
+            await supabase.from("depositos").insert({ cita_id: cita.id, comprobante_url: signed.signedUrl });
+          }
+        }
+      }
+
+      router.push("/admin/agenda");
+      router.refresh();
+    } catch (e) {
+      setErrorEnvio(e instanceof Error ? e.message : "No se pudo crear la cita.");
+    } finally {
+      setEnviando(false);
+    }
+  }
 
   return (
     <div className="min-h-full bg-zinc-50">
       {/* ── Header ── */}
       <div className="bg-white border-b border-zinc-200 px-6 py-4 flex items-center gap-3">
-        <Link
-          href="/admin/agenda"
-          className="text-zinc-400 hover:text-zinc-700 transition-colors"
-        >
+        <Link href="/admin/agenda" className="text-zinc-400 hover:text-zinc-700 transition-colors">
           <BackIcon />
         </Link>
         <h1 className="text-xl font-bold text-zinc-900">Nueva cita</h1>
@@ -115,218 +295,295 @@ export default function NuevaCitaPage() {
 
       {/* ── Body ── */}
       <div className="p-5 lg:p-7 flex flex-col lg:flex-row gap-5 max-w-[1100px] mx-auto">
-
         {/* ══ LEFT COLUMN ══ */}
         <div className="flex-1 min-w-0 space-y-4">
-
           {/* 1 · Clienta */}
           <div className="bg-white rounded-2xl border border-zinc-200 p-5">
             <SectionLabel>1 · Clienta</SectionLabel>
 
-            {/* Search */}
-            <div className="relative mb-3">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">
-                <SearchIcon />
-              </span>
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar por nombre, teléfono o correo..."
-                className="w-full pl-9 pr-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-zinc-400 transition-colors"
-              />
-            </div>
+            {!modoNueva ? (
+              <>
+                <div className="relative mb-3">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">
+                    <SearchIcon />
+                  </span>
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => {
+                      setSearch(e.target.value);
+                      setSelectedClienta(null);
+                    }}
+                    placeholder="Buscar por nombre o teléfono..."
+                    className="w-full pl-9 pr-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-zinc-400 transition-colors"
+                  />
+                </div>
 
-            {/* Results */}
-            <div className="space-y-2">
-              {clients.map((c) => {
-                const isSelected = selectedClient === c.id;
-                return (
-                  <button
-                    key={c.id}
-                    onClick={() => setSelectedClient(c.id)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all ${
-                      isSelected
-                        ? "border-zinc-300 bg-zinc-50"
-                        : "border-zinc-100 hover:border-zinc-200"
-                    }`}
-                  >
-                    <Avatar name={c.name} />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-zinc-900">{c.name}</div>
-                      <div className="text-xs text-zinc-400 mt-0.5">
-                        {c.phone} · {c.visits} visitas
-                      </div>
-                    </div>
-                    {isSelected && (
-                      <span className="text-xs font-semibold text-zinc-500 bg-zinc-100 px-2.5 py-1 rounded-full shrink-0">
-                        Seleccionada
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+                <div className="space-y-2">
+                  {buscando && <p className="text-xs text-zinc-400">Buscando…</p>}
+                  {!buscando && search.trim().length >= 2 && resultados.length === 0 && (
+                    <p className="text-xs text-zinc-400">No se encontró ninguna clienta con ese dato.</p>
+                  )}
+                  {resultados.map((c) => {
+                    const isSelected = selectedClienta?.id === c.id;
+                    return (
+                      <button
+                        key={c.id}
+                        onClick={() => setSelectedClienta(c)}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all ${
+                          isSelected ? "border-zinc-300 bg-zinc-50" : "border-zinc-100 hover:border-zinc-200"
+                        }`}
+                      >
+                        <Avatar name={c.nombre} />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-semibold text-zinc-900">{c.nombre}</div>
+                          <div className="text-xs text-zinc-400 mt-0.5">{c.telefono}</div>
+                        </div>
+                        {isSelected && (
+                          <span className="text-xs font-semibold text-zinc-500 bg-zinc-100 px-2.5 py-1 rounded-full shrink-0">
+                            Seleccionada
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
 
-            <p className="text-xs text-zinc-400 mt-3">
-              ¿Clienta nueva? Se crea el perfil al registrar el check-in.
-            </p>
+                <button
+                  onClick={() => setModoNueva(true)}
+                  className="text-sm font-medium text-zinc-600 hover:text-zinc-900 transition-colors mt-3"
+                >
+                  + Clienta nueva
+                </button>
+              </>
+            ) : (
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  value={nuevoNombre}
+                  onChange={(e) => setNuevoNombre(e.target.value)}
+                  placeholder="Nombre completo"
+                  className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-zinc-400 transition-colors"
+                />
+                <input
+                  type="tel"
+                  value={nuevoTelefono}
+                  onChange={(e) => setNuevoTelefono(e.target.value)}
+                  placeholder="Teléfono"
+                  className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-zinc-400 transition-colors"
+                />
+                <button
+                  onClick={() => {
+                    setModoNueva(false);
+                    setNuevoNombre("");
+                    setNuevoTelefono("");
+                  }}
+                  className="text-sm font-medium text-zinc-500 hover:text-zinc-800 transition-colors"
+                >
+                  ← Buscar clienta existente
+                </button>
+              </div>
+            )}
           </div>
 
           {/* 2 · Servicio */}
           <div className="bg-white rounded-2xl border border-zinc-200 p-5">
             <SectionLabel>2 · Servicio</SectionLabel>
-            <div className="grid grid-cols-2 gap-2.5">
-              {services.map((s) => {
-                const isSelected = selectedService === s.id;
-                return (
-                  <button
-                    key={s.id}
-                    onClick={() => setSelectedService(s.id)}
-                    className={`text-left px-4 py-3.5 rounded-xl border-2 transition-all ${
-                      isSelected
-                        ? "border-zinc-900 bg-white"
-                        : "border-zinc-100 bg-white hover:border-zinc-200"
-                    }`}
-                  >
-                    <div className="text-sm font-semibold text-zinc-900">{s.name}</div>
-                    <div className="text-xs text-zinc-400 mt-1">
-                      {s.duration} · {s.price}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+            {servicios.length === 0 ? (
+              <p className="text-sm text-zinc-400">No hay servicios activos configurados.</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2.5">
+                {servicios.map((s) => {
+                  const isSelected = selectedServicioId === s.id;
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => setSelectedServicioId(s.id)}
+                      className={`text-left px-4 py-3.5 rounded-xl border-2 transition-all ${
+                        isSelected ? "border-zinc-900 bg-white" : "border-zinc-100 bg-white hover:border-zinc-200"
+                      }`}
+                    >
+                      <div className="text-sm font-semibold text-zinc-900">{s.nombre}</div>
+                      <div className="text-xs text-zinc-400 mt-1">
+                        {formatDuracion(s.duracion_minutos)} · {formatPrecio(s.precio)}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* 3 · Personal disponible */}
           <div className="bg-white rounded-2xl border border-zinc-200 p-5">
-            <SectionLabel>3 · Personal disponible</SectionLabel>
-            <div className="space-y-2">
-              {staff.map((p) => {
-                const isSelected = selectedStaff === p.id;
-                return (
-                  <button
-                    key={p.id}
-                    disabled={!p.available}
-                    onClick={() => p.available && setSelectedStaff(p.id)}
-                    className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-all ${
-                      !p.available
-                        ? "border-zinc-100 cursor-default"
-                        : isSelected
-                        ? "border-zinc-300 bg-zinc-50"
-                        : "border-zinc-100 hover:border-zinc-200"
-                    }`}
-                  >
-                    <Avatar name={p.name} size="sm" />
-                    <div className="flex-1 min-w-0 text-left">
-                      <div className={`text-sm font-semibold ${p.available ? "text-zinc-900" : "text-zinc-400"}`}>
-                        {p.name}
+            <SectionLabel>
+              3 · Personal disponible {selectedServicio && `· ${diaAbbr(selectedDate)} ${selectedDate.getDate()}`}
+            </SectionLabel>
+            {!selectedServicio ? (
+              <p className="text-sm text-zinc-400">Elige un servicio primero.</p>
+            ) : estilistas.length === 0 ? (
+              <p className="text-sm text-zinc-400">No hay estilistas activas configuradas.</p>
+            ) : (
+              <div className="space-y-2">
+                {estilistas.map((p) => {
+                  const slots = horariosPorEstilista.get(p.id) ?? [];
+                  const disponible = cargandoHorarios || slots.length > 0;
+                  const isSelected = selectedEstilistaId === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      disabled={!cargandoHorarios && slots.length === 0}
+                      onClick={() => {
+                        setSelectedEstilistaId(p.id);
+                        setSelectedHora(null);
+                      }}
+                      className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-all ${
+                        !disponible
+                          ? "border-zinc-100 cursor-default"
+                          : isSelected
+                          ? "border-zinc-300 bg-zinc-50"
+                          : "border-zinc-100 hover:border-zinc-200"
+                      }`}
+                    >
+                      <Avatar name={p.nombre} size="sm" />
+                      <div className="flex-1 min-w-0 text-left">
+                        <div className={`text-sm font-semibold ${disponible ? "text-zinc-900" : "text-zinc-400"}`}>
+                          {p.nombre}
+                        </div>
                       </div>
-                      <div className="text-xs text-zinc-400 mt-0.5">{p.role}</div>
-                    </div>
-                    {p.available ? (
-                      <span className="text-xs font-medium text-zinc-500 bg-zinc-100 px-2.5 py-1 rounded-full shrink-0">
-                        {p.freeDays} días libres
-                      </span>
-                    ) : (
-                      <span className="text-xs font-medium text-zinc-400 shrink-0">No disponible</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+                      {cargandoHorarios ? (
+                        <span className="text-xs font-medium text-zinc-300 shrink-0">…</span>
+                      ) : slots.length > 0 ? (
+                        <span className="text-xs font-medium text-zinc-500 bg-zinc-100 px-2.5 py-1 rounded-full shrink-0">
+                          {slots.length} horarios libres
+                        </span>
+                      ) : (
+                        <span className="text-xs font-medium text-zinc-400 shrink-0">Sin espacio</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
         {/* ══ RIGHT COLUMN ══ */}
         <div className="lg:w-[380px] shrink-0 space-y-0">
           <div className="bg-white rounded-2xl border border-zinc-200 overflow-hidden">
-
             {/* 4 · Fecha y hora */}
             <div className="p-5 border-b border-zinc-100">
-              <SectionLabel>4 · Fecha y hora con {selectedStaffName}</SectionLabel>
+              <SectionLabel>
+                4 · Fecha y hora{selectedEstilistaId && ` con ${estilistas.find((e) => e.id === selectedEstilistaId)?.nombre.split(" ")[0]}`}
+              </SectionLabel>
 
-              {/* Day chips — 4 per row */}
               <div className="grid grid-cols-4 gap-2 mb-4">
-                {days.map((d) => {
-                  const isSelected = selectedDay === d.id;
+                {dias.map((d) => {
+                  const isSelected = isSameISODate(d, selectedDate);
                   return (
                     <button
-                      key={d.id}
-                      onClick={() => setSelectedDay(d.id)}
+                      key={toISODate(d)}
+                      onClick={() => setSelectedDate(d)}
                       className={`flex flex-col items-center py-2 px-1 rounded-xl border text-center transition-all ${
-                        isSelected
-                          ? "bg-zinc-900 border-zinc-900 text-white"
-                          : "bg-white border-zinc-200 text-zinc-700 hover:border-zinc-300"
+                        isSelected ? "bg-zinc-900 border-zinc-900 text-white" : "bg-white border-zinc-200 text-zinc-700 hover:border-zinc-300"
                       }`}
                     >
-                      <span className="text-[11px] font-medium leading-none">{d.abbr}</span>
-                      <span className="text-base font-bold mt-0.5 leading-none">{d.num}</span>
+                      <span className="text-[11px] font-medium leading-none">{diaAbbr(d)}</span>
+                      <span className="text-base font-bold mt-0.5 leading-none">{d.getDate()}</span>
                     </button>
                   );
                 })}
               </div>
 
-              {/* Time slots */}
-              <div className="mb-1">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 mb-2">
-                  Horarios del {days.find((d) => d.id === selectedDay)?.abbr.toLowerCase() ?? "día"}{" "}
-                  {days.find((d) => d.id === selectedDay)?.num}
-                </p>
-                <div className="grid grid-cols-3 gap-2">
-                  {timeSlots.map((t) => {
-                    const isSelected = selectedTime === t;
-                    return (
-                      <button
-                        key={t}
-                        onClick={() => setSelectedTime(t)}
-                        className={`py-2.5 rounded-xl text-sm font-semibold border transition-all ${
-                          isSelected
-                            ? "bg-zinc-900 border-zinc-900 text-white"
-                            : "bg-white border-zinc-200 text-zinc-700 hover:border-zinc-300"
-                        }`}
-                      >
-                        {t}
-                      </button>
-                    );
-                  })}
+              {!selectedEstilistaId ? (
+                <p className="text-sm text-zinc-400">Elige una estilista para ver sus horarios.</p>
+              ) : (
+                <div className="mb-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 mb-2">
+                    Horarios del {diaAbbr(selectedDate).toLowerCase()} {selectedDate.getDate()}
+                  </p>
+                  {cargandoHorarios ? (
+                    <p className="text-sm text-zinc-400">Cargando horarios…</p>
+                  ) : horasEstilistaSeleccionada.length === 0 ? (
+                    <div className="flex items-start gap-2 bg-orange-50 border border-orange-100 rounded-xl px-3 py-2.5">
+                      <span className="shrink-0 mt-0.5"><WarnIcon /></span>
+                      <p className="text-xs text-zinc-600 leading-relaxed">
+                        No tiene espacio libre este día.
+                        {otrasConEspacio.length > 0 && (
+                          <>
+                            {" "}Sí están libres:{" "}
+                            {otrasConEspacio.map((e, i) => (
+                              <span key={e.id}>
+                                <button
+                                  onClick={() => { setSelectedEstilistaId(e.id); setSelectedHora(null); }}
+                                  className="font-semibold underline hover:no-underline"
+                                >
+                                  {e.nombre}
+                                </button>
+                                {i < otrasConEspacio.length - 1 ? ", " : "."}
+                              </span>
+                            ))}
+                          </>
+                        )}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2 max-h-52 overflow-y-auto">
+                      {horasEstilistaSeleccionada.map((t) => {
+                        const isSelected = selectedHora === t;
+                        return (
+                          <button
+                            key={t}
+                            onClick={() => setSelectedHora(t)}
+                            className={`py-2.5 rounded-xl text-sm font-semibold border transition-all ${
+                              isSelected ? "bg-zinc-900 border-zinc-900 text-white" : "bg-white border-zinc-200 text-zinc-700 hover:border-zinc-300"
+                            }`}
+                          >
+                            {t}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              </div>
-
-              {/* Warning */}
-              <div className="mt-3 flex items-start gap-2 bg-orange-50 border border-orange-100 rounded-xl px-3 py-2.5">
-                <span className="shrink-0 mt-0.5"><WarnIcon /></span>
-                <p className="text-xs text-zinc-600 leading-relaxed">
-                  La 1:00 pm está ocupada.{" "}
-                  <span className="font-semibold">Sofía Luna</span> y{" "}
-                  <span className="font-semibold">Vanessa Gil</span> sí la tienen libre.
-                </p>
-              </div>
+              )}
             </div>
 
             {/* 5 · Depósito de reserva */}
             <div className="p-5 border-b border-zinc-100">
               <SectionLabel>5 · Depósito de reserva</SectionLabel>
 
-              {/* Amount */}
               <div className="flex items-center justify-between mb-3">
                 <span className="text-sm text-zinc-600">Monto requerido</span>
                 <span className="text-base font-bold text-zinc-900">RD$1,000</span>
               </div>
 
-              {/* Upload */}
-              <button className="w-full border-2 border-dashed border-zinc-200 rounded-xl py-4 flex flex-col items-center gap-1.5 hover:border-zinc-300 hover:bg-zinc-50 transition-all mb-3">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,application/pdf"
+                className="hidden"
+                onChange={(e) => setComprobante(e.target.files?.[0] ?? null)}
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={payInSalon}
+                className="w-full border-2 border-dashed border-zinc-200 rounded-xl py-4 flex flex-col items-center gap-1.5 hover:border-zinc-300 hover:bg-zinc-50 transition-all mb-3 disabled:opacity-40 disabled:hover:bg-white"
+              >
                 <span className="text-zinc-400"><UploadIcon /></span>
-                <span className="text-sm text-zinc-500 font-medium">Adjuntar comprobante</span>
+                <span className="text-sm text-zinc-500 font-medium">
+                  {comprobante ? comprobante.name : "Adjuntar comprobante"}
+                </span>
               </button>
 
-              {/* Checkbox */}
               <label className="flex items-center gap-2.5 cursor-pointer group">
                 <input
                   type="checkbox"
                   checked={payInSalon}
-                  onChange={(e) => setPayInSalon(e.target.checked)}
+                  onChange={(e) => {
+                    setPayInSalon(e.target.checked);
+                    if (e.target.checked) setComprobante(null);
+                  }}
                   className="w-4 h-4 rounded border-zinc-300 accent-zinc-900 cursor-pointer"
                 />
                 <span className="text-sm text-zinc-600 group-hover:text-zinc-800 transition-colors">
@@ -347,6 +604,12 @@ export default function NuevaCitaPage() {
               />
             </div>
 
+            {errorEnvio && (
+              <div className="px-5 pt-4">
+                <p className="text-xs text-red-500">{errorEnvio}</p>
+              </div>
+            )}
+
             {/* Actions */}
             <div className="p-5 flex gap-3">
               <Link
@@ -355,8 +618,12 @@ export default function NuevaCitaPage() {
               >
                 Cancelar
               </Link>
-              <button className="flex-1 py-3 rounded-xl bg-zinc-900 text-sm font-semibold text-white hover:bg-zinc-700 transition-colors">
-                Crear cita
+              <button
+                onClick={crearCita}
+                disabled={!puedeEnviar}
+                className="flex-1 py-3 rounded-xl bg-zinc-900 text-sm font-semibold text-white hover:bg-zinc-700 transition-colors disabled:opacity-40"
+              >
+                {enviando ? "Creando…" : "Crear cita"}
               </button>
             </div>
           </div>
@@ -364,4 +631,8 @@ export default function NuevaCitaPage() {
       </div>
     </div>
   );
+}
+
+function isSameISODate(a: Date, b: Date) {
+  return toISODate(a) === toISODate(b);
 }

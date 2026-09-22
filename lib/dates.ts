@@ -11,6 +11,12 @@ export function toISODate(d: Date) {
   return `${y}-${m}-${day}`;
 }
 
+/** Parsea "YYYY-MM-DD" como fecha local (evita el corrimiento de un día que da `new Date(iso)`) */
+export function parseISODate(iso: string) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
 export function addDays(d: Date, n: number) {
   const copy = new Date(d);
   copy.setDate(copy.getDate() + n);
