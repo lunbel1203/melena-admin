@@ -181,9 +181,15 @@ export default function NuevaCitaPage() {
         ),
       );
       if (cancelado) return;
+
+      const ahora = new Date();
+      const esHoy = isSameISODate(selectedDate, ahora);
+      const minutosAhora = ahora.getHours() * 60 + ahora.getMinutes();
+
       const mapa = new Map<string, string[]>();
       estilistas.forEach((e, i) => {
-        const slots = (resultados[i].data ?? []).map((s: { hora_inicio: string }) => s.hora_inicio.slice(0, 5));
+        let slots = (resultados[i].data ?? []).map((s: { hora_inicio: string }) => s.hora_inicio.slice(0, 5));
+        if (esHoy) slots = slots.filter((hora) => horaAMinutos(hora) > minutosAhora);
         mapa.set(e.id, slots);
       });
       setHorariosPorEstilista(mapa);
