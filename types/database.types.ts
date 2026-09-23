@@ -666,7 +666,10 @@ export type Database = {
       servicios: {
         Row: {
           activo: boolean
+          categoria: string | null
           created_at: string
+          deposito_monto: number | null
+          deposito_requerido: boolean
           descripcion: string | null
           dias_seguimiento: number[]
           duracion_minutos: number
@@ -678,7 +681,10 @@ export type Database = {
         }
         Insert: {
           activo?: boolean
+          categoria?: string | null
           created_at?: string
+          deposito_monto?: number | null
+          deposito_requerido?: boolean
           descripcion?: string | null
           dias_seguimiento?: number[]
           duracion_minutos?: number
@@ -690,7 +696,10 @@ export type Database = {
         }
         Update: {
           activo?: boolean
+          categoria?: string | null
           created_at?: string
+          deposito_monto?: number | null
+          deposito_requerido?: boolean
           descripcion?: string | null
           dias_seguimiento?: number[]
           duracion_minutos?: number
@@ -701,6 +710,39 @@ export type Database = {
           slug?: string
         }
         Relationships: []
+      }
+      servicios_empleados: {
+        Row: {
+          created_at: string
+          empleado_id: string
+          servicio_id: string
+        }
+        Insert: {
+          created_at?: string
+          empleado_id: string
+          servicio_id: string
+        }
+        Update: {
+          created_at?: string
+          empleado_id?: string
+          servicio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "servicios_empleados_empleado_id_fkey"
+            columns: ["empleado_id"]
+            isOneToOne: false
+            referencedRelation: "empleados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "servicios_empleados_servicio_id_fkey"
+            columns: ["servicio_id"]
+            isOneToOne: false
+            referencedRelation: "servicios"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tickets_molestia: {
         Row: {
