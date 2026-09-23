@@ -584,6 +584,7 @@ export type Database = {
           proveedor_id: string | null
           slug: string
           stock: number
+          stock_minimo: number
           tipo_cabello: Database["public"]["Enums"]["tipo_cabello"] | null
         }
         Insert: {
@@ -601,6 +602,7 @@ export type Database = {
           proveedor_id?: string | null
           slug: string
           stock?: number
+          stock_minimo?: number
           tipo_cabello?: Database["public"]["Enums"]["tipo_cabello"] | null
         }
         Update: {
@@ -618,6 +620,7 @@ export type Database = {
           proveedor_id?: string | null
           slug?: string
           stock?: number
+          stock_minimo?: number
           tipo_cabello?: Database["public"]["Enums"]["tipo_cabello"] | null
         }
         Relationships: [
