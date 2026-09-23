@@ -592,15 +592,15 @@ export default function NuevaCitaPage() {
               </label>
             </div>
 
-            {/* Nota interna */}
+            {/* Nota para la estilista */}
             <div className="p-5 border-b border-zinc-100">
-              <SectionLabel>Nota interna</SectionLabel>
+              <SectionLabel>Nota para la estilista</SectionLabel>
               <textarea
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="Cuero sensible, usar cinta hipoalergénica..."
                 rows={4}
-                className="w-full text-sm text-zinc-800 placeholder-zinc-400 resize-none border-0 outline-none leading-relaxed"
+                className="w-full px-3.5 py-3 text-sm bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-800 placeholder-zinc-400 resize-none focus:outline-none focus:border-zinc-400 focus:bg-white transition-colors leading-relaxed"
               />
             </div>
 

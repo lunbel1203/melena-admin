@@ -525,7 +525,7 @@ export default function CitaDetailPage({ params }: { params: Promise<{ id: strin
 
           {cita.notas && (
             <div className="bg-white rounded-2xl border border-zinc-200 p-5">
-              <SectionLabel>Nota interna</SectionLabel>
+              <SectionLabel>Nota para la estilista</SectionLabel>
               <p className="text-sm text-zinc-700">{cita.notas}</p>
             </div>
           )}
