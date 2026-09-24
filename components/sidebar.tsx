@@ -3,6 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import type { Database } from "@/types/database.types";
 
 function GridIcon() {
   return (
@@ -116,15 +119,28 @@ const navItems = [
   { name: "Configuración", href: "/admin/configuracion", icon: GearIcon },
 ];
 
-const services = [
-  { name: "Tape-in", href: "/admin/servicios/tape-in" },
-  { name: "Nano ring", href: "/admin/servicios/nano-ring" },
-  { name: "Bulk", href: "/admin/servicios/bulk" },
-  { name: "Ponytail", href: "/admin/servicios/ponytail" },
-];
+const ROL_LABEL: Record<Database["public"]["Enums"]["rol_empleado"], string> = {
+  admin: "Admin",
+  recepcion: "Recepción",
+  caja: "Caja",
+  estilista: "Estilista",
+};
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const supabase = useMemo(() => createClient(), []);
+  const [usuario, setUsuario] = useState<{ nombre: string; rol: Database["public"]["Enums"]["rol_empleado"] } | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from("empleados").select("nombre, rol").eq("user_id", user.id).single();
+      if (data) setUsuario(data);
+    })();
+  }, [supabase]);
 
   return (
     <aside className="w-52 bg-zinc-900 flex flex-col shrink-0">
@@ -165,32 +181,6 @@ export default function Sidebar() {
             );
           })}
         </ul>
-
-        <div className="mt-7 mb-2">
-          <p className="text-[10px] text-zinc-500 uppercase tracking-[0.18em] px-3 mb-2 font-semibold">
-            Servicios
-          </p>
-          <ul className="space-y-0.5">
-            {services.map(({ name, href }) => {
-              const isActive = pathname === href || pathname.startsWith(href + "/");
-              return (
-                <li key={name}>
-                  <Link
-                    href={href}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                      isActive
-                        ? "bg-white text-zinc-900"
-                        : "text-zinc-400 hover:text-white hover:bg-zinc-800"
-                    }`}
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0" />
-                    {name}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
       </nav>
 
       {/* User */}
@@ -199,11 +189,13 @@ export default function Sidebar() {
         className="border-t border-zinc-800 px-4 py-4 flex items-center gap-3 hover:bg-zinc-800 transition-colors group"
       >
         <div className="w-8 h-8 rounded-full bg-zinc-600 flex items-center justify-center text-white text-sm font-semibold shrink-0 overflow-hidden">
-          A
+          {usuario ? usuario.nombre.charAt(0).toUpperCase() : ""}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-white text-sm font-medium truncate group-hover:text-zinc-100">Ana Beltré</div>
-          <div className="text-zinc-400 text-xs">Gerente</div>
+          <div className="text-white text-sm font-medium truncate group-hover:text-zinc-100">
+            {usuario ? usuario.nombre : "Cargando…"}
+          </div>
+          <div className="text-zinc-400 text-xs">{usuario ? ROL_LABEL[usuario.rol] : ""}</div>
         </div>
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-600 group-hover:text-zinc-400 shrink-0">
           <path d="M5 3l4 4-4 4" />
