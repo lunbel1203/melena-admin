@@ -2,8 +2,18 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import type { Database } from "@/types/database.types";
+
+type RolEmpleado = Database["public"]["Enums"]["rol_empleado"];
+
+const ROL_LABEL: Record<RolEmpleado, string> = {
+  admin: "Admin",
+  recepcion: "Recepción",
+  caja: "Caja",
+  estilista: "Estilista",
+};
 
 function ChevronLeft() {
   return (
@@ -35,36 +45,42 @@ function EyeIcon({ open }: { open: boolean }) {
   );
 }
 
-function PhotoUpload({ name }: { name: string }) {
-  const [preview, setPreview] = useState<string | null>(null);
+function PhotoUpload({
+  nombre,
+  fotoUrl,
+  subiendo,
+  onArchivo,
+}: {
+  nombre: string;
+  fotoUrl: string | null;
+  subiendo: boolean;
+  onArchivo: (file: File) => void;
+}) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file) return;
-    if (preview) URL.revokeObjectURL(preview);
-    setPreview(URL.createObjectURL(file));
+    if (file) onArchivo(file);
     e.target.value = "";
   }
 
-  const initial = name.charAt(0).toUpperCase();
+  const initial = nombre.charAt(0).toUpperCase();
 
   return (
     <div className="relative w-24 h-24 shrink-0">
-      {/* Avatar / foto */}
       <div className="w-24 h-24 rounded-full overflow-hidden bg-zinc-200 flex items-center justify-center border-4 border-white shadow-sm">
-        {preview ? (
+        {fotoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={preview} alt="Foto de perfil" className="w-full h-full object-cover" />
+          <img src={fotoUrl} alt="Foto de perfil" className="w-full h-full object-cover" />
         ) : (
           <span className="text-3xl font-bold text-zinc-600">{initial}</span>
         )}
       </div>
 
-      {/* Botón de cámara */}
       <button
         onClick={() => inputRef.current?.click()}
-        className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-zinc-900 text-white flex items-center justify-center shadow hover:bg-zinc-700 transition-colors"
+        disabled={subiendo}
+        className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-zinc-900 text-white flex items-center justify-center shadow hover:bg-zinc-700 transition-colors disabled:opacity-50"
         title="Cambiar foto"
       >
         <CameraIcon />
@@ -81,8 +97,15 @@ function PhotoUpload({ name }: { name: string }) {
   );
 }
 
-function PasswordField({ label }: { label: string }) {
-  const [value, setValue] = useState("");
+function PasswordField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
   const [show, setShow] = useState(false);
   return (
     <div className="flex flex-col gap-1.5">
@@ -91,7 +114,7 @@ function PasswordField({ label }: { label: string }) {
         <input
           type={show ? "text" : "password"}
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={(e) => onChange(e.target.value)}
           placeholder="••••••••"
           className="w-full px-4 py-2.5 pr-10 text-sm bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 transition-colors"
         />
@@ -107,17 +130,157 @@ function PasswordField({ label }: { label: string }) {
   );
 }
 
+function formatearFecha(iso: string | null | undefined) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  const hora = d.toLocaleTimeString("es-DO", { hour: "numeric", minute: "2-digit", hour12: true });
+  const esHoy = d.toDateString() === new Date().toDateString();
+  if (esHoy) return `Hoy, ${hora}`;
+  const fecha = d.toLocaleDateString("es-DO", { day: "numeric", month: "short" });
+  return `${fecha}, ${hora}`;
+}
+
 export default function PerfilPage() {
   const router = useRouter();
-  const supabase = createClient();
-  const [nombre, setNombre] = useState("Ana Beltré");
-  const [correo, setCorreo] = useState("ana.beltre@melenahumanhair.com");
-  const [telefono, setTelefono] = useState("809 555 0001");
+  const supabase = useMemo(() => createClient(), []);
+
+  const [empleadoId, setEmpleadoId] = useState<string | null>(null);
+  const [authEmail, setAuthEmail] = useState("");
+  const [ultimoAcceso, setUltimoAcceso] = useState<string | null>(null);
+  const [rol, setRol] = useState<RolEmpleado | null>(null);
+  const [negocio, setNegocio] = useState("");
+
+  const [nombre, setNombre] = useState("");
+  const [correo, setCorreo] = useState("");
+  const [telefono, setTelefono] = useState("");
+  const [fotoUrl, setFotoUrl] = useState<string | null>(null);
+
+  const [cargando, setCargando] = useState(true);
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
+  const [guardandoDatos, setGuardandoDatos] = useState(false);
+  const [datosGuardados, setDatosGuardados] = useState<string | null>(null);
+  const [errorDatos, setErrorDatos] = useState<string | null>(null);
+
+  const [contrasenaActual, setContrasenaActual] = useState("");
+  const [nuevaContrasena, setNuevaContrasena] = useState("");
+  const [confirmarContrasena, setConfirmarContrasena] = useState("");
+  const [guardandoPassword, setGuardandoPassword] = useState(false);
+  const [passwordGuardada, setPasswordGuardada] = useState(false);
+  const [errorPassword, setErrorPassword] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const [{ data: empleado }, { data: negocioConfig }] = await Promise.all([
+        supabase.from("empleados").select("id, nombre, telefono, foto_url, rol").eq("user_id", user.id).single(),
+        supabase.from("negocio_config").select("nombre_comercial").eq("id", true).single(),
+      ]);
+
+      setAuthEmail(user.email ?? "");
+      setUltimoAcceso(user.last_sign_in_at ?? null);
+      if (negocioConfig) setNegocio(negocioConfig.nombre_comercial);
+
+      if (empleado) {
+        setEmpleadoId(empleado.id);
+        setNombre(empleado.nombre);
+        setCorreo(user.email ?? "");
+        setTelefono(empleado.telefono ?? "");
+        setFotoUrl(empleado.foto_url);
+        setRol(empleado.rol);
+      }
+      setCargando(false);
+    })();
+  }, [supabase]);
+
+  async function subirFoto(file: File) {
+    if (!empleadoId) return;
+    setSubiendoFoto(true);
+    setErrorDatos(null);
+    const ext = file.name.split(".").pop();
+    const path = `${empleadoId}/foto-${Date.now()}.${ext}`;
+    const { error: uploadError } = await supabase.storage.from("fotos-empleados").upload(path, file);
+    if (uploadError) {
+      setSubiendoFoto(false);
+      return setErrorDatos(uploadError.message);
+    }
+    const { data } = supabase.storage.from("fotos-empleados").getPublicUrl(path);
+    const { error } = await supabase.from("empleados").update({ foto_url: data.publicUrl }).eq("id", empleadoId);
+    setSubiendoFoto(false);
+    if (error) return setErrorDatos(error.message);
+    setFotoUrl(data.publicUrl);
+  }
+
+  async function guardarDatos() {
+    if (!empleadoId) return;
+    setGuardandoDatos(true);
+    setErrorDatos(null);
+    setDatosGuardados(null);
+
+    const correoCambio = correo.trim() !== authEmail;
+
+    const [{ error: errorEmpleado }, resultadoAuth] = await Promise.all([
+      supabase.from("empleados").update({ nombre: nombre.trim(), telefono: telefono.trim() || null }).eq("id", empleadoId),
+      correoCambio ? supabase.auth.updateUser({ email: correo.trim() }) : Promise.resolve({ error: null }),
+    ]);
+
+    setGuardandoDatos(false);
+    if (errorEmpleado) return setErrorDatos(errorEmpleado.message);
+    if (resultadoAuth.error) return setErrorDatos(resultadoAuth.error.message);
+
+    setDatosGuardados(correoCambio ? "Guardado ✓ Revisa tu correo para confirmar el nuevo email." : "Guardado ✓");
+    setTimeout(() => setDatosGuardados(null), 4000);
+  }
+
+  async function actualizarContrasena() {
+    setErrorPassword(null);
+    setPasswordGuardada(false);
+    if (!contrasenaActual || !nuevaContrasena || !confirmarContrasena) {
+      return setErrorPassword("Completa los tres campos.");
+    }
+    if (nuevaContrasena !== confirmarContrasena) {
+      return setErrorPassword("La nueva contraseña no coincide con la confirmación.");
+    }
+    if (nuevaContrasena.length < 8) {
+      return setErrorPassword("La nueva contraseña debe tener al menos 8 caracteres.");
+    }
+
+    setGuardandoPassword(true);
+    const { error: errorVerificacion } = await supabase.auth.signInWithPassword({
+      email: authEmail,
+      password: contrasenaActual,
+    });
+    if (errorVerificacion) {
+      setGuardandoPassword(false);
+      return setErrorPassword("La contraseña actual es incorrecta.");
+    }
+
+    const { error } = await supabase.auth.updateUser({ password: nuevaContrasena });
+    setGuardandoPassword(false);
+    if (error) return setErrorPassword(error.message);
+
+    setContrasenaActual("");
+    setNuevaContrasena("");
+    setConfirmarContrasena("");
+    setPasswordGuardada(true);
+    setTimeout(() => setPasswordGuardada(false), 4000);
+  }
 
   async function cerrarSesion() {
     await supabase.auth.signOut();
     router.push("/acceso");
     router.refresh();
+  }
+
+  if (cargando) {
+    return (
+      <div className="min-h-full bg-zinc-50 p-5 sm:p-7 lg:p-8">
+        <p className="text-sm text-zinc-400">Cargando…</p>
+      </div>
+    );
   }
 
   return (
@@ -133,7 +296,7 @@ export default function PerfilPage() {
           Panel
         </Link>
         <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900">Mi perfil</h1>
-        <p className="text-sm text-zinc-400 mt-1">Gerente · Melena Human Hair</p>
+        <p className="text-sm text-zinc-400 mt-1">{rol ? ROL_LABEL[rol] : "—"} · {negocio}</p>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-5 max-w-3xl">
@@ -147,12 +310,12 @@ export default function PerfilPage() {
               Foto de perfil
             </p>
             <div className="flex items-center gap-5">
-              <PhotoUpload name={nombre} />
+              <PhotoUpload nombre={nombre} fotoUrl={fotoUrl} subiendo={subiendoFoto} onArchivo={subirFoto} />
               <div>
                 <p className="text-base font-semibold text-zinc-900">{nombre}</p>
-                <p className="text-sm text-zinc-400">Gerente</p>
+                <p className="text-sm text-zinc-400">{rol ? ROL_LABEL[rol] : ""}</p>
                 <p className="text-xs text-zinc-400 mt-2">
-                  Haz clic en el ícono de cámara para cambiar tu foto.
+                  {subiendoFoto ? "Subiendo foto…" : "Haz clic en el ícono de cámara para cambiar tu foto."}
                 </p>
               </div>
             </div>
@@ -160,9 +323,13 @@ export default function PerfilPage() {
 
           {/* Datos personales */}
           <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-6">
-            <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-5">
-              Datos personales
-            </p>
+            <div className="flex items-center justify-between mb-5">
+              <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">
+                Datos personales
+              </p>
+              {datosGuardados && <span className="text-xs font-medium text-teal-600">{datosGuardados}</span>}
+            </div>
+            {errorDatos && <p className="text-xs text-red-500 mb-3">{errorDatos}</p>}
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">
@@ -198,8 +365,12 @@ export default function PerfilPage() {
                 />
               </div>
 
-              <button className="self-start px-5 py-2.5 text-sm font-semibold text-white bg-zinc-900 rounded-xl hover:bg-zinc-700 transition-colors">
-                Guardar cambios
+              <button
+                onClick={guardarDatos}
+                disabled={guardandoDatos}
+                className="self-start px-5 py-2.5 text-sm font-semibold text-white bg-zinc-900 rounded-xl hover:bg-zinc-700 transition-colors disabled:opacity-50"
+              >
+                {guardandoDatos ? "Guardando…" : "Guardar cambios"}
               </button>
             </div>
           </div>
@@ -212,12 +383,18 @@ export default function PerfilPage() {
             <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-5">
               Cambiar contraseña
             </p>
+            {errorPassword && <p className="text-xs text-red-500 mb-3">{errorPassword}</p>}
+            {passwordGuardada && <p className="text-xs font-medium text-teal-600 mb-3">Contraseña actualizada ✓</p>}
             <div className="flex flex-col gap-4">
-              <PasswordField label="Contraseña actual" />
-              <PasswordField label="Nueva contraseña" />
-              <PasswordField label="Confirmar nueva contraseña" />
-              <button className="w-full py-2.5 text-sm font-semibold text-white bg-zinc-900 rounded-xl hover:bg-zinc-700 transition-colors">
-                Actualizar contraseña
+              <PasswordField label="Contraseña actual" value={contrasenaActual} onChange={setContrasenaActual} />
+              <PasswordField label="Nueva contraseña" value={nuevaContrasena} onChange={setNuevaContrasena} />
+              <PasswordField label="Confirmar nueva contraseña" value={confirmarContrasena} onChange={setConfirmarContrasena} />
+              <button
+                onClick={actualizarContrasena}
+                disabled={guardandoPassword}
+                className="w-full py-2.5 text-sm font-semibold text-white bg-zinc-900 rounded-xl hover:bg-zinc-700 transition-colors disabled:opacity-50"
+              >
+                {guardandoPassword ? "Actualizando…" : "Actualizar contraseña"}
               </button>
             </div>
           </div>
@@ -230,11 +407,11 @@ export default function PerfilPage() {
             <div className="space-y-2 text-sm mb-4">
               <div className="flex justify-between">
                 <span className="text-zinc-400">Último acceso</span>
-                <span className="text-zinc-700 font-medium">Hoy, 11:02 am</span>
+                <span className="text-zinc-700 font-medium">{formatearFecha(ultimoAcceso)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-zinc-400">Rol</span>
-                <span className="text-zinc-700 font-medium">Gerente</span>
+                <span className="text-zinc-700 font-medium">{rol ? ROL_LABEL[rol] : "—"}</span>
               </div>
             </div>
             <button
