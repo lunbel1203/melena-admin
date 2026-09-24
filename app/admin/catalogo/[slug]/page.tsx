@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { use, useRef, useState } from "react";
+import { use, useEffect, useMemo, useRef, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 
-/* ── Icons ── */
 function BackIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -11,374 +11,132 @@ function BackIcon() {
     </svg>
   );
 }
-function ImageIcon({ size = 28 }: { size?: number }) {
+function CameraIcon() {
   return (
-    <svg width={size} height={size} viewBox="0 0 28 28" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="4" width="24" height="20" rx="3" />
-      <circle cx="9" cy="12" r="2.5" />
-      <path d="M2 21l7-7 4 4 3-3 10 9" />
-    </svg>
-  );
-}
-function TrashIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2 4h12M5 4V2.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5V4M6 7v5M10 7v5M3 4l1 9.5a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 .5-.5L13 4" />
+    <svg width="24" height="24" viewBox="0 0 18 18" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1.5 6.5A1.5 1.5 0 0 1 3 5h1.5L6 3h6l1.5 2H15a1.5 1.5 0 0 1 1.5 1.5v7A1.5 1.5 0 0 1 15 15H3a1.5 1.5 0 0 1-1.5-1.5v-7z" />
+      <circle cx="9" cy="10" r="2.5" />
     </svg>
   );
 }
 
-/* ── Photo slot ── */
-function PhotoSlot({ label, large }: { label: string; large?: boolean }) {
-  const [preview, setPreview] = useState<string | null>(null);
-  const ref = useRef<HTMLInputElement>(null);
-  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    setPreview(URL.createObjectURL(f));
-    e.target.value = "";
-  }
-  function onDelete() { if (preview) URL.revokeObjectURL(preview); setPreview(null); }
-
-  const h = large ? "h-36" : "h-24";
-  if (preview) return (
-    <div className={`relative rounded-xl overflow-hidden group ${h}`}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={preview} alt={label} className="w-full h-full object-cover" />
-      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors" />
-      <div className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button onClick={onDelete} className="w-6 h-6 rounded-full bg-white/90 hover:bg-red-50 text-zinc-600 hover:text-red-600 flex items-center justify-center shadow transition-colors">
-          <TrashIcon />
-        </button>
-      </div>
-    </div>
-  );
-  return (
-    <>
-      <input ref={ref} type="file" accept="image/*" className="hidden" onChange={onFile} />
-      <button onClick={() => ref.current?.click()} className={`w-full ${h} border-2 border-dashed border-zinc-200 rounded-xl flex flex-col items-center justify-center gap-1.5 hover:border-zinc-300 hover:bg-zinc-50 transition-colors`}>
-        <ImageIcon size={large ? 28 : 20} />
-        <span className="text-xs font-medium text-zinc-400">{label}</span>
-        <span className="text-[10px] text-zinc-400 underline">or browse files</span>
-      </button>
-    </>
-  );
+function formatPrecio(n: number) {
+  return `RD$${n.toLocaleString("es-DO")}`;
 }
 
-/* ── Data ── */
-const serviceData: Record<string, {
-  type: "service";
-  name: string; badge: string; subtitle: string;
-  stats: { label: string; value: string; sub?: string }[];
-  ficha: { categoria: string; duracion: string; precio: string; deposito: string; descripcion: string };
-  staff: { initial: string; name: string; stats: string; status: string; available: boolean }[];
-  weeklyBars: number[];
-  publication: { label: string; value: string }[];
-  checkinDays: string[];
-  checkinStats: { label: string; value: string }[];
-}> = {
-  "tape-in": {
-    type: "service",
-    name: "Tape-in", badge: "Publicado", subtitle: "Instalación · 1.5 h · RD$3,200",
-    stats: [
-      { label: "Citas del mes",        value: "38",       sub: "↑ 6 vs. julio" },
-      { label: "Facturado",            value: "RD$121K",  sub: "29% del total" },
-      { label: "Ticket promedio",      value: "RD$3,200", sub: "Sin variación" },
-      { label: "Molestias reportadas", value: "4",        sub: "10% de las citas" },
-    ],
-    ficha: { categoria: "Instalación", duracion: "1.5 horas", precio: "RD$3,200", deposito: "RD$1,000", descripcion: "Cintas adhesivas de doble cara, instalación rápida y retirable. Ideal para uso diario." },
-    staff: [
-      { initial: "M", name: "Mariana Ríos", stats: "21 citas · RD$67K", status: "Disponible",  available: true },
-      { initial: "S", name: "Sofía Luna",   stats: "17 citas · RD$54K", status: "Disponible",  available: true },
-      { initial: "V", name: "Vanessa Gil",  stats: "Sin citas",          status: "No lo ofrece",available: false },
-    ],
-    weeklyBars: [30, 45, 55, 90, 40],
-    publication: [
-      { label: "Sitio web",        value: "Activo" },
-      { label: "App de clientas",  value: "Activo" },
-      { label: "Botón de whatsapp",value: "Activo" },
-    ],
-    checkinDays: ["Día 3", "Día 30"],
-    checkinStats: [
-      { label: "Tasa de respuesta",   value: "71%" },
-      { label: "Molestia más común",  value: "Tirantez" },
-    ],
-  },
-  "nano-ring": {
-    type: "service",
-    name: "Nano ring", badge: "Publicado", subtitle: "Instalación · 3 h · RD$4,800",
-    stats: [
-      { label: "Citas del mes",        value: "22",       sub: "↑ 3 vs. julio" },
-      { label: "Facturado",            value: "RD$105K",  sub: "22% del total" },
-      { label: "Ticket promedio",      value: "RD$4,800", sub: "Sin variación" },
-      { label: "Molestias reportadas", value: "2",        sub: "9% de las citas" },
-    ],
-    ficha: { categoria: "Instalación", duracion: "3 horas", precio: "RD$4,800", deposito: "RD$1,000", descripcion: "Anillos de nano queratina sin calor. Larga duración y mínimo daño capilar." },
-    staff: [
-      { initial: "M", name: "Mariana Ríos", stats: "22 citas · RD$105K", status: "Disponible", available: true },
-    ],
-    weeklyBars: [20, 35, 40, 60, 30],
-    publication: [
-      { label: "Sitio web",        value: "Activo" },
-      { label: "App de clientas",  value: "Activo" },
-      { label: "Botón de whatsapp",value: "Activo" },
-    ],
-    checkinDays: ["Día 3", "Día 30"],
-    checkinStats: [
-      { label: "Tasa de respuesta",  value: "68%" },
-      { label: "Molestia más común", value: "Picazón" },
-    ],
-  },
-  "bulk": {
-    type: "service",
-    name: "Bulk", badge: "Publicado", subtitle: "Instalación · 4 h · RD$4,500",
-    stats: [
-      { label: "Citas del mes",        value: "15",       sub: "= vs. julio" },
-      { label: "Facturado",            value: "RD$67K",   sub: "14% del total" },
-      { label: "Ticket promedio",      value: "RD$4,500", sub: "Sin variación" },
-      { label: "Molestias reportadas", value: "1",        sub: "7% de las citas" },
-    ],
-    ficha: { categoria: "Instalación", duracion: "4 horas", precio: "RD$4,500", deposito: "RD$1,000", descripcion: "Extensiones bulk trenzadas directamente en el cabello. Sin adhesivos ni anillos." },
-    staff: [
-      { initial: "V", name: "Vanessa Gil", stats: "10 citas · RD$45K", status: "Disponible", available: true },
-      { initial: "S", name: "Sofía Luna",  stats: "5 citas · RD$22K",  status: "Disponible", available: true },
-    ],
-    weeklyBars: [15, 25, 30, 45, 20],
-    publication: [
-      { label: "Sitio web",        value: "Activo" },
-      { label: "App de clientas",  value: "Activo" },
-      { label: "Botón de whatsapp",value: "Activo" },
-    ],
-    checkinDays: ["Día 3", "Día 30"],
-    checkinStats: [
-      { label: "Tasa de respuesta",  value: "55%" },
-      { label: "Molestia más común", value: "Tirantez" },
-    ],
-  },
-  "ponytail": {
-    type: "service",
-    name: "Ponytail", badge: "Publicado", subtitle: "Express · 30 min · RD$1,900",
-    stats: [
-      { label: "Citas del mes",        value: "12",       sub: "↓ 2 vs. julio" },
-      { label: "Facturado",            value: "RD$22K",   sub: "5% del total" },
-      { label: "Ticket promedio",      value: "RD$1,900", sub: "Sin variación" },
-      { label: "Molestias reportadas", value: "0",        sub: "0% de las citas" },
-    ],
-    ficha: { categoria: "Express", duracion: "30 minutos", precio: "RD$1,900", deposito: "Sin depósito", descripcion: "Cola de cabello de extensión. Rápido y de alto impacto visual." },
-    staff: [
-      { initial: "M", name: "Mariana Ríos", stats: "7 citas · RD$13K",  status: "Disponible", available: true },
-      { initial: "S", name: "Sofía Luna",   stats: "5 citas · RD$9.5K", status: "Disponible", available: true },
-    ],
-    weeklyBars: [10, 15, 20, 25, 15],
-    publication: [
-      { label: "Sitio web",        value: "Activo" },
-      { label: "App de clientas",  value: "Activo" },
-      { label: "Botón de whatsapp",value: "Activo" },
-    ],
-    checkinDays: ["Día 1"],
-    checkinStats: [
-      { label: "Tasa de respuesta",  value: "40%" },
-      { label: "Molestia más común", value: "—" },
-    ],
-  },
-  "retiro-de-extensiones": {
-    type: "service",
-    name: "Retiro de extensiones", badge: "Solo app", subtitle: "Mantenimiento · 45 min · RD$1,200",
-    stats: [
-      { label: "Citas del mes",        value: "8",        sub: "= vs. julio" },
-      { label: "Facturado",            value: "RD$9.6K",  sub: "2% del total" },
-      { label: "Ticket promedio",      value: "RD$1,200", sub: "Sin variación" },
-      { label: "Molestias reportadas", value: "0",        sub: "0% de las citas" },
-    ],
-    ficha: { categoria: "Mantenimiento", duracion: "45 minutos", precio: "RD$1,200", deposito: "Sin depósito", descripcion: "Retiro seguro de extensiones con productos especializados." },
-    staff: [
-      { initial: "M", name: "Mariana Ríos", stats: "5 citas · RD$6K", status: "Disponible", available: true },
-      { initial: "S", name: "Sofía Luna",   stats: "3 citas · RD$3.6K", status: "Disponible", available: true },
-    ],
-    weeklyBars: [5, 10, 8, 12, 8],
-    publication: [
-      { label: "Sitio web",        value: "Inactivo" },
-      { label: "App de clientas",  value: "Activo" },
-      { label: "Botón de whatsapp",value: "Inactivo" },
-    ],
-    checkinDays: ["Día 1"],
-    checkinStats: [
-      { label: "Tasa de respuesta",  value: "30%" },
-      { label: "Molestia más común", value: "—" },
-    ],
-  },
-};
-
-const productData: Record<string, {
-  type: "product";
-  name: string; badge: string; subtitle: string;
-  stats: { label: string; value: string; sub?: string; bar?: number }[];
-  ficha: { tipo: string; color: string; textura: string; precio: string; costo: string; alerta: string; largos: { label: string; agotado?: boolean }[] };
-  movements: { date: string; movement: string; ref: string; stock: number }[];
-  publication: { label: string; value: string }[];
-  servicios: { name: string; citas: string }[];
-}> = {
-  "rubio-balayage": {
-    type: "product",
-    name: 'Rubio balayage 18"', badge: "Remy", subtitle: "SKU RB-18 · Hair Import RD",
-    stats: [
-      { label: "Stock actual",    value: "14", bar: 70 },
-      { label: "Vendidas del mes",value: "9",  sub: "↑ 2 vs. julio" },
-      { label: "Margen",          value: "43%",sub: "RD$1,800 por unidad" },
-      { label: "Ingreso del mes", value: "RD$37.8K", sub: "9 unidades" },
-    ],
-    ficha: {
-      tipo: "Remy", color: "Rubio con raíz oscura", textura: "Liso",
-      precio: "RD$4,200", costo: "RD$2,400", alerta: "5 unidades",
-      largos: [{ label: '18"' }, { label: '20"' }, { label: '22"' }, { label: '24"', agotado: true }],
-    },
-    movements: [
-      { date: "24 ago", movement: "Salida · 1 unidad",   ref: "Valentina Reyes", stock: 14 },
-      { date: "19 ago", movement: "Entrada · 10 unidades",ref: "Hair Import RD",  stock: 15 },
-      { date: "12 ago", movement: "Salida · 2 unidades",  ref: "Renata Morales",  stock: 5  },
-      { date: "5 ago",  movement: "Ajuste · −1 unidad",   ref: "Merma",           stock: 7  },
-    ],
-    publication: [
-      { label: "Catálogo del sitio web", value: "Activo" },
-      { label: "Catálogo de la app",     value: "Activo" },
-      { label: "Whatsapp y agendar",     value: "Activo" },
-      { label: "Más vendido",            value: "No" },
-    ],
-    servicios: [
-      { name: "Tape-in",   citas: "6 citas" },
-      { name: "Nano ring", citas: "3 citas" },
-    ],
-  },
-  "negro-natural": {
-    type: "product",
-    name: 'Negro natural 16"', badge: "Virgin", subtitle: "SKU NN-16 · Hair Import RD",
-    stats: [
-      { label: "Stock actual",    value: "3",  bar: 15 },
-      { label: "Vendidas del mes",value: "5",  sub: "↑ 1 vs. julio" },
-      { label: "Margen",          value: "38%",sub: "RD$1,368 por unidad" },
-      { label: "Ingreso del mes", value: "RD$18K", sub: "5 unidades" },
-    ],
-    ficha: {
-      tipo: "Virgin", color: "Negro azabache", textura: "Liso",
-      precio: "RD$3,600", costo: "RD$2,232", alerta: "5 unidades",
-      largos: [{ label: '14"' }, { label: '16"' }, { label: '18"' }],
-    },
-    movements: [
-      { date: "22 ago", movement: "Salida · 2 unidades",   ref: "Camila Santos",  stock: 3 },
-      { date: "15 ago", movement: "Salida · 3 unidades",   ref: "Andrea Peña",    stock: 5 },
-      { date: "10 ago", movement: "Entrada · 8 unidades",  ref: "Hair Import RD", stock: 8 },
-    ],
-    publication: [
-      { label: "Catálogo del sitio web", value: "Activo" },
-      { label: "Catálogo de la app",     value: "Activo" },
-      { label: "Whatsapp y agendar",     value: "Activo" },
-      { label: "Más vendido",            value: "No" },
-    ],
-    servicios: [
-      { name: "Nano ring", citas: "5 citas" },
-      { name: "Tape-in",   citas: "2 citas" },
-    ],
-  },
-  "chocolate-ombre": {
-    type: "product",
-    name: 'Chocolate ombré 22"', badge: "Remy", subtitle: "SKU CO-22 · Hair Import RD",
-    stats: [
-      { label: "Stock actual",    value: "9",  bar: 45 },
-      { label: "Vendidas del mes",value: "6",  sub: "= vs. julio" },
-      { label: "Margen",          value: "41%",sub: "RD$2,091 por unidad" },
-      { label: "Ingreso del mes", value: "RD$30.6K", sub: "6 unidades" },
-    ],
-    ficha: {
-      tipo: "Remy", color: "Degradado a caramelo", textura: "Liso",
-      precio: "RD$5,100", costo: "RD$3,009", alerta: "5 unidades",
-      largos: [{ label: '20"' }, { label: '22"' }, { label: '24"' }],
-    },
-    movements: [
-      { date: "23 ago", movement: "Salida · 1 unidad",    ref: "Valentina Reyes", stock: 9  },
-      { date: "14 ago", movement: "Salida · 2 unidades",  ref: "Daniela Paz",     stock: 10 },
-      { date: "8 ago",  movement: "Entrada · 5 unidades", ref: "Hair Import RD",  stock: 12 },
-    ],
-    publication: [
-      { label: "Catálogo del sitio web", value: "Activo" },
-      { label: "Catálogo de la app",     value: "Activo" },
-      { label: "Whatsapp y agendar",     value: "Activo" },
-      { label: "Más vendido",            value: "Activo" },
-    ],
-    servicios: [
-      { name: "Tape-in",   citas: "4 citas" },
-      { name: "Nano ring", citas: "2 citas" },
-    ],
-  },
-  "castano-natural": {
-    type: "product",
-    name: 'Castaño natural 20"', badge: "Virgin", subtitle: "SKU CN-20 · Hair Import RD",
-    stats: [
-      { label: "Stock actual",    value: "11", bar: 55 },
-      { label: "Vendidas del mes",value: "4",  sub: "↓ 1 vs. julio" },
-      { label: "Margen",          value: "39%",sub: "RD$1,111 por unidad" },
-      { label: "Ingreso del mes", value: "RD$11.4K", sub: "4 unidades" },
-    ],
-    ficha: {
-      tipo: "Virgin", color: "Castaño medio uniforme", textura: "Liso",
-      precio: "RD$2,850", costo: "RD$1,739", alerta: "5 unidades",
-      largos: [{ label: '16"' }, { label: '18"' }, { label: '20"' }],
-    },
-    movements: [
-      { date: "21 ago", movement: "Salida · 1 unidad",    ref: "Lucia Ferrer",   stock: 11 },
-      { date: "12 ago", movement: "Salida · 3 unidades",  ref: "Camila Santos",  stock: 12 },
-      { date: "5 ago",  movement: "Entrada · 6 unidades", ref: "Hair Import RD", stock: 15 },
-    ],
-    publication: [
-      { label: "Catálogo del sitio web", value: "Activo"   },
-      { label: "Catálogo de la app",     value: "Activo"   },
-      { label: "Whatsapp y agendar",     value: "Activo"   },
-      { label: "Más vendido",            value: "No" },
-    ],
-    servicios: [
-      { name: "Tape-in",   citas: "3 citas" },
-      { name: "Nano ring", citas: "1 cita"  },
-    ],
-  },
-};
-
-/* ── Helpers ── */
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-3">{children}</p>;
+interface ServicioDetalle {
+  id: string;
+  nombre: string;
+  descripcion: string | null;
+  categoria: string | null;
+  duracion_minutos: number;
+  precio: number;
+  deposito_requerido: boolean;
+  deposito_monto: number | null;
+  dias_seguimiento: number[];
+  foto_url: string | null;
+  activo: boolean;
 }
 
-function PublicationRow({ label, value }: { label: string; value: string }) {
-  const active = value === "Activo";
-  const inactive = value === "Inactivo" || value === "No";
-  return (
-    <div className="flex items-center justify-between py-2.5 border-b border-zinc-100 last:border-0">
-      <span className="text-sm text-zinc-600">{label}</span>
-      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
-        active   ? "bg-green-50 text-green-700" :
-        inactive ? "bg-zinc-100 text-zinc-500"  :
-                   "bg-zinc-100 text-zinc-500"
-      }`}>{value}</span>
-    </div>
-  );
+interface ProductoDetalle {
+  id: string;
+  nombre: string;
+  descripcion: string | null;
+  categoria: string;
+  tipo_cabello: string | null;
+  color: string | null;
+  largo_pulgadas: number | null;
+  precio: number;
+  costo: number | null;
+  stock: number;
+  stock_minimo: number;
+  foto_url: string | null;
+  activo: boolean;
+}
+
+interface Estilista {
+  id: string;
+  nombre: string;
+  puesto: string | null;
 }
 
 /* ── Page ── */
 export default function CatalogoDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
+  const supabase = useMemo(() => createClient(), []);
+  const [servicio, setServicio] = useState<ServicioDetalle | null | undefined>(undefined);
+  const [producto, setProducto] = useState<ProductoDetalle | null | undefined>(undefined);
 
-  const service = serviceData[slug];
-  const product = productData[slug];
+  useEffect(() => {
+    (async () => {
+      const { data: s } = await supabase.from("servicios").select("*").eq("slug", slug).maybeSingle();
+      if (s) {
+        setServicio(s);
+        setProducto(null);
+        return;
+      }
+      const { data: p } = await supabase.from("productos").select("*").eq("slug", slug).maybeSingle();
+      setServicio(null);
+      setProducto(p ?? null);
+    })();
+  }, [slug, supabase]);
 
-  if (service) return <ServiceDetail data={service} slug={slug} />;
-  if (product) return <ProductDetail data={product} slug={slug} />;
+  if (servicio === undefined || producto === undefined) return <div className="p-8 text-zinc-400">Cargando…</div>;
+  if (servicio) return <ServicioDetalleView servicio={servicio} slug={slug} />;
+  if (producto) return <ProductoDetalleView producto={producto} slug={slug} />;
   return <div className="p-8 text-zinc-400">Página no encontrada.</div>;
 }
 
 /* ══════════════════════════════════════════
-   SERVICE DETAIL
+   SERVICIO
 ══════════════════════════════════════════ */
-function ServiceDetail({ data, slug }: { data: typeof serviceData[string]; slug: string }) {
-  const [activeCheckin, setActiveCheckin] = useState(0);
-  const maxBar = Math.max(...data.weeklyBars);
+function ServicioDetalleView({ servicio, slug }: { servicio: ServicioDetalle; slug: string }) {
+  const supabase = useMemo(() => createClient(), []);
+  const [activo, setActivo] = useState(servicio.activo);
+  const [fotoUrl, setFotoUrl] = useState(servicio.foto_url);
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
+  const [staff, setStaff] = useState<Estilista[]>([]);
+  const [cargandoStaff, setCargandoStaff] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const fotoInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("servicios_empleados")
+        .select("empleados(id, nombre, puesto)")
+        .eq("servicio_id", servicio.id);
+      setStaff((data ?? []).map((r) => r.empleados).filter((e): e is Estilista => e !== null));
+      setCargandoStaff(false);
+    })();
+  }, [supabase, servicio.id]);
+
+  async function togglePublicado() {
+    const nuevo = !activo;
+    setActivo(nuevo);
+    const { error } = await supabase.from("servicios").update({ activo: nuevo }).eq("id", servicio.id);
+    if (error) {
+      setActivo(!nuevo);
+      setError(error.message);
+    }
+  }
+
+  async function subirFoto(file: File) {
+    setSubiendoFoto(true);
+    setError(null);
+    const ext = file.name.split(".").pop();
+    const path = `${slug}-${Date.now()}.${ext}`;
+    const { error: uploadError } = await supabase.storage.from("fotos-servicios").upload(path, file);
+    if (uploadError) {
+      setSubiendoFoto(false);
+      return setError(uploadError.message);
+    }
+    const { data } = supabase.storage.from("fotos-servicios").getPublicUrl(path);
+    const { error: dbError } = await supabase.from("servicios").update({ foto_url: data.publicUrl }).eq("id", servicio.id);
+    setSubiendoFoto(false);
+    if (dbError) return setError(dbError.message);
+    setFotoUrl(data.publicUrl);
+  }
 
   return (
     <div className="min-h-full bg-zinc-50">
@@ -390,49 +148,41 @@ function ServiceDetail({ data, slug }: { data: typeof serviceData[string]; slug:
           </Link>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl font-bold text-zinc-900">{data.name}</h1>
-              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${data.badge === "Publicado" ? "bg-green-50 text-green-700" : "bg-zinc-100 text-zinc-600"}`}>
-                {data.badge}
+              <h1 className="text-xl font-bold text-zinc-900">{servicio.nombre}</h1>
+              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${activo ? "bg-green-50 text-green-700" : "bg-zinc-100 text-zinc-600"}`}>
+                {activo ? "Publicado" : "Inactivo"}
               </span>
             </div>
-            <p className="text-xs text-zinc-400 mt-0.5">{data.subtitle}</p>
+            <p className="text-xs text-zinc-400 mt-0.5">
+              {servicio.categoria ?? "Sin categoría"} · {servicio.duracion_minutos} min · {formatPrecio(servicio.precio)}
+            </p>
           </div>
           <div className="flex items-center gap-2 ml-auto">
-            <button className="border border-zinc-200 text-zinc-700 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-zinc-50 transition-colors whitespace-nowrap">
-              Despublicar
+            <button
+              onClick={togglePublicado}
+              className="border border-zinc-200 text-zinc-700 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-zinc-50 transition-colors whitespace-nowrap"
+            >
+              {activo ? "Despublicar" : "Publicar"}
             </button>
             <Link href={`/admin/catalogo/${slug}/editar`} className="bg-zinc-900 text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-zinc-700 transition-colors whitespace-nowrap">
               Editar servicio
             </Link>
           </div>
         </div>
-      </div>
-
-      {/* Stats */}
-      <div className="px-5 sm:px-8 py-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {data.stats.map((s, i) => (
-          <div key={i} className={`rounded-2xl border p-4 sm:p-5 ${i === 3 ? "bg-zinc-900 border-zinc-900" : "bg-white border-zinc-100 shadow-sm"}`}>
-            <p className={`text-[10px] font-semibold uppercase tracking-widest mb-2 ${i === 3 ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
-            <p className={`text-2xl sm:text-3xl font-bold ${i === 3 ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
-            {s.sub && <p className={`text-xs mt-1 ${i === 3 ? "text-zinc-400" : "text-zinc-400"}`}>{s.sub}</p>}
-          </div>
-        ))}
+        {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
       </div>
 
       {/* Body */}
-      <div className="px-5 sm:px-8 pb-8 flex flex-col lg:flex-row gap-4">
-        {/* Left */}
+      <div className="px-5 sm:px-8 py-6 flex flex-col lg:flex-row gap-4">
         <div className="flex-1 min-w-0 space-y-4">
-
-          {/* Ficha */}
           <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-5">
             <h2 className="text-sm font-semibold text-zinc-900 mb-4">Ficha del servicio</h2>
             <div className="grid grid-cols-2 gap-x-8 gap-y-3 mb-4">
               {[
-                ["Categoría", data.ficha.categoria],
-                ["Duración",  data.ficha.duracion],
-                ["Precio",    data.ficha.precio],
-                ["Depósito de reserva", data.ficha.deposito],
+                ["Categoría", servicio.categoria ?? "—"],
+                ["Duración", `${servicio.duracion_minutos} min`],
+                ["Precio", formatPrecio(servicio.precio)],
+                ["Depósito de reserva", servicio.deposito_requerido ? formatPrecio(servicio.deposito_monto ?? 1000) : "Sin depósito"],
               ].map(([l, v]) => (
                 <div key={l}>
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-1">{l}</p>
@@ -442,77 +192,71 @@ function ServiceDetail({ data, slug }: { data: typeof serviceData[string]; slug:
             </div>
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-1">Descripción pública</p>
-              <p className="text-sm text-zinc-600 leading-relaxed">{data.ficha.descripcion}</p>
+              <p className="text-sm text-zinc-600 leading-relaxed">{servicio.descripcion || "Sin descripción."}</p>
             </div>
           </div>
 
-          {/* Quién lo ofrece */}
           <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-zinc-100">
               <h2 className="text-sm font-semibold text-zinc-900">Quién lo ofrece</h2>
             </div>
-            {data.staff.map((s, i) => (
-              <div key={i} className="flex items-center gap-4 px-5 py-3.5 border-b border-zinc-100 last:border-0">
-                <div className="w-8 h-8 rounded-full bg-zinc-200 flex items-center justify-center text-sm font-bold text-zinc-600 shrink-0">{s.initial}</div>
-                <span className="text-sm font-semibold text-zinc-900 flex-1">{s.name}</span>
-                <span className="text-sm text-zinc-400 hidden sm:block">{s.stats}</span>
-                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${s.available ? "bg-green-50 text-green-700" : "bg-zinc-100 text-zinc-500"}`}>
-                  {s.status}
-                </span>
-              </div>
-            ))}
+            {cargandoStaff ? (
+              <p className="px-5 py-4 text-sm text-zinc-400">Cargando…</p>
+            ) : staff.length === 0 ? (
+              <p className="px-5 py-4 text-sm text-zinc-500">Cualquier estilista activa puede ofrecerlo.</p>
+            ) : (
+              staff.map((s) => (
+                <div key={s.id} className="flex items-center gap-4 px-5 py-3.5 border-b border-zinc-100 last:border-0">
+                  <div className="w-8 h-8 rounded-full bg-zinc-200 flex items-center justify-center text-sm font-bold text-zinc-600 shrink-0">
+                    {s.nombre.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="text-sm font-semibold text-zinc-900 flex-1">{s.nombre}</span>
+                  {s.puesto && <span className="text-xs text-zinc-400">{s.puesto}</span>}
+                </div>
+              ))
+            )}
           </div>
 
-          {/* Citas por semana */}
           <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-5">
-            <h2 className="text-sm font-semibold text-zinc-900 mb-5">Citas por semana</h2>
-            <div className="flex items-end gap-3">
-              {data.weeklyBars.map((v, i) => {
-                const BAR_MAX_PX = 80;
-                const barH = Math.max(4, Math.round((v / maxBar) * BAR_MAX_PX));
-                const isMax = v === maxBar;
-                return (
-                  <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                    <div
-                      className="w-full rounded-md"
-                      style={{ height: barH, backgroundColor: isMax ? "#18181b" : "#e4e4e7" }}
-                    />
-                    <span className="text-[10px] text-zinc-400">Sem {i + 1}</span>
-                  </div>
-                );
-              })}
-            </div>
+            <h2 className="text-sm font-semibold text-zinc-900 mb-2">Seguimiento post-servicio</h2>
+            <p className="text-sm text-zinc-600">
+              {servicio.dias_seguimiento.length > 0
+                ? `Se contacta a la clienta a los ${servicio.dias_seguimiento.join(" y ")} día(s) después.`
+                : "Sin seguimiento configurado."}
+            </p>
           </div>
         </div>
 
         {/* Right */}
         <div className="lg:w-[300px] xl:w-[310px] shrink-0 space-y-4">
           <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-5">
-            <SectionLabel>Foto del servicio</SectionLabel>
-            <PhotoSlot label="Foto del servicio" large />
-          </div>
-
-          <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-5">
-            <SectionLabel>Publicación</SectionLabel>
-            {data.publication.map((p) => <PublicationRow key={p.label} {...p} />)}
-          </div>
-
-          <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-5">
-            <SectionLabel>Check-ins de bienestar</SectionLabel>
-            <div className="flex gap-2 mb-4">
-              {data.checkinDays.map((d, i) => (
-                <button key={d} onClick={() => setActiveCheckin(i)}
-                  className={`flex-1 py-2 rounded-xl text-sm font-semibold border-2 transition-all ${activeCheckin === i ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-200 text-zinc-600 hover:border-zinc-300"}`}>
-                  {d}
-                </button>
-              ))}
+            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-3">Foto del servicio</p>
+            <div className="w-full h-36 rounded-xl overflow-hidden bg-zinc-100 flex items-center justify-center mb-3">
+              {fotoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={fotoUrl} alt={servicio.nombre} className="w-full h-full object-cover" />
+              ) : (
+                <CameraIcon />
+              )}
             </div>
-            {data.checkinStats.map((s) => (
-              <div key={s.label} className="flex items-center justify-between py-2.5 border-b border-zinc-100 last:border-0">
-                <span className="text-sm text-zinc-600">{s.label}</span>
-                <span className="text-sm font-semibold text-zinc-900">{s.value}</span>
-              </div>
-            ))}
+            <button
+              onClick={() => fotoInputRef.current?.click()}
+              disabled={subiendoFoto}
+              className="w-full py-2 rounded-xl border border-zinc-200 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors disabled:opacity-50"
+            >
+              {subiendoFoto ? "Subiendo…" : fotoUrl ? "Cambiar foto" : "Subir foto"}
+            </button>
+            <input
+              ref={fotoInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) subirFoto(f);
+                e.target.value = "";
+              }}
+            />
           </div>
         </div>
       </div>
@@ -521,9 +265,53 @@ function ServiceDetail({ data, slug }: { data: typeof serviceData[string]; slug:
 }
 
 /* ══════════════════════════════════════════
-   PRODUCT DETAIL
+   PRODUCTO
 ══════════════════════════════════════════ */
-function ProductDetail({ data, slug }: { data: typeof productData[string]; slug: string }) {
+function ProductoDetalleView({ producto, slug }: { producto: ProductoDetalle; slug: string }) {
+  const supabase = useMemo(() => createClient(), []);
+  const [activo, setActivo] = useState(producto.activo);
+  const [fotoUrl, setFotoUrl] = useState(producto.foto_url);
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fotoInputRef = useRef<HTMLInputElement>(null);
+
+  async function togglePublicado() {
+    const nuevo = !activo;
+    setActivo(nuevo);
+    const { error } = await supabase.from("productos").update({ activo: nuevo }).eq("id", producto.id);
+    if (error) {
+      setActivo(!nuevo);
+      setError(error.message);
+    }
+  }
+
+  async function subirFoto(file: File) {
+    setSubiendoFoto(true);
+    setError(null);
+    const ext = file.name.split(".").pop();
+    const path = `${slug}-${Date.now()}.${ext}`;
+    const { error: uploadError } = await supabase.storage.from("fotos-catalogo").upload(path, file);
+    if (uploadError) {
+      setSubiendoFoto(false);
+      return setError(uploadError.message);
+    }
+    const { data } = supabase.storage.from("fotos-catalogo").getPublicUrl(path);
+    const { error: dbError } = await supabase.from("productos").update({ foto_url: data.publicUrl }).eq("id", producto.id);
+    setSubiendoFoto(false);
+    if (dbError) return setError(dbError.message);
+    setFotoUrl(data.publicUrl);
+  }
+
+  const stockBajo = producto.stock <= producto.stock_minimo;
+  const margen = producto.costo ? Math.round(((producto.precio - producto.costo) / producto.precio) * 100) : null;
+  const detalle = [
+    producto.tipo_cabello ? (producto.tipo_cabello === "virgin" ? "Virgin" : "Remy") : null,
+    producto.color,
+    producto.largo_pulgadas ? `${producto.largo_pulgadas}"` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
     <div className="min-h-full bg-zinc-50">
       {/* Header */}
@@ -534,54 +322,71 @@ function ProductDetail({ data, slug }: { data: typeof productData[string]; slug:
           </Link>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl font-bold text-zinc-900">{data.name}</h1>
-              <span className="text-xs font-semibold border border-zinc-200 text-zinc-600 px-2.5 py-1 rounded-lg">{data.badge}</span>
+              <h1 className="text-xl font-bold text-zinc-900">{producto.nombre}</h1>
+              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${activo ? "bg-green-50 text-green-700" : "bg-zinc-100 text-zinc-600"}`}>
+                {activo ? "Publicado" : "Inactivo"}
+              </span>
             </div>
-            <p className="text-xs text-zinc-400 mt-0.5">{data.subtitle}</p>
+            <p className="text-xs text-zinc-400 mt-0.5">
+              {producto.categoria}
+              {detalle ? ` · ${detalle}` : ""}
+            </p>
           </div>
           <div className="flex items-center gap-2 ml-auto">
-            <button className="border border-zinc-200 text-zinc-700 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-zinc-50 transition-colors whitespace-nowrap">
-              Registrar entrada
+            <button
+              onClick={togglePublicado}
+              className="border border-zinc-200 text-zinc-700 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-zinc-50 transition-colors whitespace-nowrap"
+            >
+              {activo ? "Despublicar" : "Publicar"}
             </button>
             <Link href={`/admin/catalogo/${slug}/editar`} className="bg-zinc-900 text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-zinc-700 transition-colors whitespace-nowrap">
               Editar producto
             </Link>
           </div>
         </div>
+        {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
       </div>
 
       {/* Stats */}
       <div className="px-5 sm:px-8 py-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {data.stats.map((s, i) => (
-          <div key={i} className={`rounded-2xl border p-4 sm:p-5 ${i === 3 ? "bg-zinc-900 border-zinc-900" : "bg-white border-zinc-100 shadow-sm"}`}>
-            <p className={`text-[10px] font-semibold uppercase tracking-widest mb-2 ${i === 3 ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
-            <p className={`text-2xl sm:text-3xl font-bold ${i === 3 ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
-            {s.bar !== undefined && (
-              <div className="h-1.5 bg-zinc-100 rounded-full overflow-hidden mt-2">
-                <div className="h-full bg-zinc-800 rounded-full" style={{ width: `${s.bar}%` }} />
-              </div>
-            )}
-            {s.sub && <p className={`text-xs mt-1.5 ${i === 3 ? "text-zinc-400" : "text-zinc-400"}`}>{s.sub}</p>}
+        <div className="rounded-2xl border border-zinc-100 shadow-sm bg-white p-4 sm:p-5">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-2">Stock actual</p>
+          <p className="text-2xl sm:text-3xl font-bold text-zinc-900">{producto.stock}</p>
+          <div className="h-1.5 bg-zinc-100 rounded-full overflow-hidden mt-2">
+            <div
+              className={`h-full rounded-full ${stockBajo ? "bg-orange-400" : "bg-zinc-800"}`}
+              style={{ width: `${Math.min(100, Math.round((producto.stock / Math.max(producto.stock_minimo * 4, 1)) * 100))}%` }}
+            />
           </div>
-        ))}
+          {stockBajo && <p className="text-xs text-orange-500 font-semibold mt-1">Stock bajo</p>}
+        </div>
+        <div className="rounded-2xl border border-zinc-100 shadow-sm bg-white p-4 sm:p-5">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-2">Precio</p>
+          <p className="text-2xl sm:text-3xl font-bold text-zinc-900">{formatPrecio(producto.precio)}</p>
+        </div>
+        <div className="rounded-2xl border border-zinc-100 shadow-sm bg-white p-4 sm:p-5">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-2">Costo</p>
+          <p className="text-2xl sm:text-3xl font-bold text-zinc-900">{producto.costo != null ? formatPrecio(producto.costo) : "—"}</p>
+        </div>
+        <div className="rounded-2xl border border-zinc-900 bg-zinc-900 p-4 sm:p-5">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500 mb-2">Margen</p>
+          <p className="text-2xl sm:text-3xl font-bold text-white">{margen != null ? `${margen}%` : "—"}</p>
+        </div>
       </div>
 
       {/* Body */}
       <div className="px-5 sm:px-8 pb-8 flex flex-col lg:flex-row gap-4">
-        {/* Left */}
         <div className="flex-1 min-w-0 space-y-4">
-
-          {/* Ficha */}
           <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-5">
             <h2 className="text-sm font-semibold text-zinc-900 mb-4">Ficha del producto</h2>
             <div className="grid grid-cols-3 gap-x-6 gap-y-3 mb-4">
               {[
-                ["Tipo",    data.ficha.tipo],
-                ["Color",   data.ficha.color],
-                ["Textura", data.ficha.textura],
-                ["Precio de venta", data.ficha.precio],
-                ["Costo",           data.ficha.costo],
-                ["Alerta de stock", data.ficha.alerta],
+                ["Tipo", producto.tipo_cabello ? (producto.tipo_cabello === "virgin" ? "Virgin" : "Remy") : "—"],
+                ["Color", producto.color ?? "—"],
+                ["Largo", producto.largo_pulgadas ? `${producto.largo_pulgadas}"` : "—"],
+                ["Precio de venta", formatPrecio(producto.precio)],
+                ["Costo", producto.costo != null ? formatPrecio(producto.costo) : "—"],
+                ["Alerta de stock", `${producto.stock_minimo} unidades`],
               ].map(([l, v]) => (
                 <div key={l}>
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-1">{l}</p>
@@ -589,69 +394,45 @@ function ProductDetail({ data, slug }: { data: typeof productData[string]; slug:
                 </div>
               ))}
             </div>
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-2">Largos disponibles</p>
-              <div className="flex flex-wrap gap-2">
-                {data.ficha.largos.map((l) => (
-                  <span key={l.label} className={`text-xs font-semibold px-3 py-1.5 rounded-full ${l.agotado ? "border border-zinc-200 text-zinc-400" : "bg-zinc-900 text-white"}`}>
-                    {l.label}{l.agotado ? " · agotado" : ""}
-                  </span>
-                ))}
+            {producto.descripcion && (
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-1">Descripción</p>
+                <p className="text-sm text-zinc-600 leading-relaxed">{producto.descripcion}</p>
               </div>
-            </div>
-          </div>
-
-          {/* Movimientos */}
-          <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-zinc-100">
-              <h2 className="text-sm font-semibold text-zinc-900">Movimientos de inventario</h2>
-            </div>
-            <div className="grid grid-cols-[80px_1fr_1fr_auto] gap-x-4 px-5 py-2.5 border-b border-zinc-50">
-              {["Fecha", "Movimiento", "Referencia", "Stock"].map((h) => (
-                <span key={h} className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">{h}</span>
-              ))}
-            </div>
-            {data.movements.map((m, i) => (
-              <div key={i} className="grid grid-cols-[80px_1fr_1fr_auto] gap-x-4 items-center px-5 py-3.5 border-b border-zinc-50 last:border-0 hover:bg-zinc-50/60 transition-colors">
-                <span className="text-sm text-zinc-500">{m.date}</span>
-                <span className={`text-sm font-medium ${m.movement.startsWith("Entrada") ? "text-green-700" : m.movement.startsWith("Ajuste") ? "text-orange-600" : "text-zinc-900"}`}>{m.movement}</span>
-                <span className="text-sm text-zinc-500">{m.ref}</span>
-                <span className="text-sm font-semibold text-zinc-900">{m.stock}</span>
-              </div>
-            ))}
+            )}
           </div>
         </div>
 
         {/* Right */}
         <div className="lg:w-[300px] xl:w-[310px] shrink-0 space-y-4">
-
-          {/* Fotos */}
           <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-5">
-            <SectionLabel>Fotos</SectionLabel>
-            <div className="space-y-2">
-              <PhotoSlot label="Foto principal" large />
-              <div className="grid grid-cols-2 gap-2">
-                <PhotoSlot label="Detalle" />
-                <PhotoSlot label="Instalado" />
-              </div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-3">Foto</p>
+            <div className="w-full h-36 rounded-xl overflow-hidden bg-zinc-100 flex items-center justify-center mb-3">
+              {fotoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={fotoUrl} alt={producto.nombre} className="w-full h-full object-cover" />
+              ) : (
+                <CameraIcon />
+              )}
             </div>
-          </div>
-
-          {/* Publicación */}
-          <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-5">
-            <SectionLabel>Publicación</SectionLabel>
-            {data.publication.map((p) => <PublicationRow key={p.label} {...p} />)}
-          </div>
-
-          {/* Servicios que lo usan */}
-          <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-5">
-            <SectionLabel>Servicios que lo usan</SectionLabel>
-            {data.servicios.map((s) => (
-              <div key={s.name} className="flex items-center justify-between py-2.5 border-b border-zinc-100 last:border-0">
-                <span className="text-sm font-medium text-zinc-900">{s.name}</span>
-                <span className="text-sm text-zinc-400">{s.citas}</span>
-              </div>
-            ))}
+            <button
+              onClick={() => fotoInputRef.current?.click()}
+              disabled={subiendoFoto}
+              className="w-full py-2 rounded-xl border border-zinc-200 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors disabled:opacity-50"
+            >
+              {subiendoFoto ? "Subiendo…" : fotoUrl ? "Cambiar foto" : "Subir foto"}
+            </button>
+            <input
+              ref={fotoInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) subirFoto(f);
+                e.target.value = "";
+              }}
+            />
           </div>
         </div>
       </div>

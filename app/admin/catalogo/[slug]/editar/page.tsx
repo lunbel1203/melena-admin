@@ -1,9 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { use, useEffect, useMemo, useState } from "react";
+import { use, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+
+function CameraIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1.5 6.5A1.5 1.5 0 0 1 3 5h1.5L6 3h6l1.5 2H15a1.5 1.5 0 0 1 1.5 1.5v7A1.5 1.5 0 0 1 15 15H3a1.5 1.5 0 0 1-1.5-1.5v-7z" />
+      <circle cx="9" cy="10" r="2.5" />
+    </svg>
+  );
+}
 
 function BackIcon() {
   return (
@@ -55,64 +64,45 @@ function parseDias(texto: string) {
     .filter((n) => Number.isFinite(n) && n > 0);
 }
 
-/* ── Base data mock (productos todavía no conectados) ── */
-const productBase: Record<string, {
-  isService: false;
-  name: string; tipo: string; color: string; textura: string;
-  precio: string; costo: string; alerta: string;
-  largos: string[]; sitioWeb: boolean; appClientas: boolean; whatsapp: boolean; masVendido: boolean;
-}> = {
-  "rubio-balayage": {
-    isService: false,
-    name: 'Rubio balayage 18"', tipo: "Remy", color: "Rubio con raíz oscura", textura: "Liso",
-    precio: "RD$4,200", costo: "RD$2,400", alerta: "5",
-    largos: ['18"', '20"', '22"'],
-    sitioWeb: true, appClientas: true, whatsapp: true, masVendido: false,
-  },
-  "negro-natural": {
-    isService: false,
-    name: 'Negro natural 16"', tipo: "Virgin", color: "Negro azabache", textura: "Liso",
-    precio: "RD$3,600", costo: "RD$2,232", alerta: "5",
-    largos: ['14"', '16"', '18"'],
-    sitioWeb: true, appClientas: true, whatsapp: true, masVendido: false,
-  },
-  "chocolate-ombre": {
-    isService: false,
-    name: 'Chocolate ombré 22"', tipo: "Remy", color: "Degradado a caramelo", textura: "Liso",
-    precio: "RD$5,100", costo: "RD$3,009", alerta: "5",
-    largos: ['20"', '22"', '24"'],
-    sitioWeb: true, appClientas: true, whatsapp: true, masVendido: true,
-  },
-  "castano-natural": {
-    isService: false,
-    name: 'Castaño natural 20"', tipo: "Virgin", color: "Castaño medio uniforme", textura: "Liso",
-    precio: "RD$2,850", costo: "RD$1,739", alerta: "5",
-    largos: ['16"', '18"', '20"'],
-    sitioWeb: true, appClientas: true, whatsapp: true, masVendido: false,
-  },
-};
-
-const tipos      = ["Remy", "Virgin", "Sintético"];
-const texturas   = ["Liso", "Ondulado", "Rizado"];
-const largosOpts = ['12"', '14"', '16"', '18"', '20"', '22"', '24"', '26"'];
+interface ProductoRow {
+  id: string;
+  nombre: string;
+  descripcion: string | null;
+  categoria: string;
+  tipo_cabello: string | null;
+  color: string | null;
+  largo_pulgadas: number | null;
+  precio: number;
+  costo: number | null;
+  stock: number;
+  stock_minimo: number;
+  foto_url: string | null;
+  activo: boolean;
+}
 
 export default function EditarCatalogoPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
   const supabase = useMemo(() => createClient(), []);
   const [servicio, setServicio] = useState<ServicioRow | null | undefined>(undefined);
+  const [producto, setProducto] = useState<ProductoRow | null | undefined>(undefined);
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("servicios").select("*").eq("slug", slug).maybeSingle();
-      setServicio(data);
+      const { data: s } = await supabase.from("servicios").select("*").eq("slug", slug).maybeSingle();
+      if (s) {
+        setServicio(s);
+        setProducto(null);
+        return;
+      }
+      const { data: p } = await supabase.from("productos").select("*").eq("slug", slug).maybeSingle();
+      setServicio(null);
+      setProducto(p ?? null);
     })();
   }, [slug, supabase]);
 
-  const prd = productBase[slug];
-
-  if (servicio === undefined) return <div className="p-8 text-zinc-400">Cargando…</div>;
+  if (servicio === undefined || producto === undefined) return <div className="p-8 text-zinc-400">Cargando…</div>;
   if (servicio) return <EditarServicio servicio={servicio} slug={slug} />;
-  if (prd) return <EditarProducto base={prd} slug={slug} />;
+  if (producto) return <EditarProducto producto={producto} slug={slug} />;
   return <div className="p-8 text-zinc-400">No encontrado.</div>;
 }
 
@@ -376,22 +366,83 @@ function EditarServicio({ servicio, slug }: { servicio: ServicioRow; slug: strin
 }
 
 /* ══ EDITAR PRODUCTO ══ */
-function EditarProducto({ base, slug }: { base: typeof productBase[string]; slug: string }) {
-  const [nombre,     setNombre]     = useState(base.name);
-  const [tipo,       setTipo]       = useState(base.tipo);
-  const [color,      setColor]      = useState(base.color);
-  const [textura,    setTextura]    = useState(base.textura);
-  const [precio,     setPrecio]     = useState(base.precio);
-  const [costo,      setCosto]      = useState(base.costo);
-  const [alerta,     setAlerta]     = useState(base.alerta);
-  const [largos,     setLargos]     = useState<string[]>(base.largos);
-  const [sitioWeb,   setSitioWeb]   = useState(base.sitioWeb);
-  const [appCli,     setAppCli]     = useState(base.appClientas);
-  const [whatsapp,   setWhatsapp]   = useState(base.whatsapp);
-  const [masVendido, setMasVendido] = useState(base.masVendido);
+const TIPOS_CABELLO = [
+  { id: "", label: "Ninguno" },
+  { id: "virgin", label: "Virgin" },
+  { id: "remy", label: "Remy" },
+] as const;
 
-  function toggleLargo(l: string) {
-    setLargos((prev) => prev.includes(l) ? prev.filter((x) => x !== l) : [...prev, l]);
+function EditarProducto({ producto, slug }: { producto: ProductoRow; slug: string }) {
+  const supabase = useMemo(() => createClient(), []);
+  const router = useRouter();
+  const fotoInputRef = useRef<HTMLInputElement>(null);
+
+  const [nombre, setNombre] = useState(producto.nombre);
+  const [descripcion, setDescripcion] = useState(producto.descripcion ?? "");
+  const [categoria, setCategoria] = useState(producto.categoria);
+  const [tipoCabello, setTipoCabello] = useState<"" | "virgin" | "remy">(
+    producto.tipo_cabello === "virgin" || producto.tipo_cabello === "remy" ? producto.tipo_cabello : "",
+  );
+  const [color, setColor] = useState(producto.color ?? "");
+  const [largo, setLargo] = useState(producto.largo_pulgadas != null ? String(producto.largo_pulgadas) : "");
+  const [precio, setPrecio] = useState(String(producto.precio));
+  const [costo, setCosto] = useState(producto.costo != null ? String(producto.costo) : "");
+  const [stock, setStock] = useState(String(producto.stock));
+  const [stockMinimo, setStockMinimo] = useState(String(producto.stock_minimo));
+  const [activo, setActivo] = useState(producto.activo);
+  const [fotoUrl, setFotoUrl] = useState(producto.foto_url);
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
+
+  const [guardando, setGuardando] = useState(false);
+  const [guardado, setGuardado] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function subirFoto(file: File) {
+    setSubiendoFoto(true);
+    setError(null);
+    const ext = file.name.split(".").pop();
+    const path = `${slug}-${Date.now()}.${ext}`;
+    const { error: uploadError } = await supabase.storage.from("fotos-catalogo").upload(path, file);
+    if (uploadError) {
+      setSubiendoFoto(false);
+      return setError(uploadError.message);
+    }
+    const { data } = supabase.storage.from("fotos-catalogo").getPublicUrl(path);
+    setFotoUrl(data.publicUrl);
+    setSubiendoFoto(false);
+  }
+
+  async function guardar() {
+    setGuardando(true);
+    setError(null);
+    setGuardado(false);
+
+    const { error: productoError } = await supabase
+      .from("productos")
+      .update({
+        nombre: nombre.trim(),
+        descripcion: descripcion.trim() || null,
+        categoria: categoria.trim() || producto.categoria,
+        tipo_cabello: tipoCabello || null,
+        color: color.trim() || null,
+        largo_pulgadas: largo ? Math.round(Number(largo)) : null,
+        precio: Number(precio) || 0,
+        costo: costo ? Number(costo) : null,
+        stock: Math.max(0, Math.round(Number(stock) || 0)),
+        stock_minimo: Math.max(0, Math.round(Number(stockMinimo) || 0)),
+        foto_url: fotoUrl,
+        activo,
+      })
+      .eq("id", producto.id);
+
+    setGuardando(false);
+    if (productoError) {
+      setError(productoError.message);
+      return;
+    }
+    setGuardado(true);
+    router.refresh();
+    setTimeout(() => setGuardado(false), 2500);
   }
 
   return (
@@ -402,12 +453,48 @@ function EditarProducto({ base, slug }: { base: typeof productBase[string]; slug
         </Link>
         <div>
           <h1 className="text-xl font-bold text-zinc-900">Editar producto</h1>
-          <p className="text-xs text-zinc-400 mt-0.5">{base.name}</p>
+          <p className="text-xs text-zinc-400 mt-0.5">{producto.nombre}</p>
         </div>
       </div>
 
       <div className="p-5 lg:p-7 flex flex-col lg:flex-row gap-5 max-w-[940px] mx-auto">
         <div className="flex-1 min-w-0 space-y-4">
+
+          {/* Foto */}
+          <div className="bg-white rounded-2xl border border-zinc-200 p-5">
+            <SectionLabel>Foto</SectionLabel>
+            <div className="flex items-center gap-4">
+              <div className="w-20 h-20 rounded-xl overflow-hidden bg-zinc-100 flex items-center justify-center border border-zinc-200 shrink-0">
+                {fotoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={fotoUrl} alt={producto.nombre} className="w-full h-full object-cover" />
+                ) : (
+                  <CameraIcon />
+                )}
+              </div>
+              <div>
+                <button
+                  type="button"
+                  onClick={() => fotoInputRef.current?.click()}
+                  disabled={subiendoFoto}
+                  className="text-sm font-semibold text-zinc-700 border border-zinc-200 px-4 py-2 rounded-xl hover:bg-zinc-50 transition-colors disabled:opacity-50"
+                >
+                  {subiendoFoto ? "Subiendo…" : fotoUrl ? "Cambiar foto" : "Subir foto"}
+                </button>
+                <input
+                  ref={fotoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) subirFoto(f);
+                    e.target.value = "";
+                  }}
+                />
+              </div>
+            </div>
+          </div>
 
           <div className="bg-white rounded-2xl border border-zinc-200 p-5">
             <SectionLabel>Información básica</SectionLabel>
@@ -418,67 +505,68 @@ function EditarProducto({ base, slug }: { base: typeof productBase[string]; slug
                   className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 focus:outline-none focus:border-zinc-400 transition-colors" />
               </div>
               <div>
+                <label className="text-xs font-semibold text-zinc-500 mb-1.5 block">Descripción</label>
+                <textarea value={descripcion} onChange={(e) => setDescripcion(e.target.value)} rows={2}
+                  className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 focus:outline-none focus:border-zinc-400 transition-colors resize-none" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-zinc-500 mb-1.5 block">Categoría</label>
+                <input value={categoria} onChange={(e) => setCategoria(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 focus:outline-none focus:border-zinc-400 transition-colors" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-zinc-200 p-5">
+            <SectionLabel>Tipo, color y largo</SectionLabel>
+            <div className="mb-4">
+              <p className="text-xs font-semibold text-zinc-500 mb-2">Tipo de cabello</p>
+              <div className="flex gap-2 flex-wrap">
+                {TIPOS_CABELLO.map((t) => (
+                  <button key={t.id} onClick={() => setTipoCabello(t.id)}
+                    className={`px-3.5 py-2 rounded-xl text-sm font-semibold border-2 transition-all ${tipoCabello === t.id ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-100 text-zinc-700 hover:border-zinc-200"}`}>
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
                 <label className="text-xs font-semibold text-zinc-500 mb-1.5 block">Color</label>
                 <input value={color} onChange={(e) => setColor(e.target.value)}
                   className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 focus:outline-none focus:border-zinc-400 transition-colors" />
               </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-zinc-200 p-5">
-            <SectionLabel>Tipo y textura</SectionLabel>
-            <div className="mb-4">
-              <p className="text-xs font-semibold text-zinc-500 mb-2">Tipo</p>
-              <div className="flex gap-2 flex-wrap">
-                {tipos.map((t) => (
-                  <button key={t} onClick={() => setTipo(t)}
-                    className={`px-3.5 py-2 rounded-xl text-sm font-semibold border-2 transition-all ${tipo === t ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-100 text-zinc-700 hover:border-zinc-200"}`}>
-                    {t}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-zinc-500 mb-2">Textura</p>
-              <div className="flex gap-2 flex-wrap">
-                {texturas.map((t) => (
-                  <button key={t} onClick={() => setTextura(t)}
-                    className={`px-3.5 py-2 rounded-xl text-sm font-semibold border-2 transition-all ${textura === t ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-100 text-zinc-700 hover:border-zinc-200"}`}>
-                    {t}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-zinc-200 p-5">
-            <SectionLabel>Largos disponibles</SectionLabel>
-            <div className="flex flex-wrap gap-2">
-              {largosOpts.map((l) => (
-                <button key={l} onClick={() => toggleLargo(l)}
-                  className={`px-3.5 py-2 rounded-xl text-sm font-semibold border-2 transition-all ${largos.includes(l) ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-100 text-zinc-700 hover:border-zinc-200"}`}>
-                  {l}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-zinc-200 p-5">
-            <SectionLabel>Precios</SectionLabel>
-            <div className="grid grid-cols-3 gap-3">
               <div>
-                <label className="text-xs font-semibold text-zinc-500 mb-1.5 block">Precio de venta</label>
-                <input value={precio} onChange={(e) => setPrecio(e.target.value)}
+                <label className="text-xs font-semibold text-zinc-500 mb-1.5 block">Largo (pulgadas)</label>
+                <input type="number" min={0} value={largo} onChange={(e) => setLargo(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 focus:outline-none focus:border-zinc-400 transition-colors" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-zinc-200 p-5">
+            <SectionLabel>Precios e inventario</SectionLabel>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="text-xs font-semibold text-zinc-500 mb-1.5 block">Precio de venta (RD$)</label>
+                <input type="number" min={0} value={precio} onChange={(e) => setPrecio(e.target.value)}
                   className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 focus:outline-none focus:border-zinc-400 transition-colors" />
               </div>
               <div>
-                <label className="text-xs font-semibold text-zinc-500 mb-1.5 block">Costo</label>
-                <input value={costo} onChange={(e) => setCosto(e.target.value)}
+                <label className="text-xs font-semibold text-zinc-500 mb-1.5 block">Costo (RD$)</label>
+                <input type="number" min={0} value={costo} onChange={(e) => setCosto(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 focus:outline-none focus:border-zinc-400 transition-colors" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-zinc-500 mb-1.5 block">Stock</label>
+                <input type="number" min={0} value={stock} onChange={(e) => setStock(e.target.value)}
                   className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 focus:outline-none focus:border-zinc-400 transition-colors" />
               </div>
               <div>
-                <label className="text-xs font-semibold text-zinc-500 mb-1.5 block">Alerta de stock</label>
-                <input value={alerta} onChange={(e) => setAlerta(e.target.value)} type="number" min="1"
+                <label className="text-xs font-semibold text-zinc-500 mb-1.5 block">Alerta de stock bajo</label>
+                <input type="number" min={0} value={stockMinimo} onChange={(e) => setStockMinimo(e.target.value)}
                   className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 focus:outline-none focus:border-zinc-400 transition-colors" />
               </div>
             </div>
@@ -486,18 +574,9 @@ function EditarProducto({ base, slug }: { base: typeof productBase[string]; slug
 
           <div className="bg-white rounded-2xl border border-zinc-200 p-5">
             <SectionLabel>Publicación</SectionLabel>
-            <div className="space-y-4">
-              {([
-                ["Catálogo del sitio web", sitioWeb,   () => setSitioWeb((v)   => !v)],
-                ["Catálogo de la app",     appCli,     () => setAppCli((v)     => !v)],
-                ["Whatsapp y agendar",     whatsapp,   () => setWhatsapp((v)   => !v)],
-                ["Más vendido",            masVendido, () => setMasVendido((v) => !v)],
-              ] as [string, boolean, () => void][]).map(([label, val, fn]) => (
-                <div key={label} className="flex items-center justify-between">
-                  <span className="text-sm text-zinc-700">{label}</span>
-                  <Toggle value={val} onChange={fn} />
-                </div>
-              ))}
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-zinc-700">Activo (visible en catálogo)</span>
+              <Toggle value={activo} onChange={() => setActivo((v) => !v)} />
             </div>
           </div>
         </div>
@@ -508,11 +587,12 @@ function EditarProducto({ base, slug }: { base: typeof productBase[string]; slug
               <SectionLabel>Resumen</SectionLabel>
               <div className="space-y-3">
                 {[
-                  ["Nombre",  nombre],
-                  ["Tipo",    tipo],
-                  ["Color",   color],
-                  ["Precio",  precio],
-                  ["Largos",  largos.length ? largos.join(", ") : "—"],
+                  ["Nombre", nombre],
+                  ["Categoría", categoria || "—"],
+                  ["Color", color || "—"],
+                  ["Largo", largo ? `${largo}"` : "—"],
+                  ["Precio", precio ? `RD$${Number(precio).toLocaleString("es-DO")}` : "—"],
+                  ["Stock", stock || "0"],
                 ].map(([l, v]) => (
                   <div key={l} className="flex justify-between text-sm gap-3">
                     <span className="text-zinc-500 shrink-0">{l}</span>
@@ -521,13 +601,16 @@ function EditarProducto({ base, slug }: { base: typeof productBase[string]; slug
                 ))}
               </div>
             </div>
+            {error && <p className="text-xs text-red-500 px-5 pt-3">{error}</p>}
+            {guardado && <p className="text-xs font-medium text-teal-600 px-5 pt-3">Guardado ✓</p>}
             <div className="p-5 flex flex-col gap-3">
               <Link href={`/admin/catalogo/${slug}`}
                 className="w-full py-3 rounded-xl border border-zinc-200 text-sm font-semibold text-zinc-700 text-center hover:bg-zinc-50 transition-colors">
                 Cancelar
               </Link>
-              <button className="w-full py-3 rounded-xl bg-zinc-900 text-sm font-semibold text-white hover:bg-zinc-700 transition-colors">
-                Guardar cambios
+              <button onClick={guardar} disabled={guardando}
+                className="w-full py-3 rounded-xl bg-zinc-900 text-sm font-semibold text-white hover:bg-zinc-700 transition-colors disabled:opacity-50">
+                {guardando ? "Guardando…" : "Guardar cambios"}
               </button>
             </div>
           </div>

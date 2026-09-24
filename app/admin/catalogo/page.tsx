@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 function SearchIcon() {
@@ -12,10 +13,17 @@ function SearchIcon() {
     </svg>
   );
 }
-function ChevronIcon() {
+function EditIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M6 4l4 4-4 4" />
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M11 2l3 3-8 8-3.5 1 1-3.5 8-8z" />
+    </svg>
+  );
+}
+function TrashIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 4h12M5 4V2.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5V4M6 7v5M10 7v5M3 4l1 9.5a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 .5-.5L13 4" />
     </svg>
   );
 }
@@ -64,49 +72,84 @@ type Tab = "productos" | "servicios";
 
 export default function CatalogoPage() {
   const supabase = useMemo(() => createClient(), []);
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>("productos");
   const [searchP, setSearchP] = useState("");
   const [searchS, setSearchS] = useState("");
   const [productos, setProductos] = useState<Producto[]>([]);
   const [servicios, setServicios] = useState<Servicio[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  async function cargar() {
+    setCargando(true);
+
+    const [{ data: prod }, { data: serv }, { data: serviciosEmpleados }] = await Promise.all([
+      supabase
+        .from("productos")
+        .select("id, slug, nombre, categoria, tipo_cabello, color, largo_pulgadas, precio, stock, stock_minimo, activo, foto_url")
+        .order("nombre"),
+      supabase
+        .from("servicios")
+        .select("id, slug, nombre, categoria, duracion_minutos, precio, deposito_requerido, deposito_monto, activo")
+        .order("nombre"),
+      supabase.from("servicios_empleados").select("servicio_id, empleados(nombre)"),
+    ]);
+
+    const staffPorServicio = new Map<string, string[]>();
+    (serviciosEmpleados ?? []).forEach((row) => {
+      const nombre = row.empleados?.nombre;
+      if (!nombre) return;
+      const lista = staffPorServicio.get(row.servicio_id) ?? [];
+      lista.push(nombre);
+      staffPorServicio.set(row.servicio_id, lista);
+    });
+
+    setProductos(prod ?? []);
+    setServicios(
+      (serv ?? []).map((s) => ({
+        ...s,
+        quienLoOfrece: staffPorServicio.get(s.id)?.join(" · ") || "Todas",
+      })),
+    );
+
+    setCargando(false);
+  }
 
   useEffect(() => {
-    (async () => {
-      setCargando(true);
-
-      const [{ data: prod }, { data: serv }, { data: serviciosEmpleados }] = await Promise.all([
-        supabase
-          .from("productos")
-          .select("id, slug, nombre, categoria, tipo_cabello, color, largo_pulgadas, precio, stock, stock_minimo, activo, foto_url")
-          .order("nombre"),
-        supabase
-          .from("servicios")
-          .select("id, slug, nombre, categoria, duracion_minutos, precio, deposito_requerido, deposito_monto, activo")
-          .order("nombre"),
-        supabase.from("servicios_empleados").select("servicio_id, empleados(nombre)"),
-      ]);
-
-      const staffPorServicio = new Map<string, string[]>();
-      (serviciosEmpleados ?? []).forEach((row) => {
-        const nombre = row.empleados?.nombre;
-        if (!nombre) return;
-        const lista = staffPorServicio.get(row.servicio_id) ?? [];
-        lista.push(nombre);
-        staffPorServicio.set(row.servicio_id, lista);
-      });
-
-      setProductos(prod ?? []);
-      setServicios(
-        (serv ?? []).map((s) => ({
-          ...s,
-          quienLoOfrece: staffPorServicio.get(s.id)?.join(" · ") || "Todas",
-        })),
-      );
-
-      setCargando(false);
-    })();
+    cargar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase]);
+
+  async function eliminarProducto(id: string, nombre: string) {
+    if (!window.confirm(`¿Eliminar "${nombre}"? Esta acción no se puede deshacer.`)) return;
+    setError(null);
+    const { error } = await supabase.from("productos").delete().eq("id", id);
+    if (error) {
+      setError(
+        error.code === "23503"
+          ? `No se puede eliminar "${nombre}": tiene facturas o movimientos asociados. Desactívalo en su lugar desde Editar.`
+          : error.message,
+      );
+      return;
+    }
+    cargar();
+  }
+
+  async function eliminarServicio(id: string, nombre: string) {
+    if (!window.confirm(`¿Eliminar "${nombre}"? Esta acción no se puede deshacer.`)) return;
+    setError(null);
+    const { error } = await supabase.from("servicios").delete().eq("id", id);
+    if (error) {
+      setError(
+        error.code === "23503"
+          ? `No se puede eliminar "${nombre}": tiene citas o facturas asociadas. Desactívalo en su lugar desde Editar.`
+          : error.message,
+      );
+      return;
+    }
+    cargar();
+  }
 
   const filteredProducts = productos.filter((p) => p.nombre.toLowerCase().includes(searchP.toLowerCase()));
   const filteredServices = servicios.filter((s) => s.nombre.toLowerCase().includes(searchS.toLowerCase()));
@@ -138,6 +181,7 @@ export default function CatalogoPage() {
         ))}
       </div>
 
+      {error && <p className="text-sm text-red-500 mb-4">{error}</p>}
       {cargando && <p className="text-sm text-zinc-400 mb-4">Cargando…</p>}
 
       {/* ══ PRODUCTOS ══ */}
@@ -169,7 +213,7 @@ export default function CatalogoPage() {
 
           {/* Tabla productos */}
           <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm overflow-hidden">
-            <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_1fr_1.4fr_1fr_28px] gap-x-4 px-5 sm:px-6 py-3 border-b border-zinc-100">
+            <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_1fr_1.4fr_1fr_72px] gap-x-4 px-5 sm:px-6 py-3 border-b border-zinc-100">
               {["Producto", "Categoría", "Detalle", "Precio", "Stock", "Estado", ""].map((h) => (
                 <span key={h} className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">{h}</span>
               ))}
@@ -185,10 +229,10 @@ export default function CatalogoPage() {
               const stockBajo = p.stock <= p.stock_minimo;
               const detalle = [p.tipo_cabello, p.color, p.largo_pulgadas ? `${p.largo_pulgadas}"` : null].filter(Boolean).join(" · ");
               return (
-                <Link
+                <div
                   key={p.id}
-                  href={`/admin/catalogo/${p.slug}`}
-                  className="flex sm:grid sm:grid-cols-[2fr_1fr_1fr_1fr_1.4fr_1fr_28px] gap-x-4 items-center px-5 sm:px-6 py-4 border-b border-zinc-100 last:border-0 hover:bg-zinc-50/70 transition-colors"
+                  onClick={() => router.push(`/admin/catalogo/${p.slug}`)}
+                  className="flex sm:grid sm:grid-cols-[2fr_1fr_1fr_1fr_1.4fr_1fr_72px] gap-x-4 items-center px-5 sm:px-6 py-4 border-b border-zinc-100 last:border-0 hover:bg-zinc-50/70 transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="w-8 h-8 rounded-full bg-zinc-200 flex items-center justify-center text-sm font-bold text-zinc-600 shrink-0 overflow-hidden">
@@ -229,8 +273,27 @@ export default function CatalogoPage() {
                     {p.activo ? "Publicado" : "Inactivo"}
                   </span>
 
-                  <span className="text-zinc-300 ml-auto sm:ml-0 shrink-0"><ChevronIcon /></span>
-                </Link>
+                  <div className="flex items-center gap-1 ml-auto sm:ml-0 shrink-0">
+                    <Link
+                      href={`/admin/catalogo/${p.slug}/editar`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors"
+                      title="Editar"
+                    >
+                      <EditIcon />
+                    </Link>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        eliminarProducto(p.id, p.nombre);
+                      }}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                      title="Eliminar"
+                    >
+                      <TrashIcon />
+                    </button>
+                  </div>
+                </div>
               );
             })}
           </div>
@@ -262,7 +325,7 @@ export default function CatalogoPage() {
 
           {/* Tabla servicios */}
           <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm overflow-hidden">
-            <div className="hidden sm:grid grid-cols-[2fr_1.1fr_1fr_1fr_1fr_1fr_28px] gap-x-4 px-5 sm:px-6 py-3 border-b border-zinc-100">
+            <div className="hidden sm:grid grid-cols-[2fr_1.1fr_1fr_1fr_1fr_1fr_72px] gap-x-4 px-5 sm:px-6 py-3 border-b border-zinc-100">
               {["Servicio", "Categoría", "Duración", "Precio", "Depósito", "Estado", ""].map((h) => (
                 <span key={h} className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">{h}</span>
               ))}
@@ -275,10 +338,10 @@ export default function CatalogoPage() {
             )}
 
             {filteredServices.map((s) => (
-              <Link
+              <div
                 key={s.id}
-                href={`/admin/catalogo/${s.slug}`}
-                className="flex sm:grid sm:grid-cols-[2fr_1.1fr_1fr_1fr_1fr_1fr_28px] gap-x-4 items-center px-5 sm:px-6 py-4 border-b border-zinc-100 last:border-0 hover:bg-zinc-50/70 transition-colors"
+                onClick={() => router.push(`/admin/catalogo/${s.slug}`)}
+                className="flex sm:grid sm:grid-cols-[2fr_1.1fr_1fr_1fr_1fr_1fr_72px] gap-x-4 items-center px-5 sm:px-6 py-4 border-b border-zinc-100 last:border-0 hover:bg-zinc-50/70 transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-8 h-8 rounded-full bg-zinc-200 flex items-center justify-center text-sm font-bold text-zinc-600 shrink-0">
@@ -306,8 +369,27 @@ export default function CatalogoPage() {
                   {s.activo ? "Publicado" : "Inactivo"}
                 </span>
 
-                <span className="text-zinc-300 ml-auto sm:ml-0 shrink-0"><ChevronIcon /></span>
-              </Link>
+                <div className="flex items-center gap-1 ml-auto sm:ml-0 shrink-0">
+                  <Link
+                    href={`/admin/catalogo/${s.slug}/editar`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors"
+                    title="Editar"
+                  >
+                    <EditIcon />
+                  </Link>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      eliminarServicio(s.id, s.nombre);
+                    }}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                    title="Eliminar"
+                  >
+                    <TrashIcon />
+                  </button>
+                </div>
+              </div>
             ))}
           </div>
         </>
