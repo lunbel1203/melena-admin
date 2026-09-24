@@ -25,6 +25,7 @@ interface DiaEspecial {
   fecha: string;
   nombre: string;
   cerrado: boolean;
+  hora_apertura_especial: string | null;
   hora_cierre_especial: string | null;
 }
 interface ReglasAgenda {
@@ -57,6 +58,7 @@ export default function HorarioAgendaPage() {
   const [nuevaFecha, setNuevaFecha] = useState("");
   const [nuevoNombre, setNuevoNombre] = useState("");
   const [nuevoCerrado, setNuevoCerrado] = useState(true);
+  const [nuevaHoraApertura, setNuevaHoraApertura] = useState("");
   const [nuevaHoraCierre, setNuevaHoraCierre] = useState("");
 
   async function cargar() {
@@ -111,18 +113,21 @@ export default function HorarioAgendaPage() {
 
   async function agregarDiaEspecial() {
     if (!nuevaFecha || !nuevoNombre.trim()) return;
+    if (!nuevoCerrado && (!nuevaHoraApertura || !nuevaHoraCierre)) return;
     setError(null);
     const { error } = await supabase.from("dias_especiales").insert({
       fecha: nuevaFecha,
       nombre: nuevoNombre.trim(),
       cerrado: nuevoCerrado,
-      hora_cierre_especial: nuevoCerrado ? null : nuevaHoraCierre || null,
+      hora_apertura_especial: nuevoCerrado ? null : nuevaHoraApertura,
+      hora_cierre_especial: nuevoCerrado ? null : nuevaHoraCierre,
     });
     if (error) return setError(error.message);
     setMostrarNuevoEspecial(false);
     setNuevaFecha("");
     setNuevoNombre("");
     setNuevoCerrado(true);
+    setNuevaHoraApertura("");
     setNuevaHoraCierre("");
     cargar();
   }
@@ -236,7 +241,7 @@ export default function HorarioAgendaPage() {
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${d.cerrado ? "bg-orange-50 text-orange-600" : "bg-zinc-100 text-zinc-600"}`}>
-                    {d.cerrado ? "Cerrado" : `Hasta ${hhmm(d.hora_cierre_especial)}`}
+                    {d.cerrado ? "Cerrado" : `${hhmm(d.hora_apertura_especial)}–${hhmm(d.hora_cierre_especial)}`}
                   </span>
                   <button onClick={() => eliminarDiaEspecial(d.id)} className="text-zinc-300 hover:text-red-500 text-xs">✕</button>
                 </div>
@@ -255,8 +260,13 @@ export default function HorarioAgendaPage() {
                 Cerrado todo el día
               </label>
               {!nuevoCerrado && (
-                <input type="time" value={nuevaHoraCierre} onChange={(e) => setNuevaHoraCierre(e.target.value)}
-                  className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm" />
+                <div className="flex items-center gap-1.5">
+                  <input type="time" value={nuevaHoraApertura} onChange={(e) => setNuevaHoraApertura(e.target.value)}
+                    className="flex-1 px-3 py-2 border border-zinc-200 rounded-lg text-sm" />
+                  <span className="text-zinc-400">–</span>
+                  <input type="time" value={nuevaHoraCierre} onChange={(e) => setNuevaHoraCierre(e.target.value)}
+                    className="flex-1 px-3 py-2 border border-zinc-200 rounded-lg text-sm" />
+                </div>
               )}
               <div className="flex gap-2">
                 <button onClick={() => setMostrarNuevoEspecial(false)} className="flex-1 py-2 rounded-lg border border-zinc-200 text-sm text-zinc-600">Cancelar</button>

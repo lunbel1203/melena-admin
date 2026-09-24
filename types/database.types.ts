@@ -373,6 +373,7 @@ export type Database = {
           cerrado: boolean
           created_at: string
           fecha: string
+          hora_apertura_especial: string | null
           hora_cierre_especial: string | null
           id: string
           nombre: string
@@ -381,6 +382,7 @@ export type Database = {
           cerrado?: boolean
           created_at?: string
           fecha: string
+          hora_apertura_especial?: string | null
           hora_cierre_especial?: string | null
           id?: string
           nombre: string
@@ -389,6 +391,7 @@ export type Database = {
           cerrado?: boolean
           created_at?: string
           fecha?: string
+          hora_apertura_especial?: string | null
           hora_cierre_especial?: string | null
           id?: string
           nombre?: string
