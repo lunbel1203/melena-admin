@@ -781,6 +781,24 @@ export type Database = {
         }
         Relationships: []
       }
+      permisos_modulo: {
+        Row: {
+          modulo: string
+          puede_ver: boolean
+          rol: Database["public"]["Enums"]["rol_empleado"]
+        }
+        Insert: {
+          modulo: string
+          puede_ver?: boolean
+          rol: Database["public"]["Enums"]["rol_empleado"]
+        }
+        Update: {
+          modulo?: string
+          puede_ver?: boolean
+          rol?: Database["public"]["Enums"]["rol_empleado"]
+        }
+        Relationships: []
+      }
       productos: {
         Row: {
           activo: boolean

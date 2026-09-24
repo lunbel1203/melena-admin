@@ -107,16 +107,16 @@ function GearIcon() {
 }
 
 const navItems = [
-  { name: "Resumen",     href: "/admin/resumen",     icon: GridIcon },
-  { name: "Agenda",      href: "/admin/agenda",      icon: CalendarIcon },
-  { name: "Clientas",    href: "/admin/clientas",    icon: UserIcon },
-  { name: "Depósitos",   href: "/admin/depositos",   icon: InboxIcon },
-  { name: "Personal",    href: "/admin/personal",    icon: UsersIcon },
-  { name: "Catálogo",    href: "/admin/catalogo",    icon: LayersIcon },
-  { name: "Proveedores", href: "/admin/proveedores",  icon: TruckIcon },
-  { name: "Facturación", href: "/admin/facturacion", icon: ReceiptIcon },
-  { name: "Reportes",    href: "/admin/reportes",    icon: ChartIcon },
-  { name: "Configuración", href: "/admin/configuracion", icon: GearIcon },
+  { name: "Resumen",     href: "/admin/resumen",     icon: GridIcon,     modulo: "resumen" },
+  { name: "Agenda",      href: "/admin/agenda",      icon: CalendarIcon, modulo: "agenda" },
+  { name: "Clientas",    href: "/admin/clientas",    icon: UserIcon,     modulo: "clientas" },
+  { name: "Depósitos",   href: "/admin/depositos",   icon: InboxIcon,    modulo: "depositos" },
+  { name: "Personal",    href: "/admin/personal",    icon: UsersIcon,    modulo: "personal" },
+  { name: "Catálogo",    href: "/admin/catalogo",    icon: LayersIcon,   modulo: "catalogo" },
+  { name: "Proveedores", href: "/admin/proveedores",  icon: TruckIcon,   modulo: "proveedores" },
+  { name: "Facturación", href: "/admin/facturacion", icon: ReceiptIcon,  modulo: "facturacion" },
+  { name: "Reportes",    href: "/admin/reportes",    icon: ChartIcon,    modulo: "reportes" },
+  { name: "Configuración", href: "/admin/configuracion", icon: GearIcon, modulo: "configuracion" },
 ];
 
 const ROL_LABEL: Record<Database["public"]["Enums"]["rol_empleado"], string> = {
@@ -130,6 +130,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const supabase = useMemo(() => createClient(), []);
   const [usuario, setUsuario] = useState<{ nombre: string; rol: Database["public"]["Enums"]["rol_empleado"] } | null>(null);
+  const [modulosVisibles, setModulosVisibles] = useState<Set<string> | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -139,8 +140,20 @@ export default function Sidebar() {
       if (!user) return;
       const { data } = await supabase.from("empleados").select("nombre, rol").eq("user_id", user.id).single();
       if (data) setUsuario(data);
+
+      if (data && data.rol !== "admin") {
+        const { data: permisos } = await supabase
+          .from("permisos_modulo")
+          .select("modulo, puede_ver")
+          .eq("rol", data.rol);
+        setModulosVisibles(new Set((permisos ?? []).filter((p) => p.puede_ver).map((p) => p.modulo)));
+      } else {
+        setModulosVisibles(null);
+      }
     })();
   }, [supabase]);
+
+  const itemsVisibles = modulosVisibles ? navItems.filter((item) => modulosVisibles.has(item.modulo)) : navItems;
 
   return (
     <aside className="w-52 h-screen bg-zinc-900 flex flex-col shrink-0">
@@ -160,7 +173,7 @@ export default function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 px-3 overflow-y-auto">
         <ul className="space-y-0.5">
-          {navItems.map(({ name, href, icon: Icon }) => {
+          {itemsVisibles.map(({ name, href, icon: Icon }) => {
             const isActive = pathname === href || pathname.startsWith(href + "/");
             return (
               <li key={name}>
