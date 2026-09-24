@@ -287,7 +287,7 @@ export default function CatalogoPage() {
                         e.stopPropagation();
                         eliminarProducto(p.id, p.nombre);
                       }}
-                      className="w-7 h-7 rounded-lg flex items-center justify-center text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-red-500 hover:text-red-700 hover:bg-red-50 transition-colors"
                       title="Eliminar"
                     >
                       <TrashIcon />
@@ -383,7 +383,7 @@ export default function CatalogoPage() {
                       e.stopPropagation();
                       eliminarServicio(s.id, s.nombre);
                     }}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-red-500 hover:text-red-700 hover:bg-red-50 transition-colors"
                     title="Eliminar"
                   >
                     <TrashIcon />

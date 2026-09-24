@@ -56,7 +56,7 @@ function PhotoUpload() {
         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
             onClick={handleDelete}
-            className="w-7 h-7 rounded-full bg-white/90 hover:bg-red-50 text-zinc-600 hover:text-red-600 flex items-center justify-center shadow transition-colors"
+            className="w-7 h-7 rounded-full bg-white/90 hover:bg-red-50 text-red-500 hover:text-red-700 flex items-center justify-center shadow transition-colors"
           >
             <TrashIcon />
           </button>
