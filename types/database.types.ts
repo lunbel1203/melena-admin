@@ -257,6 +257,45 @@ export type Database = {
           },
         ]
       }
+      comisiones_config: {
+        Row: {
+          calcular_sobre: string
+          corte: string
+          id: boolean
+          updated_at: string
+        }
+        Insert: {
+          calcular_sobre?: string
+          corte?: string
+          id?: boolean
+          updated_at?: string
+        }
+        Update: {
+          calcular_sobre?: string
+          corte?: string
+          id?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      comisiones_default_rol: {
+        Row: {
+          porcentaje: number
+          rol: Database["public"]["Enums"]["rol_empleado"]
+          tipo: Database["public"]["Enums"]["tipo_linea_factura"]
+        }
+        Insert: {
+          porcentaje?: number
+          rol: Database["public"]["Enums"]["rol_empleado"]
+          tipo: Database["public"]["Enums"]["tipo_linea_factura"]
+        }
+        Update: {
+          porcentaje?: number
+          rol?: Database["public"]["Enums"]["rol_empleado"]
+          tipo?: Database["public"]["Enums"]["tipo_linea_factura"]
+        }
+        Relationships: []
+      }
       cuentas_bancarias: {
         Row: {
           activa: boolean
@@ -486,7 +525,7 @@ export type Database = {
           foto_url: string | null
           id: string
           nombre: string
-          porcentaje_comision: number
+          porcentaje_comision: number | null
           puesto: string | null
           rol: Database["public"]["Enums"]["rol_empleado"]
           telefono: string | null
@@ -499,7 +538,7 @@ export type Database = {
           foto_url?: string | null
           id?: string
           nombre: string
-          porcentaje_comision?: number
+          porcentaje_comision?: number | null
           puesto?: string | null
           rol: Database["public"]["Enums"]["rol_empleado"]
           telefono?: string | null
@@ -512,7 +551,7 @@ export type Database = {
           foto_url?: string | null
           id?: string
           nombre?: string
-          porcentaje_comision?: number
+          porcentaje_comision?: number | null
           puesto?: string | null
           rol?: Database["public"]["Enums"]["rol_empleado"]
           telefono?: string | null
