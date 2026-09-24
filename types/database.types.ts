@@ -936,6 +936,33 @@ export type Database = {
         }
         Relationships: []
       }
+      seguimiento_config: {
+        Row: {
+          canal_email: boolean
+          canal_push: boolean
+          canal_whatsapp: boolean
+          id: boolean
+          mensaje_plantilla: string
+          updated_at: string
+        }
+        Insert: {
+          canal_email?: boolean
+          canal_push?: boolean
+          canal_whatsapp?: boolean
+          id?: boolean
+          mensaje_plantilla?: string
+          updated_at?: string
+        }
+        Update: {
+          canal_email?: boolean
+          canal_push?: boolean
+          canal_whatsapp?: boolean
+          id?: boolean
+          mensaje_plantilla?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       servicios: {
         Row: {
           activo: boolean
