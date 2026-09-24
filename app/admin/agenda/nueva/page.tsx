@@ -160,9 +160,38 @@ export default function NuevaCitaPage() {
     })();
   }, [supabase]);
 
-  /* Disponibilidad de todas las estilistas para el servicio + día elegidos */
+  /* Qué estilistas ofrecen el servicio elegido (según el catálogo). Sin filas = cualquiera. */
+  const [estilistaIdsServicio, setEstilistaIdsServicio] = useState<Set<string> | null>(null);
+
   useEffect(() => {
-    if (!selectedServicio || estilistas.length === 0) {
+    if (!selectedServicioId) {
+      setEstilistaIdsServicio(null);
+      return;
+    }
+    let cancelado = false;
+    (async () => {
+      const { data } = await supabase
+        .from("servicios_empleados")
+        .select("empleado_id")
+        .eq("servicio_id", selectedServicioId);
+      if (cancelado) return;
+      setEstilistaIdsServicio(data && data.length > 0 ? new Set(data.map((r) => r.empleado_id)) : null);
+      setSelectedEstilistaId(null);
+      setSelectedHora(null);
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [supabase, selectedServicioId]);
+
+  const estilistasDelServicio = useMemo(
+    () => (estilistaIdsServicio === null ? estilistas : estilistas.filter((e) => estilistaIdsServicio.has(e.id))),
+    [estilistas, estilistaIdsServicio],
+  );
+
+  /* Disponibilidad de las estilistas del servicio para el día elegido */
+  useEffect(() => {
+    if (!selectedServicio || estilistasDelServicio.length === 0) {
       setHorariosPorEstilista(new Map());
       return;
     }
@@ -172,7 +201,7 @@ export default function NuevaCitaPage() {
       setSelectedHora(null);
       const fechaISO = toISODate(selectedDate);
       const resultados = await Promise.all(
-        estilistas.map((e) =>
+        estilistasDelServicio.map((e) =>
           supabase.rpc("horarios_disponibles_estilista", {
             p_empleado_id: e.id,
             p_fecha: fechaISO,
@@ -187,7 +216,7 @@ export default function NuevaCitaPage() {
       const minutosAhora = ahora.getHours() * 60 + ahora.getMinutes();
 
       const mapa = new Map<string, string[]>();
-      estilistas.forEach((e, i) => {
+      estilistasDelServicio.forEach((e, i) => {
         let slots = (resultados[i].data ?? []).map((s: { hora_inicio: string }) => s.hora_inicio.slice(0, 5));
         if (esHoy) slots = slots.filter((hora) => horaAMinutos(hora) > minutosAhora);
         mapa.set(e.id, slots);
@@ -198,10 +227,10 @@ export default function NuevaCitaPage() {
     return () => {
       cancelado = true;
     };
-  }, [supabase, selectedServicio, selectedDate, estilistas]);
+  }, [supabase, selectedServicio, selectedDate, estilistasDelServicio]);
 
   const horasEstilistaSeleccionada = selectedEstilistaId ? horariosPorEstilista.get(selectedEstilistaId) ?? [] : [];
-  const otrasConEspacio = estilistas.filter(
+  const otrasConEspacio = estilistasDelServicio.filter(
     (e) => e.id !== selectedEstilistaId && (horariosPorEstilista.get(e.id)?.length ?? 0) > 0,
   );
 
@@ -426,11 +455,11 @@ export default function NuevaCitaPage() {
             <SectionLabel>3 · Personal disponible</SectionLabel>
             {!selectedServicio ? (
               <p className="text-sm text-zinc-400">Elige un servicio primero.</p>
-            ) : estilistas.length === 0 ? (
-              <p className="text-sm text-zinc-400">No hay estilistas activas configuradas.</p>
+            ) : estilistasDelServicio.length === 0 ? (
+              <p className="text-sm text-zinc-400">No hay estilistas asignadas a este servicio en el catálogo.</p>
             ) : (
               <div className="space-y-2">
-                {estilistas.map((p) => {
+                {estilistasDelServicio.map((p) => {
                   const slots = horariosPorEstilista.get(p.id) ?? [];
                   const disponible = cargandoHorarios || slots.length > 0;
                   const isSelected = selectedEstilistaId === p.id;
