@@ -855,6 +855,42 @@ export type Database = {
         }
         Relationships: []
       }
+      recordatorios_config: {
+        Row: {
+          canal_email: boolean
+          canal_push: boolean
+          canal_whatsapp: boolean
+          id: boolean
+          recordatorio_24h_activo: boolean
+          recordatorio_24h_horas: number
+          recordatorio_2h_activo: boolean
+          recordatorio_2h_horas: number
+          updated_at: string
+        }
+        Insert: {
+          canal_email?: boolean
+          canal_push?: boolean
+          canal_whatsapp?: boolean
+          id?: boolean
+          recordatorio_24h_activo?: boolean
+          recordatorio_24h_horas?: number
+          recordatorio_2h_activo?: boolean
+          recordatorio_2h_horas?: number
+          updated_at?: string
+        }
+        Update: {
+          canal_email?: boolean
+          canal_push?: boolean
+          canal_whatsapp?: boolean
+          id?: boolean
+          recordatorio_24h_activo?: boolean
+          recordatorio_24h_horas?: number
+          recordatorio_2h_activo?: boolean
+          recordatorio_2h_horas?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       reglas_agenda: {
         Row: {
           aceptar_clientas_sin_cita: boolean
