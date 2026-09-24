@@ -1,10 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { TablesInsert } from "@/types/database.types";
+
+function CameraIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1.5 6.5A1.5 1.5 0 0 1 3 5h1.5L6 3h6l1.5 2H15a1.5 1.5 0 0 1 1.5 1.5v7A1.5 1.5 0 0 1 15 15H3a1.5 1.5 0 0 1-1.5-1.5v-7z" />
+      <circle cx="9" cy="10" r="2.5" />
+    </svg>
+  );
+}
 
 function BackIcon() {
   return (
@@ -61,6 +70,10 @@ export default function NuevoProductoPage() {
   const [stock, setStock] = useState("");
   const [stockMinimo, setStockMinimo] = useState("5");
 
+  const [fotoUrl, setFotoUrl] = useState<string | null>(null);
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
+  const fotoInputRef = useRef<HTMLInputElement>(null);
+
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -76,6 +89,21 @@ export default function NuevoProductoPage() {
 
   function toggleLargo(l: number) {
     setLargos((prev) => (prev.includes(l) ? prev.filter((x) => x !== l) : [...prev, l]));
+  }
+
+  async function subirFoto(file: File) {
+    setSubiendoFoto(true);
+    setError(null);
+    const ext = file.name.split(".").pop();
+    const path = `${slugify(nombre) || "producto"}-${Date.now()}.${ext}`;
+    const { error: uploadError } = await supabase.storage.from("fotos-catalogo").upload(path, file);
+    if (uploadError) {
+      setSubiendoFoto(false);
+      return setError(uploadError.message);
+    }
+    const { data } = supabase.storage.from("fotos-catalogo").getPublicUrl(path);
+    setFotoUrl(data.publicUrl);
+    setSubiendoFoto(false);
   }
 
   const puedeEnviar =
@@ -96,6 +124,7 @@ export default function NuevoProductoPage() {
       costo: costo ? Number(costo) : null,
       proveedor_id: proveedorId || null,
       stock_minimo: Math.max(0, Math.round(Number(stockMinimo) || 0)),
+      foto_url: fotoUrl,
     };
 
     const filas: TablesInsert<"productos">[] = esCabello
@@ -144,6 +173,41 @@ export default function NuevoProductoPage() {
       <div className="p-5 lg:p-7 flex flex-col lg:flex-row gap-5 max-w-[940px] mx-auto">
         {/* LEFT */}
         <div className="flex-1 min-w-0 space-y-4">
+
+          <div className="bg-white rounded-2xl border border-zinc-200 p-5">
+            <SectionLabel>Foto</SectionLabel>
+            <div className="flex items-center gap-4">
+              <div className="w-20 h-20 rounded-xl overflow-hidden bg-zinc-100 flex items-center justify-center border border-zinc-200 shrink-0">
+                {fotoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={fotoUrl} alt="Foto del producto" className="w-full h-full object-cover" />
+                ) : (
+                  <CameraIcon />
+                )}
+              </div>
+              <div>
+                <button
+                  type="button"
+                  onClick={() => fotoInputRef.current?.click()}
+                  disabled={subiendoFoto}
+                  className="text-sm font-semibold text-zinc-700 border border-zinc-200 px-4 py-2 rounded-xl hover:bg-zinc-50 transition-colors disabled:opacity-50"
+                >
+                  {subiendoFoto ? "Subiendo…" : fotoUrl ? "Cambiar foto" : "Subir foto"}
+                </button>
+                <input
+                  ref={fotoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) subirFoto(file);
+                    e.target.value = "";
+                  }}
+                />
+              </div>
+            </div>
+          </div>
 
           <div className="bg-white rounded-2xl border border-zinc-200 p-5">
             <SectionLabel>1 · Información básica</SectionLabel>

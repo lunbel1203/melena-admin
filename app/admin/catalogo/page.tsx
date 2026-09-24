@@ -32,6 +32,7 @@ interface Producto {
   stock: number;
   stock_minimo: number;
   activo: boolean;
+  foto_url: string | null;
 }
 
 interface Servicio {
@@ -77,7 +78,7 @@ export default function CatalogoPage() {
       const [{ data: prod }, { data: serv }, { data: serviciosEmpleados }] = await Promise.all([
         supabase
           .from("productos")
-          .select("id, slug, nombre, categoria, tipo_cabello, color, largo_pulgadas, precio, stock, stock_minimo, activo")
+          .select("id, slug, nombre, categoria, tipo_cabello, color, largo_pulgadas, precio, stock, stock_minimo, activo, foto_url")
           .order("nombre"),
         supabase
           .from("servicios")
@@ -190,8 +191,13 @@ export default function CatalogoPage() {
                   className="flex sm:grid sm:grid-cols-[2fr_1fr_1fr_1fr_1.4fr_1fr_28px] gap-x-4 items-center px-5 sm:px-6 py-4 border-b border-zinc-100 last:border-0 hover:bg-zinc-50/70 transition-colors"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-full bg-zinc-200 flex items-center justify-center text-sm font-bold text-zinc-600 shrink-0">
-                      {p.nombre.charAt(0).toUpperCase()}
+                    <div className="w-8 h-8 rounded-full bg-zinc-200 flex items-center justify-center text-sm font-bold text-zinc-600 shrink-0 overflow-hidden">
+                      {p.foto_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={p.foto_url} alt={p.nombre} className="w-full h-full object-cover" />
+                      ) : (
+                        p.nombre.charAt(0).toUpperCase()
+                      )}
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-zinc-900 truncate">{p.nombre}</p>
