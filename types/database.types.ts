@@ -861,6 +861,7 @@ export type Database = {
           canal_push: boolean
           canal_whatsapp: boolean
           id: boolean
+          mensaje_plantilla: string
           recordatorio_24h_activo: boolean
           recordatorio_24h_horas: number
           recordatorio_2h_activo: boolean
@@ -872,6 +873,7 @@ export type Database = {
           canal_push?: boolean
           canal_whatsapp?: boolean
           id?: boolean
+          mensaje_plantilla?: string
           recordatorio_24h_activo?: boolean
           recordatorio_24h_horas?: number
           recordatorio_2h_activo?: boolean
@@ -883,6 +885,7 @@ export type Database = {
           canal_push?: boolean
           canal_whatsapp?: boolean
           id?: boolean
+          mensaje_plantilla?: string
           recordatorio_24h_activo?: boolean
           recordatorio_24h_horas?: number
           recordatorio_2h_activo?: boolean
