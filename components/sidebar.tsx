@@ -143,7 +143,7 @@ export default function Sidebar() {
   }, [supabase]);
 
   return (
-    <aside className="w-52 bg-zinc-900 flex flex-col shrink-0">
+    <aside className="w-52 h-screen bg-zinc-900 flex flex-col shrink-0">
       {/* Logo */}
       <div className="px-4 pt-5 pb-4 flex items-center gap-3">
         <Image
