@@ -32,6 +32,30 @@ export type Database = {
         }
         Relationships: []
       }
+      categorias_productos: {
+        Row: {
+          activo: boolean
+          created_at: string
+          es_cabello: boolean
+          id: string
+          nombre: string
+        }
+        Insert: {
+          activo?: boolean
+          created_at?: string
+          es_cabello?: boolean
+          id?: string
+          nombre: string
+        }
+        Update: {
+          activo?: boolean
+          created_at?: string
+          es_cabello?: boolean
+          id?: string
+          nombre?: string
+        }
+        Relationships: []
+      }
       check_ins: {
         Row: {
           clienta_id: string

@@ -26,9 +26,6 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   return <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400 mb-3">{children}</p>;
 }
 
-const CATEGORIA_CABELLO = "Extensión de cabello";
-const categoriasPreset = [CATEGORIA_CABELLO, "Cuidado capilar", "Herramientas y accesorios"];
-
 const tiposCabello = [
   { id: "virgin", label: "Virgin" },
   { id: "remy", label: "Remy" },
@@ -38,6 +35,12 @@ const largosOpts = [12, 14, 16, 18, 20, 22, 24, 26];
 interface Proveedor {
   id: string;
   nombre: string;
+}
+
+interface Categoria {
+  id: string;
+  nombre: string;
+  es_cabello: boolean;
 }
 
 function slugify(texto: string) {
@@ -56,10 +59,10 @@ export default function NuevoProductoPage() {
 
   const [nombre, setNombre] = useState("");
   const [categoria, setCategoria] = useState("");
-  const [categoriaOtra, setCategoriaOtra] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [proveedorId, setProveedorId] = useState("");
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
 
   const [tipoCabello, setTipoCabello] = useState<"" | "virgin" | "remy">("");
   const [color, setColor] = useState("");
@@ -77,13 +80,17 @@ export default function NuevoProductoPage() {
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const esCabello = categoria === CATEGORIA_CABELLO;
-  const categoriaFinal = categoria === "otra" ? categoriaOtra.trim() : categoria;
+  const categoriaSeleccionada = categorias.find((c) => c.nombre === categoria);
+  const esCabello = categoriaSeleccionada?.es_cabello ?? false;
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("proveedores").select("id, nombre").eq("activo", true).order("nombre");
-      setProveedores(data ?? []);
+      const [{ data: prov }, { data: cats }] = await Promise.all([
+        supabase.from("proveedores").select("id, nombre").eq("activo", true).order("nombre"),
+        supabase.from("categorias_productos").select("id, nombre, es_cabello").eq("activo", true).order("nombre"),
+      ]);
+      setProveedores(prov ?? []);
+      setCategorias(cats ?? []);
     })();
   }, [supabase]);
 
@@ -108,7 +115,7 @@ export default function NuevoProductoPage() {
 
   const puedeEnviar =
     nombre.trim() &&
-    categoriaFinal &&
+    categoria &&
     Number(precio) > 0 &&
     (!esCabello || (tipoCabello && largos.length > 0)) &&
     !enviando;
@@ -118,7 +125,7 @@ export default function NuevoProductoPage() {
     setError(null);
 
     const base = {
-      categoria: categoriaFinal,
+      categoria,
       descripcion: descripcion.trim() || null,
       precio: Number(precio),
       costo: costo ? Number(costo) : null,
@@ -238,21 +245,17 @@ export default function NuevoProductoPage() {
 
           <div className="bg-white rounded-2xl border border-zinc-200 p-5">
             <SectionLabel>2 · Categoría</SectionLabel>
-            <div className="flex gap-2 flex-wrap mb-3">
-              {categoriasPreset.map((c) => (
-                <button key={c} onClick={() => setCategoria(c)}
-                  className={`px-3.5 py-2 rounded-xl text-sm font-semibold border-2 transition-all ${categoria === c ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-100 text-zinc-700 hover:border-zinc-200"}`}>
-                  {c}
-                </button>
+            <select value={categoria} onChange={(e) => setCategoria(e.target.value)}
+              className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 focus:outline-none focus:border-zinc-400 transition-colors bg-white">
+              <option value="">Selecciona una categoría</option>
+              {categorias.map((c) => (
+                <option key={c.id} value={c.nombre}>{c.nombre}</option>
               ))}
-              <button onClick={() => setCategoria("otra")}
-                className={`px-3.5 py-2 rounded-xl text-sm font-semibold border-2 transition-all ${categoria === "otra" ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-100 text-zinc-700 hover:border-zinc-200"}`}>
-                Otra
-              </button>
-            </div>
-            {categoria === "otra" && (
-              <input value={categoriaOtra} onChange={(e) => setCategoriaOtra(e.target.value)} placeholder="Escribe la categoría..."
-                className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-zinc-400 transition-colors" />
+            </select>
+            {categorias.length === 0 && (
+              <p className="text-xs text-zinc-400 mt-2">
+                No hay categorías creadas todavía. Créalas en Configuración → Inventario.
+              </p>
             )}
           </div>
 
@@ -332,7 +335,7 @@ export default function NuevoProductoPage() {
               <div className="space-y-3">
                 {[
                   ["Nombre", nombre || "—"],
-                  ["Categoría", categoriaFinal || "—"],
+                  ["Categoría", categoria || "—"],
                   ...(esCabello ? [["Tipo", tiposCabello.find((t) => t.id === tipoCabello)?.label || "—"]] : []),
                   ...(esCabello ? [["Largos", largos.length ? largos.map((l) => `${l}"`).join(", ") : "—"]] : []),
                   ["Precio", precio ? `RD$${Number(precio).toLocaleString("es-DO")}` : "—"],

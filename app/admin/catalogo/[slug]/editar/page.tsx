@@ -380,6 +380,7 @@ function EditarProducto({ producto, slug }: { producto: ProductoRow; slug: strin
   const [nombre, setNombre] = useState(producto.nombre);
   const [descripcion, setDescripcion] = useState(producto.descripcion ?? "");
   const [categoria, setCategoria] = useState(producto.categoria);
+  const [categorias, setCategorias] = useState<{ id: string; nombre: string }[]>([]);
   const [tipoCabello, setTipoCabello] = useState<"" | "virgin" | "remy">(
     producto.tipo_cabello === "virgin" || producto.tipo_cabello === "remy" ? producto.tipo_cabello : "",
   );
@@ -396,6 +397,13 @@ function EditarProducto({ producto, slug }: { producto: ProductoRow; slug: strin
   const [guardando, setGuardando] = useState(false);
   const [guardado, setGuardado] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("categorias_productos").select("id, nombre").eq("activo", true).order("nombre");
+      setCategorias(data ?? []);
+    })();
+  }, [supabase]);
 
   async function subirFoto(file: File) {
     setSubiendoFoto(true);
@@ -511,8 +519,15 @@ function EditarProducto({ producto, slug }: { producto: ProductoRow; slug: strin
               </div>
               <div>
                 <label className="text-xs font-semibold text-zinc-500 mb-1.5 block">Categoría</label>
-                <input value={categoria} onChange={(e) => setCategoria(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 focus:outline-none focus:border-zinc-400 transition-colors" />
+                <select value={categoria} onChange={(e) => setCategoria(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 focus:outline-none focus:border-zinc-400 transition-colors bg-white">
+                  {!categorias.some((c) => c.nombre === categoria) && (
+                    <option value={categoria}>{categoria} (inactiva)</option>
+                  )}
+                  {categorias.map((c) => (
+                    <option key={c.id} value={c.nombre}>{c.nombre}</option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>
