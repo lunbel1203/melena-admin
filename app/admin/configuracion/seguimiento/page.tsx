@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Database } from "@/types/database.types";
+import MensajeEditor from "@/components/configuracion/mensaje-editor";
 
 type EstadoCheckin = Database["public"]["Enums"]["estado_checkin"];
 type RespuestaCheckin = Database["public"]["Enums"]["respuesta_checkin"];
@@ -40,10 +41,7 @@ interface Seguimiento {
   servicios: { nombre: string } | null;
 }
 
-function renderizarMensaje(plantilla: string, variables: Record<string, string>) {
-  return plantilla.replace(/\{\{(\w+)\}\}/g, (_, clave) => variables[clave] ?? `{{${clave}}}`);
-}
-
+const VARIABLES_MENSAJE = ["nombre", "servicio"];
 const EJEMPLO_VARIABLES = { nombre: "Ana Beltré", servicio: "Tape-in" };
 
 // Formato dominicano: día/mes/año (la columna es date "YYYY-MM-DD"; se
@@ -119,22 +117,15 @@ export default function SeguimientoPage() {
 
       <div className="bg-white rounded-2xl border border-zinc-200 p-5">
         <SectionLabel>Mensaje</SectionLabel>
-        <p className="text-xs text-zinc-400 mb-4">
-          Se envía a la clienta en los días de seguimiento configurados por servicio (Catálogo). Usa{" "}
-          <code className="text-zinc-600">{"{{nombre}}"}</code> y <code className="text-zinc-600">{"{{servicio}}"}</code>.
+        <p className="text-xs text-zinc-400 mb-3">
+          Se envía a la clienta en los días de seguimiento configurados por servicio (Catálogo).
         </p>
-
-        <textarea
+        <MensajeEditor
           value={config.mensaje_plantilla}
-          onChange={(e) => setConfig({ ...config, mensaje_plantilla: e.target.value })}
-          rows={3}
-          className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm resize-none mb-3"
+          onChange={(v) => setConfig({ ...config, mensaje_plantilla: v })}
+          variables={VARIABLES_MENSAJE}
+          ejemplo={EJEMPLO_VARIABLES}
         />
-
-        <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-1.5">Así se ve</p>
-        <div className="bg-zinc-50 border border-zinc-100 rounded-lg p-3 text-sm text-zinc-700">
-          {renderizarMensaje(config.mensaje_plantilla, EJEMPLO_VARIABLES)}
-        </div>
       </div>
 
       <div className="bg-white rounded-2xl border border-zinc-200 p-5">

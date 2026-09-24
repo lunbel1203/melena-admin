@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import MensajeEditor from "@/components/configuracion/mensaje-editor";
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400 mb-1">{children}</p>;
@@ -18,9 +19,7 @@ interface RecordatoriosConfig {
   mensaje_plantilla: string;
 }
 
-function renderizarMensaje(plantilla: string, variables: Record<string, string>) {
-  return plantilla.replace(/\{\{(\w+)\}\}/g, (_, clave) => variables[clave] ?? `{{${clave}}}`);
-}
+const VARIABLES_MENSAJE = ["nombre", "servicio", "fecha", "hora"];
 
 const EJEMPLO_VARIABLES = {
   nombre: "Ana Beltré",
@@ -124,23 +123,13 @@ export default function RecordatoriosPage() {
 
       <div className="bg-white rounded-2xl border border-zinc-200 p-5">
         <SectionLabel>Mensaje</SectionLabel>
-        <p className="text-xs text-zinc-400 mb-4">
-          Texto que recibe la clienta. Usa <code className="text-zinc-600">{"{{nombre}}"}</code>,{" "}
-          <code className="text-zinc-600">{"{{servicio}}"}</code>, <code className="text-zinc-600">{"{{fecha}}"}</code> y{" "}
-          <code className="text-zinc-600">{"{{hora}}"}</code>; se reemplazan automáticamente por los datos de cada cita.
-        </p>
-
-        <textarea
+        <p className="text-xs text-zinc-400 mb-3">Texto que recibe la clienta.</p>
+        <MensajeEditor
           value={config.mensaje_plantilla}
-          onChange={(e) => setConfig({ ...config, mensaje_plantilla: e.target.value })}
-          rows={3}
-          className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm resize-none mb-3"
+          onChange={(v) => setConfig({ ...config, mensaje_plantilla: v })}
+          variables={VARIABLES_MENSAJE}
+          ejemplo={EJEMPLO_VARIABLES}
         />
-
-        <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-1.5">Así se ve</p>
-        <div className="bg-zinc-50 border border-zinc-100 rounded-lg p-3 text-sm text-zinc-700">
-          {renderizarMensaje(config.mensaje_plantilla, EJEMPLO_VARIABLES)}
-        </div>
       </div>
 
       <div className="bg-white rounded-2xl border border-zinc-200 p-5">
