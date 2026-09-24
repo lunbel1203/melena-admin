@@ -94,6 +94,15 @@ function ReceiptIcon() {
   );
 }
 
+function GearIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="8" cy="8" r="2.25" />
+      <path d="M8 1.5v1.7M8 12.8v1.7M14.5 8h-1.7M3.2 8H1.5M12.4 3.6l-1.2 1.2M4.8 11.2l-1.2 1.2M12.4 12.4l-1.2-1.2M4.8 4.8L3.6 3.6" />
+    </svg>
+  );
+}
+
 const navItems = [
   { name: "Resumen",     href: "/admin/resumen",     icon: GridIcon },
   { name: "Agenda",      href: "/admin/agenda",      icon: CalendarIcon },
@@ -104,6 +113,7 @@ const navItems = [
   { name: "Proveedores", href: "/admin/proveedores",  icon: TruckIcon },
   { name: "Facturación", href: "/admin/facturacion", icon: ReceiptIcon },
   { name: "Reportes",    href: "/admin/reportes",    icon: ChartIcon },
+  { name: "Configuración", href: "/admin/configuracion", icon: GearIcon },
 ];
 
 const services = [

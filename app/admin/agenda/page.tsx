@@ -87,7 +87,7 @@ export default function AgendaPage() {
 
   const [servicios, setServicios] = useState<Servicio[]>([]);
   const [estilistas, setEstilistas] = useState<Estilista[]>([]);
-  const [horario, setHorario] = useState({ apertura: "09:00", cierre: "19:00" });
+  const [horario, setHorario] = useState({ abierto: true, apertura: "09:00", cierre: "19:00" });
   const [citas, setCitas] = useState<Cita[]>([]);
   const [bloqueos, setBloqueos] = useState<Bloqueo[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -102,17 +102,28 @@ export default function AgendaPage() {
   /* Catálogo (una vez) */
   useEffect(() => {
     (async () => {
-      const [{ data: srv }, { data: emp }, { data: hs }] = await Promise.all([
+      const [{ data: srv }, { data: emp }] = await Promise.all([
         supabase.from("servicios").select("id, nombre").eq("activo", true).order("nombre"),
         supabase.from("empleados").select("id, nombre").eq("rol", "estilista").eq("activo", true).order("nombre"),
-        supabase.rpc("horario_salon"),
       ]);
       setServicios(srv ?? []);
       setActiveFilters(new Set((srv ?? []).map((s) => s.id)));
       setEstilistas(emp ?? []);
-      if (hs && hs[0]) setHorario(hs[0]);
     })();
   }, [supabase]);
+
+  /* Horario real del día mostrado (configurado en Configuración → Horario y agenda) */
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      const { data } = await supabase.rpc("horario_salon", { p_fecha: toISODate(fecha) });
+      if (cancelado) return;
+      if (data && data[0]) setHorario(data[0]);
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [supabase, fecha]);
 
   /* Rango visible según la vista */
   const rango = useMemo(() => {
@@ -349,16 +360,16 @@ function VistaDia({
 }: {
   fecha: Date;
   hoy: Date;
-  horario: { apertura: string; cierre: string };
+  horario: { abierto: boolean; apertura: string; cierre: string };
   estilistas: Estilista[];
   citas: Cita[];
   bloqueos: Bloqueo[];
   colorPorServicio: Map<string, string>;
 }) {
-  if (fecha.getDay() === 0) {
+  if (!horario.abierto) {
     return (
       <div className="bg-white rounded-2xl border border-zinc-100 p-10 text-center">
-        <p className="text-sm text-zinc-400">El salón permanece cerrado los domingos.</p>
+        <p className="text-sm text-zinc-400">El salón permanece cerrado este día.</p>
       </div>
     );
   }

@@ -257,6 +257,66 @@ export type Database = {
           },
         ]
       }
+      cuentas_bancarias: {
+        Row: {
+          activa: boolean
+          banco: string
+          created_at: string
+          id: string
+          numero_cuenta: string
+          tipo_cuenta: string
+          titular: string
+        }
+        Insert: {
+          activa?: boolean
+          banco: string
+          created_at?: string
+          id?: string
+          numero_cuenta: string
+          tipo_cuenta: string
+          titular?: string
+        }
+        Update: {
+          activa?: boolean
+          banco?: string
+          created_at?: string
+          id?: string
+          numero_cuenta?: string
+          tipo_cuenta?: string
+          titular?: string
+        }
+        Relationships: []
+      }
+      deposito_config: {
+        Row: {
+          accion_si_no_sube_a_tiempo: string
+          id: boolean
+          monto: number
+          plazo_horas: number
+          quien_puede_verificar: Database["public"]["Enums"]["rol_empleado"][]
+          reembolsable_hasta_horas: number | null
+          updated_at: string
+        }
+        Insert: {
+          accion_si_no_sube_a_tiempo?: string
+          id?: boolean
+          monto?: number
+          plazo_horas?: number
+          quien_puede_verificar?: Database["public"]["Enums"]["rol_empleado"][]
+          reembolsable_hasta_horas?: number | null
+          updated_at?: string
+        }
+        Update: {
+          accion_si_no_sube_a_tiempo?: string
+          id?: boolean
+          monto?: number
+          plazo_horas?: number
+          quien_puede_verificar?: Database["public"]["Enums"]["rol_empleado"][]
+          reembolsable_hasta_horas?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       depositos: {
         Row: {
           cita_id: string
@@ -307,6 +367,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      dias_especiales: {
+        Row: {
+          cerrado: boolean
+          created_at: string
+          fecha: string
+          hora_cierre_especial: string | null
+          id: string
+          nombre: string
+        }
+        Insert: {
+          cerrado?: boolean
+          created_at?: string
+          fecha: string
+          hora_cierre_especial?: string | null
+          id?: string
+          nombre: string
+        }
+        Update: {
+          cerrado?: boolean
+          created_at?: string
+          fecha?: string
+          hora_cierre_especial?: string | null
+          id?: string
+          nombre?: string
+        }
+        Relationships: []
       }
       disponibilidad_empleados: {
         Row: {
@@ -494,6 +581,33 @@ export type Database = {
           },
         ]
       }
+      horario_semanal: {
+        Row: {
+          abierto: boolean
+          apertura: string | null
+          cierre: string | null
+          dia_semana: number
+          pausa_fin: string | null
+          pausa_inicio: string | null
+        }
+        Insert: {
+          abierto?: boolean
+          apertura?: string | null
+          cierre?: string | null
+          dia_semana: number
+          pausa_fin?: string | null
+          pausa_inicio?: string | null
+        }
+        Update: {
+          abierto?: boolean
+          apertura?: string | null
+          cierre?: string | null
+          dia_semana?: number
+          pausa_fin?: string | null
+          pausa_inicio?: string | null
+        }
+        Relationships: []
+      }
       lineas_factura: {
         Row: {
           cantidad: number
@@ -567,6 +681,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      negocio_config: {
+        Row: {
+          direccion: string | null
+          id: boolean
+          instagram: string | null
+          moneda: string
+          nombre_comercial: string
+          telefono: string | null
+          updated_at: string
+          whatsapp: string | null
+        }
+        Insert: {
+          direccion?: string | null
+          id?: boolean
+          instagram?: string | null
+          moneda?: string
+          nombre_comercial?: string
+          telefono?: string | null
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Update: {
+          direccion?: string | null
+          id?: boolean
+          instagram?: string | null
+          moneda?: string
+          nombre_comercial?: string
+          telefono?: string | null
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Relationships: []
       }
       productos: {
         Row: {
@@ -663,6 +810,48 @@ export type Database = {
           id?: string
           nombre?: string
           telefono?: string | null
+        }
+        Relationships: []
+      }
+      reglas_agenda: {
+        Row: {
+          aceptar_clientas_sin_cita: boolean
+          anticipacion_minima_horas: number
+          bloque_minutos: number
+          cancelar_sin_penalidad_horas: number
+          id: boolean
+          permitir_cualquier_estilista: boolean
+          reservar_hasta_dias: number
+          sugerir_otra_estilista: boolean
+          tiempo_entre_citas_minutos: number
+          updated_at: string
+          zona_horaria: string
+        }
+        Insert: {
+          aceptar_clientas_sin_cita?: boolean
+          anticipacion_minima_horas?: number
+          bloque_minutos?: number
+          cancelar_sin_penalidad_horas?: number
+          id?: boolean
+          permitir_cualquier_estilista?: boolean
+          reservar_hasta_dias?: number
+          sugerir_otra_estilista?: boolean
+          tiempo_entre_citas_minutos?: number
+          updated_at?: string
+          zona_horaria?: string
+        }
+        Update: {
+          aceptar_clientas_sin_cita?: boolean
+          anticipacion_minima_horas?: number
+          bloque_minutos?: number
+          cancelar_sin_penalidad_horas?: number
+          id?: boolean
+          permitir_cualquier_estilista?: boolean
+          reservar_hasta_dias?: number
+          sugerir_otra_estilista?: boolean
+          tiempo_entre_citas_minutos?: number
+          updated_at?: string
+          zona_horaria?: string
         }
         Relationships: []
       }
@@ -890,10 +1079,13 @@ export type Database = {
         }[]
       }
       horario_salon: {
-        Args: never
+        Args: { p_fecha: string }
         Returns: {
+          abierto: boolean
           apertura: string
           cierre: string
+          pausa_fin: string
+          pausa_inicio: string
         }[]
       }
       horarios_disponibles_estilista: {
