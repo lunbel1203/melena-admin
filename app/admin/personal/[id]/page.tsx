@@ -219,6 +219,8 @@ export default function PerfilEmpleadaPage({ params }: { params: Promise<{ id: s
     if (accion === "crear") await cargar();
     await mostrarCredenciales({
       titulo: accion === "crear" ? "Cuenta creada" : "Contraseña restablecida",
+      nombre: empleado.nombre,
+      telefono: empleado.telefono,
       email: data.email,
       password: data.password,
     });

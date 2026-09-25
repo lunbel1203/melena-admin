@@ -49,23 +49,51 @@ export async function avisar(titulo: string, texto?: string) {
   });
 }
 
-export async function mostrarCredenciales(opciones: { titulo: string; email: string; password: string }) {
+function normalizarTelefonoDO(telefono: string) {
+  const digitos = telefono.replace(/\D/g, "");
+  if (digitos.length === 10) return `1${digitos}`;
+  return digitos;
+}
+
+function enlaceWhatsApp(telefono: string | null | undefined, mensaje: string) {
+  const texto = encodeURIComponent(mensaje);
+  if (telefono && telefono.trim()) {
+    return `https://wa.me/${normalizarTelefonoDO(telefono)}?text=${texto}`;
+  }
+  return `https://wa.me/?text=${texto}`;
+}
+
+export async function mostrarCredenciales(opciones: {
+  titulo: string;
+  nombre: string;
+  telefono?: string | null;
+  email: string;
+  password: string;
+}) {
+  const mensaje = `Hola ${opciones.nombre}, ya podés entrar a la app de Melena con estos datos:\n\nCorreo: ${opciones.email}\nContraseña: ${opciones.password}`;
+  const linkWhatsApp = enlaceWhatsApp(opciones.telefono, mensaje);
+
   await Swal.fire({
     ...BASE,
     title: opciones.titulo,
     html: `
       <div class="text-left text-sm text-zinc-500 space-y-3">
-        <p>Compartíselos a la empleada (WhatsApp, de palabra, etc.) — no se van a volver a mostrar.</p>
+        <p>Compartíselos a la empleada — no se van a volver a mostrar.</p>
         <div class="bg-zinc-50 rounded-xl p-3 space-y-1.5 text-zinc-800">
           <p><span class="font-semibold">Correo:</span> ${opciones.email}</p>
           <p><span class="font-semibold">Contraseña:</span> <span class="font-mono tracking-wide">${opciones.password}</span></p>
         </div>
+        <a href="${linkWhatsApp}" target="_blank" rel="noopener noreferrer"
+           class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-teal-500 hover:bg-teal-600 text-white text-sm font-semibold transition-colors no-underline">
+          Enviar por WhatsApp
+        </a>
+        ${!opciones.telefono ? '<p class="text-xs text-zinc-400 text-center">Esta empleada no tiene teléfono cargado — vas a tener que elegir el chat a mano.</p>' : ""}
       </div>
     `,
     confirmButtonText: "Entendido",
     customClass: {
       ...BASE.customClass,
-      confirmButton: `${BASE.customClass.confirmButton} !bg-zinc-900 hover:!bg-zinc-700`,
+      confirmButton: `${BASE.customClass.confirmButton} !bg-zinc-900 hover:!bg-zinc-700 !w-full`,
     },
   });
 }
