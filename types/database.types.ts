@@ -583,6 +583,30 @@ export type Database = {
         }
         Relationships: []
       }
+      facturacion_config: {
+        Row: {
+          id: boolean
+          itbis_porcentaje: number
+          razon_social: string | null
+          rnc: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: boolean
+          itbis_porcentaje?: number
+          razon_social?: string | null
+          rnc?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: boolean
+          itbis_porcentaje?: number
+          razon_social?: string | null
+          rnc?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       facturas: {
         Row: {
           clienta_id: string
