@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { use, useEffect, useMemo, useRef, useState } from "react";
+import { FunctionsHttpError } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { avisar, confirmar, mostrarCredenciales } from "@/lib/alerts";
 
@@ -14,6 +15,13 @@ function formatearFechaDO(fechaISO: string) {
 
 function pad(n: number) {
   return String(n).padStart(2, "0");
+}
+
+function traducirErrorCuenta(mensaje: string) {
+  if (/already been registered|already exists/i.test(mensaje)) {
+    return "Ese correo ya tiene una cuenta (puede ser de otra empleada o del admin). Revisá el correo de esta empleada en Editar empleada.";
+  }
+  return mensaje;
 }
 
 /* ── Icons ── */
@@ -199,8 +207,13 @@ export default function PerfilEmpleadaPage({ params }: { params: Promise<{ id: s
     });
     setGestionandoCuenta(false);
 
-    if (fnError || data?.error) {
-      return setError(data?.error ?? fnError?.message ?? "No se pudo completar la operación.");
+    if (fnError) {
+      let mensaje = fnError.message;
+      if (fnError instanceof FunctionsHttpError) {
+        const body = await fnError.context.json().catch(() => null);
+        if (body?.error) mensaje = traducirErrorCuenta(body.error);
+      }
+      return avisar("No se pudo completar la operación", mensaje);
     }
 
     if (accion === "crear") await cargar();
