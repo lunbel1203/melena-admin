@@ -91,7 +91,6 @@ export default function AgendaPage() {
   const [citas, setCitas] = useState<Cita[]>([]);
   const [bloqueos, setBloqueos] = useState<Bloqueo[]>([]);
   const [cargando, setCargando] = useState(true);
-  const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
 
   const colorPorServicio = useMemo(() => {
     const map = new Map<string, string>();
@@ -112,7 +111,6 @@ export default function AgendaPage() {
           .order("nombre"),
       ]);
       setServicios(srv ?? []);
-      setActiveFilters(new Set((srv ?? []).map((s) => s.id)));
       setEstilistas((emp ?? []).map((e) => ({ id: e.id, nombre: e.nombre })));
     })();
   }, [supabase]);
@@ -204,16 +202,7 @@ export default function AgendaPage() {
     };
   }, [supabase, rango.desde, rango.hasta]);
 
-  const toggleFilter = (id: string) => {
-    setActiveFilters((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
-
-  const citasVisibles = (dia: string) =>
-    citas.filter((c) => c.fecha === dia && activeFilters.has(c.servicio_id));
+  const citasVisibles = (dia: string) => citas.filter((c) => c.fecha === dia);
 
   const bloqueosDelDia = (dia: string) => bloqueos.filter((b) => b.fecha === dia);
 
@@ -271,27 +260,6 @@ export default function AgendaPage() {
     </div>
   );
 
-  const filterDots = servicios.length > 0 && (
-    <div className="flex items-center gap-4 flex-wrap">
-      {servicios.map((s) => (
-        <button
-          key={s.id}
-          onClick={() => toggleFilter(s.id)}
-          className={`flex items-center gap-1.5 text-sm transition-colors ${
-            activeFilters.has(s.id) ? "text-zinc-700" : "text-zinc-300"
-          }`}
-        >
-          <span
-            className={`w-2 h-2 rounded-full shrink-0 transition-colors ${
-              activeFilters.has(s.id) ? colorPorServicio.get(s.id) : "bg-zinc-200"
-            }`}
-          />
-          {s.nombre}
-        </button>
-      ))}
-    </div>
-  );
-
   return (
     <div className="min-h-full bg-zinc-50 p-4 sm:p-6 lg:p-8">
       {/* ══ Header ══ */}
@@ -309,7 +277,6 @@ export default function AgendaPage() {
             + Nueva cita
           </Link>
         </div>
-        {filterDots}
       </div>
 
       {cargando && citas.length === 0 && (
