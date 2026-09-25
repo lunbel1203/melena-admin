@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { confirmar } from "@/lib/alerts";
 
 function SearchIcon() {
   return (
@@ -122,7 +123,13 @@ export default function CatalogoPage() {
   }, [supabase]);
 
   async function eliminarProducto(id: string, nombre: string) {
-    if (!window.confirm(`¿Eliminar "${nombre}"? Esta acción no se puede deshacer.`)) return;
+    const ok = await confirmar({
+      titulo: `¿Eliminar "${nombre}"?`,
+      texto: "Esta acción no se puede deshacer.",
+      confirmarTexto: "Eliminar",
+      peligroso: true,
+    });
+    if (!ok) return;
     setError(null);
     const { error } = await supabase.from("productos").delete().eq("id", id);
     if (error) {
@@ -137,7 +144,13 @@ export default function CatalogoPage() {
   }
 
   async function eliminarServicio(id: string, nombre: string) {
-    if (!window.confirm(`¿Eliminar "${nombre}"? Esta acción no se puede deshacer.`)) return;
+    const ok = await confirmar({
+      titulo: `¿Eliminar "${nombre}"?`,
+      texto: "Esta acción no se puede deshacer.",
+      confirmarTexto: "Eliminar",
+      peligroso: true,
+    });
+    if (!ok) return;
     setError(null);
     const { error } = await supabase.from("servicios").delete().eq("id", id);
     if (error) {

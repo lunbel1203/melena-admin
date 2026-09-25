@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { use } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { confirmar } from "@/lib/alerts";
 import {
   addDays,
   diaAbbr,
@@ -230,7 +231,13 @@ export default function CitaDetailPage({ params }: { params: Promise<{ id: strin
 
   async function rechazarDeposito() {
     if (!deposito) return;
-    if (!window.confirm("¿Rechazar este comprobante? La cita seguirá pendiente de confirmación.")) return;
+    const ok = await confirmar({
+      titulo: "¿Rechazar este comprobante?",
+      texto: "La cita seguirá pendiente de confirmación.",
+      confirmarTexto: "Rechazar",
+      peligroso: true,
+    });
+    if (!ok) return;
     setAccionando(true);
     setError(null);
     const { error } = await supabase.from("depositos").update({ estado: "rechazado" }).eq("id", deposito.id);
@@ -240,7 +247,13 @@ export default function CitaDetailPage({ params }: { params: Promise<{ id: strin
   }
 
   async function cancelarCita() {
-    if (!window.confirm("¿Cancelar esta cita? Esta acción no se puede deshacer.")) return;
+    const ok = await confirmar({
+      titulo: "¿Cancelar esta cita?",
+      texto: "Esta acción no se puede deshacer.",
+      confirmarTexto: "Cancelar cita",
+      peligroso: true,
+    });
+    if (!ok) return;
     setAccionando(true);
     setError(null);
     const { error } = await supabase.from("citas").update({ estado: "cancelada" }).eq("id", id);

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { confirmar } from "@/lib/alerts";
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400 mb-1">{children}</p>;
@@ -164,7 +165,12 @@ export default function PermisosPage() {
   }
 
   async function eliminarRol(r: Rol) {
-    if (!window.confirm(`¿Eliminar el rol "${r.nombre}"?`)) return;
+    const ok = await confirmar({
+      titulo: `¿Eliminar el rol "${r.nombre}"?`,
+      confirmarTexto: "Eliminar",
+      peligroso: true,
+    });
+    if (!ok) return;
     setErrorRoles(null);
     const { error } = await supabase.from("roles").delete().eq("id", r.id);
     if (error) {

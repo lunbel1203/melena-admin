@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { confirmar } from "@/lib/alerts";
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400 mb-1">{children}</p>;
@@ -79,7 +80,12 @@ export default function InventarioPage() {
   }
 
   async function eliminarCategoria(c: Categoria) {
-    if (!window.confirm(`¿Eliminar la categoría "${c.nombre}"?`)) return;
+    const ok = await confirmar({
+      titulo: `¿Eliminar la categoría "${c.nombre}"?`,
+      confirmarTexto: "Eliminar",
+      peligroso: true,
+    });
+    if (!ok) return;
     setError(null);
     const { count } = await supabase
       .from("productos")
