@@ -12,7 +12,6 @@ const secciones = [
   { href: "/admin/configuracion/comisiones", label: "Comisiones" },
   { href: "/admin/configuracion/facturacion", label: "Facturación e impuestos" },
   { href: "/admin/configuracion/inventario", label: "Inventario" },
-  { href: "/admin/configuracion/permisos", label: "Roles y permisos" },
 ];
 
 export default function ConfiguracionLayout({ children }: { children: React.ReactNode }) {

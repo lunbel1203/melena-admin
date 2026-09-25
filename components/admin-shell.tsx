@@ -13,7 +13,8 @@ function MenuIcon() {
   );
 }
 
-// Segmento de la URL (/admin/<modulo>/...) que corresponde a cada fila de permisos_modulo.
+// Segmento de la URL (/admin/<modulo>/...) que corresponde a un permiso "<modulo>.ver".
+// "seguridad" no está acá a propósito: se controla aparte, solo por esAdmin (no delegable).
 const MODULOS_CONTROLADOS = new Set([
   "resumen", "agenda", "clientas", "depositos", "personal",
   "catalogo", "proveedores", "facturacion", "reportes", "configuracion",
@@ -61,15 +62,18 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       }
 
       setModulosVisibles(
-        new Set(Array.from(claves).filter((c) => c.startsWith("ver_")).map((c) => c.replace(/^ver_/, ""))),
+        new Set(Array.from(claves).filter((c) => c.endsWith(".ver")).map((c) => c.replace(/\.ver$/, ""))),
       );
       setCargandoAcceso(false);
     })();
   }, [supabase, router]);
 
   const modulo = pathname.split("/")[2] ?? "";
+  const esRutaSeguridad = modulo === "seguridad";
   const rutaControlada = MODULOS_CONTROLADOS.has(modulo);
-  const permitido = esAdmin || !rutaControlada || (modulosVisibles?.has(modulo) ?? false);
+  const permitido = esRutaSeguridad
+    ? esAdmin
+    : esAdmin || !rutaControlada || (modulosVisibles?.has(modulo) ?? false);
 
   return (
     <div className="flex h-full">
@@ -110,7 +114,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-center px-6">
               <p className="text-sm font-semibold text-zinc-700 mb-1">Acceso restringido</p>
-              <p className="text-sm text-zinc-400">No tienes permiso para ver esta sección. Pídele a un admin que te lo habilite en Configuración → Roles y permisos.</p>
+              <p className="text-sm text-zinc-400">No tienes permiso para ver esta sección. Pídele a un admin que te lo habilite en Seguridad.</p>
             </div>
           )}
         </main>

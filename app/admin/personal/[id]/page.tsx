@@ -117,12 +117,12 @@ export default function PerfilEmpleadaPage({ params }: { params: Promise<{ id: s
         .limit(20),
       supabase.from("servicios_empleados").select("servicios(nombre)").eq("empleado_id", id),
       emp.esAdminTotal
-        ? Promise.resolve({ data: ["ver_reportes", "depositos.verificar"] })
+        ? Promise.resolve({ data: ["reportes.ver", "depositos.verificar"] })
         : supabase
             .from("rol_permisos")
             .select("permiso_clave")
             .eq("rol_id", emp.rol_id)
-            .in("permiso_clave", ["ver_reportes", "depositos.verificar"])
+            .in("permiso_clave", ["reportes.ver", "depositos.verificar"])
             .then((res) => ({ data: (res.data ?? []).map((p) => p.permiso_clave) })),
       supabase
         .from("disponibilidad_empleados")
@@ -143,7 +143,7 @@ export default function PerfilEmpleadaPage({ params }: { params: Promise<{ id: s
       }))
     );
     setServiciosAsignados((serviciosEmp ?? []).map((s: { servicios: { nombre: string } | null }) => s.servicios?.nombre).filter((n): n is string => !!n));
-    setPuedeReportes((permisos ?? []).includes("ver_reportes"));
+    setPuedeReportes((permisos ?? []).includes("reportes.ver"));
     setPuedeValidarDepositos((permisos ?? []).includes("depositos.verificar"));
     setDiasBloqueados(new Set((disponibilidad ?? []).map((d) => d.fecha)));
     setCargando(false);

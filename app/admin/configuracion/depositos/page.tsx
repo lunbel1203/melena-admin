@@ -196,7 +196,7 @@ export default function DepositosPagosPage() {
           <div>
             <p className="text-xs font-semibold text-zinc-500 mb-1.5">Quién puede verificar depósitos</p>
             <p className="text-xs text-zinc-400 max-w-[220px]">
-              Se administra desde Configuración → Roles y permisos (permiso &quot;Verificar depósitos&quot;).
+              Se administra desde Seguridad (permiso &quot;Verificar&quot; en el módulo Depósitos).
             </p>
           </div>
 

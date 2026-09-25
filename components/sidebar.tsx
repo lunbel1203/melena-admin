@@ -105,6 +105,14 @@ function GearIcon() {
   );
 }
 
+function ShieldIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 1.5L2.5 3.5v4c0 3.6 2.4 6.3 5.5 7 3.1-.7 5.5-3.4 5.5-7v-4L8 1.5z" />
+    </svg>
+  );
+}
+
 const navItems = [
   { name: "Resumen",     href: "/admin/resumen",     icon: GridIcon,     modulo: "resumen" },
   { name: "Agenda",      href: "/admin/agenda",      icon: CalendarIcon, modulo: "agenda" },
@@ -122,6 +130,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const supabase = useMemo(() => createClient(), []);
   const [usuario, setUsuario] = useState<{ nombre: string; rolNombre: string } | null>(null);
+  const [esAdmin, setEsAdmin] = useState(false);
   const [modulosVisibles, setModulosVisibles] = useState<Set<string> | null>(null);
 
   useEffect(() => {
@@ -139,15 +148,17 @@ export default function Sidebar() {
       const rol = Array.isArray(data.roles) ? data.roles[0] : data.roles;
       setUsuario({ nombre: data.nombre, rolNombre: rol?.nombre ?? "" });
 
-      if (rol && !rol.es_admin_total) {
+      if (rol?.es_admin_total) {
+        setEsAdmin(true);
+        setModulosVisibles(null);
+      } else {
+        setEsAdmin(false);
         const { data: permisos } = await supabase
           .from("rol_permisos")
           .select("permiso_clave")
           .eq("rol_id", data.rol_id)
-          .like("permiso_clave", "ver_%");
-        setModulosVisibles(new Set((permisos ?? []).map((p) => p.permiso_clave.replace(/^ver_/, ""))));
-      } else {
-        setModulosVisibles(null);
+          .like("permiso_clave", "%.ver");
+        setModulosVisibles(new Set((permisos ?? []).map((p) => p.permiso_clave.replace(/\.ver$/, ""))));
       }
     })();
   }, [supabase]);
@@ -193,6 +204,26 @@ export default function Sidebar() {
             );
           })}
         </ul>
+
+        {esAdmin && (
+          <ul className="space-y-0.5 mt-4 pt-4 border-t border-zinc-800">
+            <li>
+              <Link
+                href="/admin/seguridad"
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  pathname.startsWith("/admin/seguridad")
+                    ? "bg-white text-zinc-900"
+                    : "text-zinc-400 hover:text-white hover:bg-zinc-800"
+                }`}
+              >
+                <span className="shrink-0">
+                  <ShieldIcon />
+                </span>
+                Seguridad
+              </Link>
+            </li>
+          </ul>
+        )}
       </nav>
 
       {/* User */}

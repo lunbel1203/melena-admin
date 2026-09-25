@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { confirmar } from "@/lib/alerts";
 
@@ -21,11 +21,25 @@ interface Permiso {
   orden: number;
 }
 
+const MODULOS: { modulo: string; etiqueta: string }[] = [
+  { modulo: "plataforma", etiqueta: "Plataforma" },
+  { modulo: "resumen", etiqueta: "Resumen" },
+  { modulo: "agenda", etiqueta: "Agenda" },
+  { modulo: "clientas", etiqueta: "Clientas" },
+  { modulo: "depositos", etiqueta: "Depósitos" },
+  { modulo: "personal", etiqueta: "Personal" },
+  { modulo: "catalogo", etiqueta: "Catálogo" },
+  { modulo: "proveedores", etiqueta: "Proveedores" },
+  { modulo: "facturacion", etiqueta: "Facturación" },
+  { modulo: "reportes", etiqueta: "Reportes" },
+  { modulo: "configuracion", etiqueta: "Configuración" },
+];
+
 function clave(rolId: string, permisoClave: string) {
   return `${rolId}::${permisoClave}`;
 }
 
-export default function PermisosPage() {
+export default function SeguridadPage() {
   const supabase = useMemo(() => createClient(), []);
   const [roles, setRoles] = useState<Rol[]>([]);
   const [nombresOriginales, setNombresOriginales] = useState<Map<string, string>>(new Map());
@@ -183,30 +197,32 @@ export default function PermisosPage() {
     cargar();
   }
 
-  if (cargando) return <p className="text-sm text-zinc-400">Cargando…</p>;
-
-  const plataforma = catalogo.filter((p) => p.modulo === "plataforma");
-  const modulos = catalogo.filter((p) => p.modulo === "modulo");
-  const acciones = catalogo.filter((p) => p.modulo === "accion");
+  if (cargando) return <p className="p-8 text-sm text-zinc-400">Cargando…</p>;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-end gap-3">
-        {guardado && <span className="text-xs font-medium text-teal-600">Guardado ✓</span>}
-        {error && <span className="text-xs text-red-500">{error}</span>}
-        <button
-          onClick={guardar}
-          disabled={guardando || !huboCambios}
-          className="text-sm font-semibold text-white bg-zinc-900 px-4 py-2 rounded-xl hover:bg-zinc-700 transition-colors disabled:opacity-50"
-        >
-          {guardando ? "Guardando…" : "Guardar cambios"}
-        </button>
+    <div className="min-h-full bg-zinc-50 p-5 sm:p-7 lg:p-8 space-y-4">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900">Seguridad</h1>
+          <p className="text-sm text-zinc-400 mt-1">Roles y qué puede hacer cada uno, módulo por módulo.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          {guardado && <span className="text-xs font-medium text-teal-600">Guardado ✓</span>}
+          {error && <span className="text-xs text-red-500">{error}</span>}
+          <button
+            onClick={guardar}
+            disabled={guardando || !huboCambios}
+            className="text-sm font-semibold text-white bg-zinc-900 px-4 py-2 rounded-xl hover:bg-zinc-700 transition-colors disabled:opacity-50"
+          >
+            {guardando ? "Guardando…" : "Guardar cambios"}
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl border border-zinc-200 p-5">
         <SectionLabel>Roles</SectionLabel>
         <p className="text-xs text-zinc-400 mb-4">
-          Crea roles con el nombre que quieras. Admin siempre existe y no se puede renombrar ni eliminar.
+          Crea roles con el nombre que quieras. Admin siempre existe, tiene todo, y no se puede renombrar ni eliminar.
         </p>
 
         {errorRoles && <p className="text-xs text-red-500 mb-3">{errorRoles}</p>}
@@ -266,18 +282,17 @@ export default function PermisosPage() {
       </div>
 
       <div className="bg-white rounded-2xl border border-zinc-200 p-5">
-        <SectionLabel>Permisos por rol</SectionLabel>
+        <SectionLabel>Permisos por módulo</SectionLabel>
         <p className="text-xs text-zinc-400 mb-4">
-          Controla qué secciones ve cada rol y qué acciones puntuales puede hacer (verificar depósitos, cobrar
-          facturas, gestionar catálogo y personal, ver comisiones de otras). Admin siempre tiene todo — por
-          seguridad, no se le puede quitar acceso desde aquí.
+          Para cada módulo, qué puede hacer cada rol. Admin siempre tiene todo — por seguridad no se le puede
+          quitar acceso desde aquí.
         </p>
 
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[520px]">
             <thead>
               <tr className="text-left text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">
-                <th className="pb-2 pr-3">Permiso</th>
+                <th className="pb-2 pr-3">Acción</th>
                 <th className="pb-2 px-3 text-center">Admin</th>
                 {rolesEditables.map((r) => (
                   <th key={r.id} className="pb-2 px-3 text-center">
@@ -287,75 +302,37 @@ export default function PermisosPage() {
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td colSpan={2 + rolesEditables.length} className="pb-1 text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">
-                  Plataforma
-                </td>
-              </tr>
-              {plataforma.map((p) => (
-                <tr key={p.clave} className="border-t border-zinc-100">
-                  <td className="py-2.5 pr-3 text-zinc-700 font-medium">{p.etiqueta}</td>
-                  <td className="py-2.5 px-3 text-center">
-                    <input type="checkbox" checked disabled className="w-4 h-4 rounded accent-zinc-300 cursor-not-allowed" />
-                  </td>
-                  {rolesEditables.map((r) => (
-                    <td key={r.id} className="py-2.5 px-3 text-center">
-                      <input
-                        type="checkbox"
-                        checked={!!permisos.get(clave(r.id, p.clave))}
-                        onChange={() => toggle(r.id, p.clave)}
-                        className="w-4 h-4 rounded accent-teal-500 cursor-pointer"
-                      />
-                    </td>
-                  ))}
-                </tr>
-              ))}
-              <tr>
-                <td colSpan={2 + rolesEditables.length} className="pt-4 pb-1 text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">
-                  Ver módulos
-                </td>
-              </tr>
-              {modulos.map((p) => (
-                <tr key={p.clave} className="border-t border-zinc-100">
-                  <td className="py-2.5 pr-3 text-zinc-700 font-medium">{p.etiqueta}</td>
-                  <td className="py-2.5 px-3 text-center">
-                    <input type="checkbox" checked disabled className="w-4 h-4 rounded accent-zinc-300 cursor-not-allowed" />
-                  </td>
-                  {rolesEditables.map((r) => (
-                    <td key={r.id} className="py-2.5 px-3 text-center">
-                      <input
-                        type="checkbox"
-                        checked={!!permisos.get(clave(r.id, p.clave))}
-                        onChange={() => toggle(r.id, p.clave)}
-                        className="w-4 h-4 rounded accent-teal-500 cursor-pointer"
-                      />
-                    </td>
-                  ))}
-                </tr>
-              ))}
-              <tr>
-                <td colSpan={2 + rolesEditables.length} className="pt-4 pb-1 text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">
-                  Acciones
-                </td>
-              </tr>
-              {acciones.map((p) => (
-                <tr key={p.clave} className="border-t border-zinc-100">
-                  <td className="py-2.5 pr-3 text-zinc-700 font-medium">{p.etiqueta}</td>
-                  <td className="py-2.5 px-3 text-center">
-                    <input type="checkbox" checked disabled className="w-4 h-4 rounded accent-zinc-300 cursor-not-allowed" />
-                  </td>
-                  {rolesEditables.map((r) => (
-                    <td key={r.id} className="py-2.5 px-3 text-center">
-                      <input
-                        type="checkbox"
-                        checked={!!permisos.get(clave(r.id, p.clave))}
-                        onChange={() => toggle(r.id, p.clave)}
-                        className="w-4 h-4 rounded accent-teal-500 cursor-pointer"
-                      />
-                    </td>
-                  ))}
-                </tr>
-              ))}
+              {MODULOS.map(({ modulo, etiqueta }) => {
+                const filas = catalogo.filter((p) => p.modulo === modulo);
+                if (filas.length === 0) return null;
+                return (
+                  <Fragment key={modulo}>
+                    <tr>
+                      <td colSpan={2 + rolesEditables.length} className="pt-4 pb-1 text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">
+                        {etiqueta}
+                      </td>
+                    </tr>
+                    {filas.map((p) => (
+                      <tr key={p.clave} className="border-t border-zinc-100">
+                        <td className="py-2.5 pr-3 text-zinc-700 font-medium">{p.etiqueta}</td>
+                        <td className="py-2.5 px-3 text-center">
+                          <input type="checkbox" checked disabled className="w-4 h-4 rounded accent-zinc-300 cursor-not-allowed" />
+                        </td>
+                        {rolesEditables.map((r) => (
+                          <td key={r.id} className="py-2.5 px-3 text-center">
+                            <input
+                              type="checkbox"
+                              checked={!!permisos.get(clave(r.id, p.clave))}
+                              onChange={() => toggle(r.id, p.clave)}
+                              className="w-4 h-4 rounded accent-teal-500 cursor-pointer"
+                            />
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
