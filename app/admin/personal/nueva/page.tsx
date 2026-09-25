@@ -1,7 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import type { Database } from "@/types/database.types";
+
+type RolEmpleado = Database["public"]["Enums"]["rol_empleado"];
 
 function BackIcon() {
   return (
@@ -12,39 +17,92 @@ function BackIcon() {
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400 mb-3">
-      {children}
-    </p>
-  );
+  return <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400 mb-3">{children}</p>;
 }
 
-const roles = [
-  { id: "estilista",  label: "Estilista",   desc: "Realiza servicios de extensiones" },
-  { id: "recepcion",  label: "Recepción",    desc: "Gestiona citas y atención al cliente" },
-  { id: "caja",       label: "Caja",         desc: "Manejo de pagos y depósitos" },
+const roles: { id: RolEmpleado; label: string; desc: string }[] = [
+  { id: "estilista", label: "Estilista", desc: "Realiza servicios de extensiones" },
+  { id: "recepcion", label: "Recepción", desc: "Gestiona citas y atención al cliente" },
+  { id: "caja", label: "Caja", desc: "Manejo de pagos y depósitos" },
+  { id: "admin", label: "Admin", desc: "Acceso total al panel, sin restricciones" },
 ];
 
-const services = ["Tape-in", "Nano ring", "Bulk", "Ponytail", "Cortina", "Retiro"];
+interface Servicio {
+  id: string;
+  nombre: string;
+}
 
 export default function NuevaEmpleadaPage() {
-  const [nombre, setNombre]       = useState("");
-  const [telefono, setTelefono]   = useState("");
-  const [correo, setCorreo]       = useState("");
-  const [rol, setRol]             = useState<string | null>(null);
-  const [selectedServices, setSelectedServices] = useState<string[]>([]);
-  const [comision, setComision]   = useState("");
-  const [nota, setNota]           = useState("");
+  const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
 
-  function toggleService(s: string) {
-    setSelectedServices((prev) =>
-      prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
-    );
+  const [nombre, setNombre] = useState("");
+  const [telefono, setTelefono] = useState("");
+  const [correo, setCorreo] = useState("");
+  const [puesto, setPuesto] = useState("");
+  const [rol, setRol] = useState<RolEmpleado | null>(null);
+  const [servicios, setServicios] = useState<Servicio[]>([]);
+  const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
+  const [comision, setComision] = useState("");
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("servicios").select("id, nombre").eq("activo", true).order("nombre");
+      setServicios(data ?? []);
+    })();
+  }, [supabase]);
+
+  function toggleServicio(id: string) {
+    setSeleccionados((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  async function crear() {
+    if (!nombre.trim() || !rol) {
+      return setError("Falta el nombre o el rol.");
+    }
+    setGuardando(true);
+    setError(null);
+
+    const { data: nuevo, error: insError } = await supabase
+      .from("empleados")
+      .insert({
+        nombre: nombre.trim(),
+        telefono: telefono.trim() || null,
+        email: correo.trim() || null,
+        puesto: puesto.trim() || null,
+        rol,
+        porcentaje_comision: comision.trim() ? Number(comision) : null,
+      })
+      .select("id")
+      .single();
+
+    if (insError || !nuevo) {
+      setGuardando(false);
+      return setError(insError?.message ?? "No se pudo crear la empleada.");
+    }
+
+    if (seleccionados.size > 0) {
+      const { error: relError } = await supabase
+        .from("servicios_empleados")
+        .insert(Array.from(seleccionados).map((servicio_id) => ({ empleado_id: nuevo.id, servicio_id })));
+      if (relError) {
+        setGuardando(false);
+        return setError(relError.message);
+      }
+    }
+
+    setGuardando(false);
+    router.push(`/admin/personal/${nuevo.id}`);
   }
 
   return (
     <div className="min-h-full bg-zinc-50">
-      {/* ── Header ── */}
       <div className="bg-white border-b border-zinc-200 px-6 py-4 flex items-center gap-3">
         <Link href="/admin/personal" className="text-zinc-400 hover:text-zinc-700 transition-colors">
           <BackIcon />
@@ -52,13 +110,11 @@ export default function NuevaEmpleadaPage() {
         <h1 className="text-xl font-bold text-zinc-900">Nueva empleada</h1>
       </div>
 
-      {/* ── Body ── */}
       <div className="p-5 lg:p-7 flex flex-col lg:flex-row gap-5 max-w-[940px] mx-auto">
 
         {/* ══ LEFT ══ */}
         <div className="flex-1 min-w-0 space-y-4">
 
-          {/* Datos personales */}
           <div className="bg-white rounded-2xl border border-zinc-200 p-5">
             <SectionLabel>1 · Datos personales</SectionLabel>
             <div className="space-y-3">
@@ -69,6 +125,16 @@ export default function NuevaEmpleadaPage() {
                   value={nombre}
                   onChange={(e) => setNombre(e.target.value)}
                   placeholder="Ej. Mariana Ríos"
+                  className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-zinc-400 transition-colors"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-zinc-500 mb-1.5 block">Puesto</label>
+                <input
+                  type="text"
+                  value={puesto}
+                  onChange={(e) => setPuesto(e.target.value)}
+                  placeholder="Ej. Postura, Shampoo, Costura, Ventas..."
                   className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-zinc-400 transition-colors"
                 />
               </div>
@@ -97,18 +163,15 @@ export default function NuevaEmpleadaPage() {
             </div>
           </div>
 
-          {/* Rol */}
           <div className="bg-white rounded-2xl border border-zinc-200 p-5">
             <SectionLabel>2 · Rol</SectionLabel>
-            <div className="grid grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
               {roles.map((r) => (
                 <button
                   key={r.id}
                   onClick={() => setRol(r.id)}
                   className={`text-left px-4 py-3.5 rounded-xl border-2 transition-all ${
-                    rol === r.id
-                      ? "border-zinc-900 bg-white"
-                      : "border-zinc-100 hover:border-zinc-200"
+                    rol === r.id ? "border-zinc-900 bg-white" : "border-zinc-100 hover:border-zinc-200"
                   }`}
                 >
                   <p className="text-sm font-semibold text-zinc-900">{r.label}</p>
@@ -118,30 +181,29 @@ export default function NuevaEmpleadaPage() {
             </div>
           </div>
 
-          {/* Servicios que realiza */}
           <div className="bg-white rounded-2xl border border-zinc-200 p-5">
             <SectionLabel>3 · Servicios que realiza</SectionLabel>
+            <p className="text-xs text-zinc-400 mb-3">
+              Opcional — si no marcas ninguno, queda disponible para cualquier servicio sin estilistas asignadas.
+            </p>
             <div className="flex flex-wrap gap-2">
-              {services.map((s) => {
-                const active = selectedServices.includes(s);
+              {servicios.map((s) => {
+                const active = seleccionados.has(s.id);
                 return (
                   <button
-                    key={s}
-                    onClick={() => toggleService(s)}
+                    key={s.id}
+                    onClick={() => toggleServicio(s.id)}
                     className={`px-3.5 py-2 rounded-xl text-sm font-semibold border-2 transition-all ${
-                      active
-                        ? "border-zinc-900 bg-zinc-900 text-white"
-                        : "border-zinc-100 text-zinc-700 hover:border-zinc-200"
+                      active ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-100 text-zinc-700 hover:border-zinc-200"
                     }`}
                   >
-                    {s}
+                    {s.nombre}
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Comisión */}
           <div className="bg-white rounded-2xl border border-zinc-200 p-5">
             <SectionLabel>4 · Comisión</SectionLabel>
             <div className="flex items-center gap-3">
@@ -156,18 +218,6 @@ export default function NuevaEmpleadaPage() {
               />
               <span className="text-sm font-semibold text-zinc-500">% sobre servicios realizados</span>
             </div>
-          </div>
-
-          {/* Nota interna */}
-          <div className="bg-white rounded-2xl border border-zinc-200 p-5">
-            <SectionLabel>Nota interna</SectionLabel>
-            <textarea
-              value={nota}
-              onChange={(e) => setNota(e.target.value)}
-              placeholder="Horario preferido, días de descanso, observaciones..."
-              rows={3}
-              className="w-full text-sm text-zinc-800 placeholder-zinc-400 resize-none border-0 outline-none leading-relaxed"
-            />
           </div>
         </div>
 
@@ -187,32 +237,32 @@ export default function NuevaEmpleadaPage() {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-zinc-500">Rol</span>
-                  <span className="font-semibold text-zinc-900">
-                    {roles.find((r) => r.id === rol)?.label ?? "—"}
-                  </span>
+                  <span className="font-semibold text-zinc-900">{roles.find((r) => r.id === rol)?.label ?? "—"}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-zinc-500">Comisión</span>
                   <span className="font-semibold text-zinc-900">{comision ? `${comision}%` : "—"}</span>
                 </div>
-                {selectedServices.length > 0 && (
-                  <div className="flex justify-between text-sm gap-3">
-                    <span className="text-zinc-500 shrink-0">Servicios</span>
-                    <span className="font-semibold text-zinc-900 text-right">{selectedServices.join(", ")}</span>
-                  </div>
-                )}
               </div>
             </div>
             <div className="p-5 flex flex-col gap-3">
+              {error && <p className="text-xs text-red-500">{error}</p>}
               <Link
                 href="/admin/personal"
                 className="w-full py-3 rounded-xl border border-zinc-200 text-sm font-semibold text-zinc-700 text-center hover:bg-zinc-50 transition-colors"
               >
                 Cancelar
               </Link>
-              <button className="w-full py-3 rounded-xl bg-zinc-900 text-sm font-semibold text-white hover:bg-zinc-700 transition-colors">
-                Crear empleada
+              <button
+                onClick={crear}
+                disabled={guardando}
+                className="w-full py-3 rounded-xl bg-zinc-900 text-sm font-semibold text-white hover:bg-zinc-700 transition-colors disabled:opacity-50"
+              >
+                {guardando ? "Creando…" : "Crear empleada"}
               </button>
+              <p className="text-[10px] text-zinc-400 text-center">
+                Esto crea el perfil de personal. Todavía no genera una cuenta de acceso a la app — eso se hace por separado en Supabase Auth.
+              </p>
             </div>
           </div>
         </div>
