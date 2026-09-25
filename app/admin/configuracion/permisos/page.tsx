@@ -185,6 +185,7 @@ export default function PermisosPage() {
 
   if (cargando) return <p className="text-sm text-zinc-400">Cargando…</p>;
 
+  const plataforma = catalogo.filter((p) => p.modulo === "plataforma");
   const modulos = catalogo.filter((p) => p.modulo === "modulo");
   const acciones = catalogo.filter((p) => p.modulo === "accion");
 
@@ -286,6 +287,34 @@ export default function PermisosPage() {
               </tr>
             </thead>
             <tbody>
+              <tr>
+                <td colSpan={2 + rolesEditables.length} className="pb-1 text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">
+                  Plataforma
+                </td>
+              </tr>
+              {plataforma.map((p) => (
+                <tr key={p.clave} className="border-t border-zinc-100">
+                  <td className="py-2.5 pr-3 text-zinc-700 font-medium">{p.etiqueta}</td>
+                  <td className="py-2.5 px-3 text-center">
+                    <input type="checkbox" checked disabled className="w-4 h-4 rounded accent-zinc-300 cursor-not-allowed" />
+                  </td>
+                  {rolesEditables.map((r) => (
+                    <td key={r.id} className="py-2.5 px-3 text-center">
+                      <input
+                        type="checkbox"
+                        checked={!!permisos.get(clave(r.id, p.clave))}
+                        onChange={() => toggle(r.id, p.clave)}
+                        className="w-4 h-4 rounded accent-teal-500 cursor-pointer"
+                      />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+              <tr>
+                <td colSpan={2 + rolesEditables.length} className="pt-4 pb-1 text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">
+                  Ver módulos
+                </td>
+              </tr>
               {modulos.map((p) => (
                 <tr key={p.clave} className="border-t border-zinc-100">
                   <td className="py-2.5 pr-3 text-zinc-700 font-medium">{p.etiqueta}</td>

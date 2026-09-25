@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 function EyeIcon({ open }: { open: boolean }) {
@@ -30,6 +30,7 @@ function ShieldIcon() {
 function mensajeError(codigo: string) {
   if (codigo === "campos") return "Ingresa tu usuario y contraseña para continuar.";
   if (codigo === "credenciales") return "Correo o contraseña incorrectos.";
+  if (codigo === "sin-acceso") return "Tu usuario no tiene acceso al panel administrativo. Usá la app.";
   return "No se pudo iniciar sesión. Intenta de nuevo.";
 }
 
@@ -42,6 +43,13 @@ export default function AccesoPage() {
   const [mantener, setMantener] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("motivo") === "sin-acceso") {
+      setError(mensajeError("sin-acceso"));
+    }
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -58,10 +66,18 @@ export default function AccesoPage() {
       password,
     });
 
+    if (authError) {
+      setCargando(false);
+      setError(mensajeError("credenciales"));
+      return;
+    }
+
+    const { data: tieneAcceso } = await supabase.rpc("tiene_permiso", { p_clave: "acceso.panel_admin" });
     setCargando(false);
 
-    if (authError) {
-      setError(mensajeError("credenciales"));
+    if (!tieneAcceso) {
+      await supabase.auth.signOut();
+      setError(mensajeError("sin-acceso"));
       return;
     }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Sidebar from "@/components/sidebar";
 import { createClient } from "@/lib/supabase/client";
 
@@ -22,6 +22,7 @@ const MODULOS_CONTROLADOS = new Set([
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const [esAdmin, setEsAdmin] = useState(true);
   const [modulosVisibles, setModulosVisibles] = useState<Set<string> | null>(null);
@@ -50,12 +51,21 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       const { data: permisos } = await supabase
         .from("rol_permisos")
         .select("permiso_clave")
-        .eq("rol_id", empleado.rol_id)
-        .like("permiso_clave", "ver_%");
-      setModulosVisibles(new Set((permisos ?? []).map((p) => p.permiso_clave.replace(/^ver_/, ""))));
+        .eq("rol_id", empleado.rol_id);
+      const claves = new Set((permisos ?? []).map((p) => p.permiso_clave));
+
+      if (!claves.has("acceso.panel_admin")) {
+        await supabase.auth.signOut();
+        router.replace("/acceso?motivo=sin-acceso");
+        return;
+      }
+
+      setModulosVisibles(
+        new Set(Array.from(claves).filter((c) => c.startsWith("ver_")).map((c) => c.replace(/^ver_/, ""))),
+      );
       setCargandoAcceso(false);
     })();
-  }, [supabase]);
+  }, [supabase, router]);
 
   const modulo = pathname.split("/")[2] ?? "";
   const rutaControlada = MODULOS_CONTROLADOS.has(modulo);
