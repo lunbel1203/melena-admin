@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { use, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { avisar, confirmar, mostrarCredenciales } from "@/lib/alerts";
 
 const formatoRD = new Intl.NumberFormat("es-DO", { style: "currency", currency: "DOP", maximumFractionDigits: 0 });
 
@@ -77,6 +78,7 @@ export default function PerfilEmpleadaPage({ params }: { params: Promise<{ id: s
   const [diasBloqueados, setDiasBloqueados] = useState<Set<string>>(new Set());
   const [cargando, setCargando] = useState(true);
   const [subiendoFoto, setSubiendoFoto] = useState(false);
+  const [gestionandoCuenta, setGestionandoCuenta] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const hoy = new Date();
@@ -174,6 +176,39 @@ export default function PerfilEmpleadaPage({ params }: { params: Promise<{ id: s
     const { error } = await supabase.from("empleados").update({ activo: !empleado.activo }).eq("id", empleado.id);
     if (error) return setError(error.message);
     setEmpleado({ ...empleado, activo: !empleado.activo });
+  }
+
+  async function gestionarCuenta(accion: "crear" | "restablecer") {
+    if (!empleado) return;
+    if (!empleado.email) {
+      return avisar("Falta el correo", "Agrégale un correo desde Editar empleada antes de crear su cuenta.");
+    }
+    if (accion === "restablecer") {
+      const ok = await confirmar({
+        titulo: "¿Restablecer la contraseña?",
+        texto: "Se genera una contraseña nueva y la anterior deja de funcionar.",
+        confirmarTexto: "Restablecer",
+      });
+      if (!ok) return;
+    }
+
+    setGestionandoCuenta(true);
+    setError(null);
+    const { data, error: fnError } = await supabase.functions.invoke("gestionar-cuenta-empleado", {
+      body: { empleado_id: empleado.id, accion },
+    });
+    setGestionandoCuenta(false);
+
+    if (fnError || data?.error) {
+      return setError(data?.error ?? fnError?.message ?? "No se pudo completar la operación.");
+    }
+
+    if (accion === "crear") await cargar();
+    await mostrarCredenciales({
+      titulo: accion === "crear" ? "Cuenta creada" : "Contraseña restablecida",
+      email: data.email,
+      password: data.password,
+    });
   }
 
   async function toggleDia(fecha: string) {
@@ -466,10 +501,21 @@ export default function PerfilEmpleadaPage({ params }: { params: Promise<{ id: s
                 <p className="text-xs text-zinc-400 mt-0.5">
                   {empleado.user_id
                     ? "Puede iniciar sesión en la app con este correo."
-                    : "Todavía no hay invitación automática — crear el usuario en Supabase Auth manualmente."}
+                    : "Creale una cuenta para que pueda entrar a la app con este correo."}
                 </p>
               </div>
             </div>
+            <button
+              onClick={() => gestionarCuenta(empleado.user_id ? "restablecer" : "crear")}
+              disabled={gestionandoCuenta}
+              className="w-full mt-4 py-2.5 rounded-xl bg-zinc-900 text-sm font-semibold text-white hover:bg-zinc-700 transition-colors disabled:opacity-50"
+            >
+              {gestionandoCuenta
+                ? "Procesando…"
+                : empleado.user_id
+                ? "Restablecer contraseña"
+                : "Crear cuenta"}
+            </button>
           </div>
         </div>
       </div>

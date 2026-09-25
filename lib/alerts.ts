@@ -48,3 +48,24 @@ export async function avisar(titulo: string, texto?: string) {
     },
   });
 }
+
+export async function mostrarCredenciales(opciones: { titulo: string; email: string; password: string }) {
+  await Swal.fire({
+    ...BASE,
+    title: opciones.titulo,
+    html: `
+      <div class="text-left text-sm text-zinc-500 space-y-3">
+        <p>Compartíselos a la empleada (WhatsApp, de palabra, etc.) — no se van a volver a mostrar.</p>
+        <div class="bg-zinc-50 rounded-xl p-3 space-y-1.5 text-zinc-800">
+          <p><span class="font-semibold">Correo:</span> ${opciones.email}</p>
+          <p><span class="font-semibold">Contraseña:</span> <span class="font-mono tracking-wide">${opciones.password}</span></p>
+        </div>
+      </div>
+    `,
+    confirmButtonText: "Entendido",
+    customClass: {
+      ...BASE.customClass,
+      confirmButton: `${BASE.customClass.confirmButton} !bg-zinc-900 hover:!bg-zinc-700`,
+    },
+  });
+}
