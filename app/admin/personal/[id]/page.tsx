@@ -3,16 +3,6 @@
 import Link from "next/link";
 import { use, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { Database } from "@/types/database.types";
-
-type RolEmpleado = Database["public"]["Enums"]["rol_empleado"];
-
-const ROL_LABEL: Record<RolEmpleado, string> = {
-  admin: "Admin",
-  recepcion: "Recepción",
-  caja: "Caja",
-  estilista: "Estilista",
-};
 
 const formatoRD = new Intl.NumberFormat("es-DO", { style: "currency", currency: "DOP", maximumFractionDigits: 0 });
 
@@ -53,7 +43,9 @@ function TrashIcon() {
 interface Empleado {
   id: string;
   nombre: string;
-  rol: RolEmpleado;
+  rol_id: string;
+  rolNombre: string;
+  esAdminTotal: boolean;
   puesto: string | null;
   telefono: string | null;
   email: string | null;
@@ -81,6 +73,7 @@ export default function PerfilEmpleadaPage({ params }: { params: Promise<{ id: s
   const [lineas, setLineas] = useState<ServicioLinea[]>([]);
   const [serviciosAsignados, setServiciosAsignados] = useState<string[]>([]);
   const [puedeReportes, setPuedeReportes] = useState(false);
+  const [puedeValidarDepositos, setPuedeValidarDepositos] = useState(false);
   const [diasBloqueados, setDiasBloqueados] = useState<Set<string>>(new Set());
   const [cargando, setCargando] = useState(true);
   const [subiendoFoto, setSubiendoFoto] = useState(false);
@@ -93,8 +86,14 @@ export default function PerfilEmpleadaPage({ params }: { params: Promise<{ id: s
   const diasEnMes = new Date(anio, mes + 1, 0).getDate();
 
   async function cargar() {
-    const { data: emp } = await supabase.from("empleados").select("*").eq("id", id).single();
-    if (!emp) return setCargando(false);
+    const { data: empRaw } = await supabase
+      .from("empleados")
+      .select("*, roles(nombre, es_admin_total)")
+      .eq("id", id)
+      .single();
+    if (!empRaw) return setCargando(false);
+    const rol = Array.isArray(empRaw.roles) ? empRaw.roles[0] : empRaw.roles;
+    const emp: Empleado = { ...empRaw, rolNombre: rol?.nombre ?? "", esAdminTotal: rol?.es_admin_total ?? false };
     setEmpleado(emp);
 
     const [{ data: lineasData }, { data: serviciosEmp }, { data: permisos }, { data: disponibilidad }] = await Promise.all([
@@ -107,9 +106,14 @@ export default function PerfilEmpleadaPage({ params }: { params: Promise<{ id: s
         .order("created_at", { ascending: false })
         .limit(20),
       supabase.from("servicios_empleados").select("servicios(nombre)").eq("empleado_id", id),
-      emp.rol === "admin"
-        ? Promise.resolve({ data: [{ puede_ver: true }] })
-        : supabase.from("permisos_modulo").select("puede_ver").eq("rol", emp.rol).eq("modulo", "reportes"),
+      emp.esAdminTotal
+        ? Promise.resolve({ data: ["ver_reportes", "depositos.verificar"] })
+        : supabase
+            .from("rol_permisos")
+            .select("permiso_clave")
+            .eq("rol_id", emp.rol_id)
+            .in("permiso_clave", ["ver_reportes", "depositos.verificar"])
+            .then((res) => ({ data: (res.data ?? []).map((p) => p.permiso_clave) })),
       supabase
         .from("disponibilidad_empleados")
         .select("fecha")
@@ -129,7 +133,8 @@ export default function PerfilEmpleadaPage({ params }: { params: Promise<{ id: s
       }))
     );
     setServiciosAsignados((serviciosEmp ?? []).map((s: { servicios: { nombre: string } | null }) => s.servicios?.nombre).filter((n): n is string => !!n));
-    setPuedeReportes(!!permisos?.[0]?.puede_ver);
+    setPuedeReportes((permisos ?? []).includes("ver_reportes"));
+    setPuedeValidarDepositos((permisos ?? []).includes("depositos.verificar"));
     setDiasBloqueados(new Set((disponibilidad ?? []).map((d) => d.fecha)));
     setCargando(false);
   }
@@ -193,7 +198,6 @@ export default function PerfilEmpleadaPage({ params }: { params: Promise<{ id: s
   const facturado = servicios.reduce((acc, l) => acc + Number(l.subtotal ?? 0), 0);
   const comisionTotal = lineas.reduce((acc, l) => acc + Number(l.comision ?? 0), 0);
   const ticketPromedio = servicios.length > 0 ? facturado / servicios.length : 0;
-  const puedeValidarDepositos = empleado.rol === "recepcion" || empleado.rol === "caja" || empleado.rol === "admin";
 
   const days = Array.from({ length: diasEnMes }, (_, i) => i + 1);
   const rows: number[][] = [];
@@ -220,7 +224,7 @@ export default function PerfilEmpleadaPage({ params }: { params: Promise<{ id: s
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-xl font-bold text-zinc-900">{empleado.nombre}</h1>
               <span className="text-xs font-semibold text-zinc-600 border border-zinc-200 px-2.5 py-1 rounded-lg">
-                {ROL_LABEL[empleado.rol]}
+                {empleado.rolNombre}
               </span>
               <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${empleado.activo ? "bg-green-50 text-green-700" : "bg-zinc-100 text-zinc-500"}`}>
                 {empleado.activo ? "Activa" : "Inactiva"}
@@ -416,7 +420,7 @@ export default function PerfilEmpleadaPage({ params }: { params: Promise<{ id: s
             <div className="space-y-2.5">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-zinc-500">Rol</span>
-                <span className="text-sm font-semibold text-zinc-900">{ROL_LABEL[empleado.rol]}</span>
+                <span className="text-sm font-semibold text-zinc-900">{empleado.rolNombre}</span>
               </div>
               {empleado.porcentaje_comision !== null && (
                 <div className="flex items-center justify-between">

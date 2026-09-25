@@ -132,10 +132,15 @@ function EditarServicio({ servicio, slug }: { servicio: ServicioRow; slug: strin
   useEffect(() => {
     (async () => {
       const [{ data: activos }, { data: asignados }] = await Promise.all([
-        supabase.from("empleados").select("id, nombre, puesto").eq("rol", "estilista").eq("activo", true).order("nombre"),
+        supabase
+          .from("empleados")
+          .select("id, nombre, puesto, roles!inner(nombre)")
+          .eq("roles.nombre", "Estilista")
+          .eq("activo", true)
+          .order("nombre"),
         supabase.from("servicios_empleados").select("empleado_id").eq("servicio_id", servicio.id),
       ]);
-      setEstilistas(activos ?? []);
+      setEstilistas((activos ?? []).map((e) => ({ id: e.id, nombre: e.nombre, puesto: e.puesto })));
       setSelectedStaff(asignados && asignados.length > 0 ? asignados.map((a) => a.empleado_id) : ["Todas"]);
       setCargandoStaff(false);
     })();

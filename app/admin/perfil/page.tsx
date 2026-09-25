@@ -4,16 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { Database } from "@/types/database.types";
-
-type RolEmpleado = Database["public"]["Enums"]["rol_empleado"];
-
-const ROL_LABEL: Record<RolEmpleado, string> = {
-  admin: "Admin",
-  recepcion: "Recepción",
-  caja: "Caja",
-  estilista: "Estilista",
-};
 
 function ChevronLeft() {
   return (
@@ -147,7 +137,7 @@ export default function PerfilPage() {
   const [empleadoId, setEmpleadoId] = useState<string | null>(null);
   const [authEmail, setAuthEmail] = useState("");
   const [ultimoAcceso, setUltimoAcceso] = useState<string | null>(null);
-  const [rol, setRol] = useState<RolEmpleado | null>(null);
+  const [rol, setRol] = useState<string | null>(null);
   const [negocio, setNegocio] = useState("");
 
   const [nombre, setNombre] = useState("");
@@ -176,7 +166,7 @@ export default function PerfilPage() {
       if (!user) return;
 
       const [{ data: empleado }, { data: negocioConfig }] = await Promise.all([
-        supabase.from("empleados").select("id, nombre, telefono, foto_url, rol").eq("user_id", user.id).single(),
+        supabase.from("empleados").select("id, nombre, telefono, foto_url, roles(nombre)").eq("user_id", user.id).single(),
         supabase.from("negocio_config").select("nombre_comercial").eq("id", true).single(),
       ]);
 
@@ -190,7 +180,8 @@ export default function PerfilPage() {
         setCorreo(user.email ?? "");
         setTelefono(empleado.telefono ?? "");
         setFotoUrl(empleado.foto_url);
-        setRol(empleado.rol);
+        const rolRow = Array.isArray(empleado.roles) ? empleado.roles[0] : empleado.roles;
+        setRol(rolRow?.nombre ?? null);
       }
       setCargando(false);
     })();
@@ -296,7 +287,7 @@ export default function PerfilPage() {
           Panel
         </Link>
         <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900">Mi perfil</h1>
-        <p className="text-sm text-zinc-400 mt-1">{rol ? ROL_LABEL[rol] : "—"} · {negocio}</p>
+        <p className="text-sm text-zinc-400 mt-1">{rol ?? "—"} · {negocio}</p>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-5 max-w-3xl">
@@ -313,7 +304,7 @@ export default function PerfilPage() {
               <PhotoUpload nombre={nombre} fotoUrl={fotoUrl} subiendo={subiendoFoto} onArchivo={subirFoto} />
               <div>
                 <p className="text-base font-semibold text-zinc-900">{nombre}</p>
-                <p className="text-sm text-zinc-400">{rol ? ROL_LABEL[rol] : ""}</p>
+                <p className="text-sm text-zinc-400">{rol ?? ""}</p>
                 <p className="text-xs text-zinc-400 mt-2">
                   {subiendoFoto ? "Subiendo foto…" : "Haz clic en el ícono de cámara para cambiar tu foto."}
                 </p>
@@ -411,7 +402,7 @@ export default function PerfilPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-zinc-400">Rol</span>
-                <span className="text-zinc-700 font-medium">{rol ? ROL_LABEL[rol] : "—"}</span>
+                <span className="text-zinc-700 font-medium">{rol ?? "—"}</span>
               </div>
             </div>
             <button

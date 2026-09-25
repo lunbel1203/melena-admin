@@ -305,20 +305,28 @@ export type Database = {
       comisiones_default_rol: {
         Row: {
           porcentaje: number
-          rol: Database["public"]["Enums"]["rol_empleado"]
+          rol_id: string
           tipo: Database["public"]["Enums"]["tipo_linea_factura"]
         }
         Insert: {
           porcentaje?: number
-          rol: Database["public"]["Enums"]["rol_empleado"]
+          rol_id: string
           tipo: Database["public"]["Enums"]["tipo_linea_factura"]
         }
         Update: {
           porcentaje?: number
-          rol?: Database["public"]["Enums"]["rol_empleado"]
+          rol_id?: string
           tipo?: Database["public"]["Enums"]["tipo_linea_factura"]
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "comisiones_default_rol_rol_id_fkey"
+            columns: ["rol_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cuentas_bancarias: {
         Row: {
@@ -356,7 +364,6 @@ export type Database = {
           id: boolean
           monto: number
           plazo_horas: number
-          quien_puede_verificar: Database["public"]["Enums"]["rol_empleado"][]
           reembolsable_hasta_horas: number | null
           updated_at: string
         }
@@ -365,7 +372,6 @@ export type Database = {
           id?: boolean
           monto?: number
           plazo_horas?: number
-          quien_puede_verificar?: Database["public"]["Enums"]["rol_empleado"][]
           reembolsable_hasta_horas?: number | null
           updated_at?: string
         }
@@ -374,7 +380,6 @@ export type Database = {
           id?: boolean
           monto?: number
           plazo_horas?: number
-          quien_puede_verificar?: Database["public"]["Enums"]["rol_empleado"][]
           reembolsable_hasta_horas?: number | null
           updated_at?: string
         }
@@ -551,7 +556,7 @@ export type Database = {
           nombre: string
           porcentaje_comision: number | null
           puesto: string | null
-          rol: Database["public"]["Enums"]["rol_empleado"]
+          rol_id: string
           telefono: string | null
           user_id: string | null
         }
@@ -564,7 +569,7 @@ export type Database = {
           nombre: string
           porcentaje_comision?: number | null
           puesto?: string | null
-          rol: Database["public"]["Enums"]["rol_empleado"]
+          rol_id: string
           telefono?: string | null
           user_id?: string | null
         }
@@ -577,11 +582,19 @@ export type Database = {
           nombre?: string
           porcentaje_comision?: number | null
           puesto?: string | null
-          rol?: Database["public"]["Enums"]["rol_empleado"]
+          rol_id?: string
           telefono?: string | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "empleados_rol_id_fkey"
+            columns: ["rol_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       facturacion_config: {
         Row: {
@@ -805,21 +818,24 @@ export type Database = {
         }
         Relationships: []
       }
-      permisos_modulo: {
+      permisos_catalogo: {
         Row: {
+          clave: string
+          etiqueta: string
           modulo: string
-          puede_ver: boolean
-          rol: Database["public"]["Enums"]["rol_empleado"]
+          orden: number
         }
         Insert: {
+          clave: string
+          etiqueta: string
           modulo: string
-          puede_ver?: boolean
-          rol: Database["public"]["Enums"]["rol_empleado"]
+          orden?: number
         }
         Update: {
+          clave?: string
+          etiqueta?: string
           modulo?: string
-          puede_ver?: boolean
-          rol?: Database["public"]["Enums"]["rol_empleado"]
+          orden?: number
         }
         Relationships: []
       }
@@ -999,6 +1015,57 @@ export type Database = {
           tiempo_entre_citas_minutos?: number
           updated_at?: string
           zona_horaria?: string
+        }
+        Relationships: []
+      }
+      rol_permisos: {
+        Row: {
+          permiso_clave: string
+          rol_id: string
+        }
+        Insert: {
+          permiso_clave: string
+          rol_id: string
+        }
+        Update: {
+          permiso_clave?: string
+          rol_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rol_permisos_permiso_clave_fkey"
+            columns: ["permiso_clave"]
+            isOneToOne: false
+            referencedRelation: "permisos_catalogo"
+            referencedColumns: ["clave"]
+          },
+          {
+            foreignKeyName: "rol_permisos_rol_id_fkey"
+            columns: ["rol_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roles: {
+        Row: {
+          created_at: string
+          es_admin_total: boolean
+          id: string
+          nombre: string
+        }
+        Insert: {
+          created_at?: string
+          es_admin_total?: boolean
+          id?: string
+          nombre: string
+        }
+        Update: {
+          created_at?: string
+          es_admin_total?: boolean
+          id?: string
+          nombre?: string
         }
         Relationships: []
       }
@@ -1288,10 +1355,7 @@ export type Database = {
         }
         Returns: string
       }
-      rol_actual: {
-        Args: never
-        Returns: Database["public"]["Enums"]["rol_empleado"]
-      }
+      tiene_permiso: { Args: { p_clave: string }; Returns: boolean }
     }
     Enums: {
       estado_checkin: "pendiente" | "enviado" | "respondido"
@@ -1305,7 +1369,6 @@ export type Database = {
       estado_factura: "abierta" | "cobrada" | "cancelada"
       estado_ticket: "abierto" | "en_proceso" | "resuelto"
       respuesta_checkin: "bien" | "molestia"
-      rol_empleado: "admin" | "recepcion" | "estilista" | "caja"
       tipo_cabello: "virgin" | "remy"
       tipo_linea_factura: "servicio" | "producto"
     }
@@ -1447,7 +1510,6 @@ export const Constants = {
       estado_factura: ["abierta", "cobrada", "cancelada"],
       estado_ticket: ["abierto", "en_proceso", "resuelto"],
       respuesta_checkin: ["bien", "molestia"],
-      rol_empleado: ["admin", "recepcion", "estilista", "caja"],
       tipo_cabello: ["virgin", "remy"],
       tipo_linea_factura: ["servicio", "producto"],
     },

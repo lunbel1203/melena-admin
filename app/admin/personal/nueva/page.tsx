@@ -4,9 +4,6 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import type { Database } from "@/types/database.types";
-
-type RolEmpleado = Database["public"]["Enums"]["rol_empleado"];
 
 function BackIcon() {
   return (
@@ -20,14 +17,19 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   return <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400 mb-3">{children}</p>;
 }
 
-const roles: { id: RolEmpleado; label: string; desc: string }[] = [
-  { id: "estilista", label: "Estilista", desc: "Realiza servicios de extensiones" },
-  { id: "recepcion", label: "Recepción", desc: "Gestiona citas y atención al cliente" },
-  { id: "caja", label: "Caja", desc: "Manejo de pagos y depósitos" },
-  { id: "admin", label: "Admin", desc: "Acceso total al panel, sin restricciones" },
-];
+const DESCRIPCION_ROL: Record<string, string> = {
+  Estilista: "Realiza servicios de extensiones",
+  Recepción: "Gestiona citas y atención al cliente",
+  Caja: "Manejo de pagos y depósitos",
+  Admin: "Acceso total al panel, sin restricciones",
+};
 
 interface Servicio {
+  id: string;
+  nombre: string;
+}
+
+interface Rol {
   id: string;
   nombre: string;
 }
@@ -40,7 +42,8 @@ export default function NuevaEmpleadaPage() {
   const [telefono, setTelefono] = useState("");
   const [correo, setCorreo] = useState("");
   const [puesto, setPuesto] = useState("");
-  const [rol, setRol] = useState<RolEmpleado | null>(null);
+  const [rolId, setRolId] = useState<string | null>(null);
+  const [roles, setRoles] = useState<Rol[]>([]);
   const [servicios, setServicios] = useState<Servicio[]>([]);
   const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
   const [comision, setComision] = useState("");
@@ -49,8 +52,12 @@ export default function NuevaEmpleadaPage() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("servicios").select("id, nombre").eq("activo", true).order("nombre");
+      const [{ data }, { data: rolesData }] = await Promise.all([
+        supabase.from("servicios").select("id, nombre").eq("activo", true).order("nombre"),
+        supabase.from("roles").select("id, nombre").order("nombre"),
+      ]);
       setServicios(data ?? []);
+      setRoles(rolesData ?? []);
     })();
   }, [supabase]);
 
@@ -63,7 +70,7 @@ export default function NuevaEmpleadaPage() {
   }
 
   async function crear() {
-    if (!nombre.trim() || !rol) {
+    if (!nombre.trim() || !rolId) {
       return setError("Falta el nombre o el rol.");
     }
     setGuardando(true);
@@ -76,7 +83,7 @@ export default function NuevaEmpleadaPage() {
         telefono: telefono.trim() || null,
         email: correo.trim() || null,
         puesto: puesto.trim() || null,
-        rol,
+        rol_id: rolId,
         porcentaje_comision: comision.trim() ? Number(comision) : null,
       })
       .select("id")
@@ -169,13 +176,13 @@ export default function NuevaEmpleadaPage() {
               {roles.map((r) => (
                 <button
                   key={r.id}
-                  onClick={() => setRol(r.id)}
+                  onClick={() => setRolId(r.id)}
                   className={`text-left px-4 py-3.5 rounded-xl border-2 transition-all ${
-                    rol === r.id ? "border-zinc-900 bg-white" : "border-zinc-100 hover:border-zinc-200"
+                    rolId === r.id ? "border-zinc-900 bg-white" : "border-zinc-100 hover:border-zinc-200"
                   }`}
                 >
-                  <p className="text-sm font-semibold text-zinc-900">{r.label}</p>
-                  <p className="text-xs text-zinc-400 mt-0.5">{r.desc}</p>
+                  <p className="text-sm font-semibold text-zinc-900">{r.nombre}</p>
+                  <p className="text-xs text-zinc-400 mt-0.5">{DESCRIPCION_ROL[r.nombre] ?? "Rol personalizado"}</p>
                 </button>
               ))}
             </div>
@@ -237,7 +244,7 @@ export default function NuevaEmpleadaPage() {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-zinc-500">Rol</span>
-                  <span className="font-semibold text-zinc-900">{roles.find((r) => r.id === rol)?.label ?? "—"}</span>
+                  <span className="font-semibold text-zinc-900">{roles.find((r) => r.id === rolId)?.nombre ?? "—"}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-zinc-500">Comisión</span>

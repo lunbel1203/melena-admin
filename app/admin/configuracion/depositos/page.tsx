@@ -2,27 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { Database } from "@/types/database.types";
-
-type RolEmpleado = Database["public"]["Enums"]["rol_empleado"];
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400 mb-1">{children}</p>;
 }
-
-const ROLES: { id: RolEmpleado; label: string }[] = [
-  { id: "admin", label: "Admin" },
-  { id: "recepcion", label: "Recepción" },
-  { id: "caja", label: "Caja" },
-  { id: "estilista", label: "Estilista" },
-];
 
 interface DepositoConfig {
   monto: number;
   plazo_horas: number;
   accion_si_no_sube_a_tiempo: string;
   reembolsable_hasta_horas: number | null;
-  quien_puede_verificar: RolEmpleado[];
 }
 interface CuentaBancaria {
   id: string;
@@ -64,17 +53,6 @@ export default function DepositosPagosPage() {
     cargar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  function toggleRol(rol: RolEmpleado) {
-    if (!config) return;
-    const tiene = config.quien_puede_verificar.includes(rol);
-    setConfig({
-      ...config,
-      quien_puede_verificar: tiene
-        ? config.quien_puede_verificar.filter((r) => r !== rol)
-        : [...config.quien_puede_verificar, rol],
-    });
-  }
 
   async function guardar() {
     if (!config) return;
@@ -217,16 +195,9 @@ export default function DepositosPagosPage() {
         <div className="flex items-center justify-between gap-4 flex-wrap pt-3 border-t border-zinc-100">
           <div>
             <p className="text-xs font-semibold text-zinc-500 mb-1.5">Quién puede verificar depósitos</p>
-            <div className="flex gap-1.5 flex-wrap">
-              {ROLES.map((r) => (
-                <button key={r.id} onClick={() => toggleRol(r.id)}
-                  className={`text-xs font-medium px-2.5 py-1 rounded-lg border transition-colors ${
-                    config.quien_puede_verificar.includes(r.id) ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-200 text-zinc-500"
-                  }`}>
-                  {r.label}
-                </button>
-              ))}
-            </div>
+            <p className="text-xs text-zinc-400 max-w-[220px]">
+              Se administra desde Configuración → Roles y permisos (permiso &quot;Verificar depósitos&quot;).
+            </p>
           </div>
 
           <label className="flex items-center gap-3 cursor-pointer">

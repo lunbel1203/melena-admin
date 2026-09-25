@@ -4,9 +4,6 @@ import Link from "next/link";
 import { use, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import type { Database } from "@/types/database.types";
-
-type RolEmpleado = Database["public"]["Enums"]["rol_empleado"];
 
 function BackIcon() {
   return (
@@ -20,14 +17,19 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   return <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400 mb-3">{children}</p>;
 }
 
-const roles: { id: RolEmpleado; label: string; desc: string }[] = [
-  { id: "estilista", label: "Estilista", desc: "Realiza servicios de extensiones" },
-  { id: "recepcion", label: "Recepción", desc: "Gestiona citas y atención al cliente" },
-  { id: "caja", label: "Caja", desc: "Manejo de pagos y depósitos" },
-  { id: "admin", label: "Admin", desc: "Acceso total al panel, sin restricciones" },
-];
+const DESCRIPCION_ROL: Record<string, string> = {
+  Estilista: "Realiza servicios de extensiones",
+  Recepción: "Gestiona citas y atención al cliente",
+  Caja: "Manejo de pagos y depósitos",
+  Admin: "Acceso total al panel, sin restricciones",
+};
 
 interface Servicio {
+  id: string;
+  nombre: string;
+}
+
+interface Rol {
   id: string;
   nombre: string;
 }
@@ -41,7 +43,8 @@ export default function EditarEmpleadaPage({ params }: { params: Promise<{ id: s
   const [telefono, setTelefono] = useState("");
   const [correo, setCorreo] = useState("");
   const [puesto, setPuesto] = useState("");
-  const [rol, setRol] = useState<RolEmpleado>("estilista");
+  const [rolId, setRolId] = useState("");
+  const [roles, setRoles] = useState<Rol[]>([]);
   const [comision, setComision] = useState("");
   const [servicios, setServicios] = useState<Servicio[]>([]);
   const [asignados, setAsignados] = useState<Set<string>>(new Set());
@@ -52,19 +55,21 @@ export default function EditarEmpleadaPage({ params }: { params: Promise<{ id: s
 
   useEffect(() => {
     (async () => {
-      const [{ data: emp }, { data: todosServicios }, { data: asignadosData }] = await Promise.all([
+      const [{ data: emp }, { data: todosServicios }, { data: asignadosData }, { data: todosRoles }] = await Promise.all([
         supabase.from("empleados").select("*").eq("id", id).single(),
         supabase.from("servicios").select("id, nombre").eq("activo", true).order("nombre"),
         supabase.from("servicios_empleados").select("servicio_id").eq("empleado_id", id),
+        supabase.from("roles").select("id, nombre").order("nombre"),
       ]);
       if (emp) {
         setNombre(emp.nombre);
         setTelefono(emp.telefono ?? "");
         setCorreo(emp.email ?? "");
         setPuesto(emp.puesto ?? "");
-        setRol(emp.rol);
+        setRolId(emp.rol_id);
         setComision(emp.porcentaje_comision !== null ? String(emp.porcentaje_comision) : "");
       }
+      setRoles(todosRoles ?? []);
       setServicios(todosServicios ?? []);
       setAsignados(new Set((asignadosData ?? []).map((a) => a.servicio_id)));
       setCargando(false);
@@ -90,7 +95,7 @@ export default function EditarEmpleadaPage({ params }: { params: Promise<{ id: s
         telefono: telefono.trim() || null,
         email: correo.trim() || null,
         puesto: puesto.trim() || null,
-        rol,
+        rol_id: rolId,
         porcentaje_comision: comision.trim() ? Number(comision) : null,
       })
       .eq("id", id);
@@ -201,13 +206,13 @@ export default function EditarEmpleadaPage({ params }: { params: Promise<{ id: s
               {roles.map((r) => (
                 <button
                   key={r.id}
-                  onClick={() => setRol(r.id)}
+                  onClick={() => setRolId(r.id)}
                   className={`text-left px-4 py-3.5 rounded-xl border-2 transition-all ${
-                    rol === r.id ? "border-zinc-900" : "border-zinc-100 hover:border-zinc-200"
+                    rolId === r.id ? "border-zinc-900" : "border-zinc-100 hover:border-zinc-200"
                   }`}
                 >
-                  <p className="text-sm font-semibold text-zinc-900">{r.label}</p>
-                  <p className="text-xs text-zinc-400 mt-0.5">{r.desc}</p>
+                  <p className="text-sm font-semibold text-zinc-900">{r.nombre}</p>
+                  <p className="text-xs text-zinc-400 mt-0.5">{DESCRIPCION_ROL[r.nombre] ?? "Rol personalizado"}</p>
                 </button>
               ))}
             </div>
@@ -265,7 +270,7 @@ export default function EditarEmpleadaPage({ params }: { params: Promise<{ id: s
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-zinc-500">Rol</span>
-                  <span className="font-semibold text-zinc-900">{roles.find((r) => r.id === rol)?.label ?? rol}</span>
+                  <span className="font-semibold text-zinc-900">{roles.find((r) => r.id === rolId)?.nombre ?? "—"}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-zinc-500">Comisión</span>

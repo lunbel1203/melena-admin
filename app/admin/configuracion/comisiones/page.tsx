@@ -4,18 +4,16 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Database } from "@/types/database.types";
 
-type RolEmpleado = Database["public"]["Enums"]["rol_empleado"];
 type TipoLinea = Database["public"]["Enums"]["tipo_linea_factura"];
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400 mb-1">{children}</p>;
 }
 
-const ROLES: { id: RolEmpleado; label: string }[] = [
-  { id: "estilista", label: "Estilista" },
-  { id: "recepcion", label: "Recepción" },
-  { id: "caja", label: "Caja" },
-];
+interface Rol {
+  id: string;
+  nombre: string;
+}
 
 interface ComisionesConfig {
   corte: string;
@@ -24,7 +22,8 @@ interface ComisionesConfig {
 
 export default function ComisionesPage() {
   const supabase = useMemo(() => createClient(), []);
-  const [porcentajes, setPorcentajes] = useState<Record<RolEmpleado, Record<TipoLinea, number>> | null>(null);
+  const [roles, setRoles] = useState<Rol[]>([]);
+  const [porcentajes, setPorcentajes] = useState<Record<string, Record<TipoLinea, number>> | null>(null);
   const [config, setConfig] = useState<ComisionesConfig | null>(null);
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
@@ -33,15 +32,17 @@ export default function ComisionesPage() {
 
   async function cargar() {
     setCargando(true);
-    const [{ data: dr }, { data: cc }] = await Promise.all([
+    const [{ data: rolesData }, { data: dr }, { data: cc }] = await Promise.all([
+      supabase.from("roles").select("id, nombre").eq("es_admin_total", false).order("nombre"),
       supabase.from("comisiones_default_rol").select("*"),
       supabase.from("comisiones_config").select("*").eq("id", true).single(),
     ]);
+    setRoles(rolesData ?? []);
     if (dr) {
-      const mapa = {} as Record<RolEmpleado, Record<TipoLinea, number>>;
+      const mapa = {} as Record<string, Record<TipoLinea, number>>;
       for (const fila of dr) {
-        mapa[fila.rol] ??= { servicio: 0, producto: 0 };
-        mapa[fila.rol][fila.tipo] = Number(fila.porcentaje);
+        mapa[fila.rol_id] ??= { servicio: 0, producto: 0 };
+        mapa[fila.rol_id][fila.tipo] = Number(fila.porcentaje);
       }
       setPorcentajes(mapa);
     }
@@ -54,8 +55,8 @@ export default function ComisionesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function actualizarPorcentaje(rol: RolEmpleado, tipo: TipoLinea, valor: number) {
-    setPorcentajes((prev) => (prev ? { ...prev, [rol]: { ...prev[rol], [tipo]: valor } } : prev));
+  function actualizarPorcentaje(rolId: string, tipo: TipoLinea, valor: number) {
+    setPorcentajes((prev) => (prev ? { ...prev, [rolId]: { ...prev[rolId], [tipo]: valor } } : prev));
   }
 
   async function guardar() {
@@ -65,12 +66,12 @@ export default function ComisionesPage() {
     setGuardado(false);
 
     const resultados = await Promise.all([
-      ...ROLES.flatMap(({ id: rol }) =>
+      ...roles.flatMap(({ id: rolId }) =>
         (["servicio", "producto"] as TipoLinea[]).map((tipo) =>
           supabase
             .from("comisiones_default_rol")
-            .update({ porcentaje: porcentajes[rol][tipo] })
-            .eq("rol", rol)
+            .update({ porcentaje: porcentajes[rolId]?.[tipo] ?? 0 })
+            .eq("rol_id", rolId)
             .eq("tipo", tipo),
         ),
       ),
@@ -115,17 +116,17 @@ export default function ComisionesPage() {
               </tr>
             </thead>
             <tbody>
-              {ROLES.map(({ id: rol, label }) => (
-                <tr key={rol} className="border-t border-zinc-100">
-                  <td className="py-2.5 pr-3 font-semibold text-zinc-800">{label}</td>
+              {roles.map(({ id: rolId, nombre }) => (
+                <tr key={rolId} className="border-t border-zinc-100">
+                  <td className="py-2.5 pr-3 font-semibold text-zinc-800">{nombre}</td>
                   <td className="py-2.5 pr-3">
                     <div className="relative w-24">
                       <input
                         type="number"
                         min={0}
                         max={100}
-                        value={porcentajes[rol].servicio}
-                        onChange={(e) => actualizarPorcentaje(rol, "servicio", Number(e.target.value))}
+                        value={porcentajes[rolId]?.servicio ?? 0}
+                        onChange={(e) => actualizarPorcentaje(rolId, "servicio", Number(e.target.value))}
                         className="w-full pl-3 pr-6 py-1.5 border border-zinc-200 rounded-lg text-sm"
                       />
                       <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 text-xs">%</span>
@@ -137,8 +138,8 @@ export default function ComisionesPage() {
                         type="number"
                         min={0}
                         max={100}
-                        value={porcentajes[rol].producto}
-                        onChange={(e) => actualizarPorcentaje(rol, "producto", Number(e.target.value))}
+                        value={porcentajes[rolId]?.producto ?? 0}
+                        onChange={(e) => actualizarPorcentaje(rolId, "producto", Number(e.target.value))}
                         className="w-full pl-3 pr-6 py-1.5 border border-zinc-200 rounded-lg text-sm"
                       />
                       <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 text-xs">%</span>

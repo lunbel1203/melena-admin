@@ -60,11 +60,11 @@ export default function NuevoServicioPage() {
     (async () => {
       const { data } = await supabase
         .from("empleados")
-        .select("id, nombre, puesto")
-        .eq("rol", "estilista")
+        .select("id, nombre, puesto, roles!inner(nombre)")
+        .eq("roles.nombre", "Estilista")
         .eq("activo", true)
         .order("nombre");
-      setEstilistas(data ?? []);
+      setEstilistas((data ?? []).map((e) => ({ id: e.id, nombre: e.nombre, puesto: e.puesto })));
     })();
   }, [supabase]);
 

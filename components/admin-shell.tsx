@@ -34,8 +34,13 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       } = await supabase.auth.getUser();
       if (!user) return setCargandoAcceso(false);
 
-      const { data: empleado } = await supabase.from("empleados").select("rol").eq("user_id", user.id).single();
-      if (!empleado || empleado.rol === "admin") {
+      const { data: empleado } = await supabase
+        .from("empleados")
+        .select("rol_id, roles(es_admin_total)")
+        .eq("user_id", user.id)
+        .single();
+      const rol = empleado && (Array.isArray(empleado.roles) ? empleado.roles[0] : empleado.roles);
+      if (!empleado || rol?.es_admin_total) {
         setEsAdmin(true);
         setCargandoAcceso(false);
         return;
@@ -43,10 +48,11 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       setEsAdmin(false);
 
       const { data: permisos } = await supabase
-        .from("permisos_modulo")
-        .select("modulo, puede_ver")
-        .eq("rol", empleado.rol);
-      setModulosVisibles(new Set((permisos ?? []).filter((p) => p.puede_ver).map((p) => p.modulo)));
+        .from("rol_permisos")
+        .select("permiso_clave")
+        .eq("rol_id", empleado.rol_id)
+        .like("permiso_clave", "ver_%");
+      setModulosVisibles(new Set((permisos ?? []).map((p) => p.permiso_clave.replace(/^ver_/, ""))));
       setCargandoAcceso(false);
     })();
   }, [supabase]);

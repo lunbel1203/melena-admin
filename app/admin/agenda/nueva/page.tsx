@@ -153,10 +153,15 @@ export default function NuevaCitaPage() {
     (async () => {
       const [{ data: srv }, { data: emp }] = await Promise.all([
         supabase.from("servicios").select("id, nombre, duracion_minutos, precio").eq("activo", true).order("nombre"),
-        supabase.from("empleados").select("id, nombre, puesto").eq("rol", "estilista").eq("activo", true).order("nombre"),
+        supabase
+          .from("empleados")
+          .select("id, nombre, puesto, roles!inner(nombre)")
+          .eq("roles.nombre", "Estilista")
+          .eq("activo", true)
+          .order("nombre"),
       ]);
       setServicios(srv ?? []);
-      setEstilistas(emp ?? []);
+      setEstilistas((emp ?? []).map((e) => ({ id: e.id, nombre: e.nombre, puesto: e.puesto })));
     })();
   }, [supabase]);
 

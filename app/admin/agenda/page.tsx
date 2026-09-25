@@ -104,11 +104,16 @@ export default function AgendaPage() {
     (async () => {
       const [{ data: srv }, { data: emp }] = await Promise.all([
         supabase.from("servicios").select("id, nombre").eq("activo", true).order("nombre"),
-        supabase.from("empleados").select("id, nombre").eq("rol", "estilista").eq("activo", true).order("nombre"),
+        supabase
+          .from("empleados")
+          .select("id, nombre, roles!inner(nombre)")
+          .eq("roles.nombre", "Estilista")
+          .eq("activo", true)
+          .order("nombre"),
       ]);
       setServicios(srv ?? []);
       setActiveFilters(new Set((srv ?? []).map((s) => s.id)));
-      setEstilistas(emp ?? []);
+      setEstilistas((emp ?? []).map((e) => ({ id: e.id, nombre: e.nombre })));
     })();
   }, [supabase]);
 

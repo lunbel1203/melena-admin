@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { Database } from "@/types/database.types";
 
 function GridIcon() {
   return (
@@ -119,17 +118,10 @@ const navItems = [
   { name: "Configuración", href: "/admin/configuracion", icon: GearIcon, modulo: "configuracion" },
 ];
 
-const ROL_LABEL: Record<Database["public"]["Enums"]["rol_empleado"], string> = {
-  admin: "Admin",
-  recepcion: "Recepción",
-  caja: "Caja",
-  estilista: "Estilista",
-};
-
 export default function Sidebar() {
   const pathname = usePathname();
   const supabase = useMemo(() => createClient(), []);
-  const [usuario, setUsuario] = useState<{ nombre: string; rol: Database["public"]["Enums"]["rol_empleado"] } | null>(null);
+  const [usuario, setUsuario] = useState<{ nombre: string; rolNombre: string } | null>(null);
   const [modulosVisibles, setModulosVisibles] = useState<Set<string> | null>(null);
 
   useEffect(() => {
@@ -138,15 +130,22 @@ export default function Sidebar() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await supabase.from("empleados").select("nombre, rol").eq("user_id", user.id).single();
-      if (data) setUsuario(data);
+      const { data } = await supabase
+        .from("empleados")
+        .select("nombre, rol_id, roles(nombre, es_admin_total)")
+        .eq("user_id", user.id)
+        .single();
+      if (!data) return;
+      const rol = Array.isArray(data.roles) ? data.roles[0] : data.roles;
+      setUsuario({ nombre: data.nombre, rolNombre: rol?.nombre ?? "" });
 
-      if (data && data.rol !== "admin") {
+      if (rol && !rol.es_admin_total) {
         const { data: permisos } = await supabase
-          .from("permisos_modulo")
-          .select("modulo, puede_ver")
-          .eq("rol", data.rol);
-        setModulosVisibles(new Set((permisos ?? []).filter((p) => p.puede_ver).map((p) => p.modulo)));
+          .from("rol_permisos")
+          .select("permiso_clave")
+          .eq("rol_id", data.rol_id)
+          .like("permiso_clave", "ver_%");
+        setModulosVisibles(new Set((permisos ?? []).map((p) => p.permiso_clave.replace(/^ver_/, ""))));
       } else {
         setModulosVisibles(null);
       }
@@ -208,7 +207,7 @@ export default function Sidebar() {
           <div className="text-white text-sm font-medium truncate group-hover:text-zinc-100">
             {usuario ? usuario.nombre : "Cargando…"}
           </div>
-          <div className="text-zinc-400 text-xs">{usuario ? ROL_LABEL[usuario.rol] : ""}</div>
+          <div className="text-zinc-400 text-xs">{usuario ? usuario.rolNombre : ""}</div>
         </div>
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-600 group-hover:text-zinc-400 shrink-0">
           <path d="M5 3l4 4-4 4" />

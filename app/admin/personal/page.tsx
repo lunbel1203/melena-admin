@@ -3,9 +3,6 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { Database } from "@/types/database.types";
-
-type RolEmpleado = Database["public"]["Enums"]["rol_empleado"];
 
 function SearchIcon() {
   return (
@@ -26,23 +23,17 @@ function ChevronIcon() {
 
 type FilterTab = "Todas" | "Estilistas" | "Recepción" | "Caja";
 const tabs: FilterTab[] = ["Todas", "Estilistas", "Recepción", "Caja"];
-const rolFilter: Record<FilterTab, RolEmpleado | null> = {
+const rolFilter: Record<FilterTab, string | null> = {
   Todas: null,
-  Estilistas: "estilista",
-  Recepción: "recepcion",
-  Caja: "caja",
-};
-const ROL_LABEL: Record<RolEmpleado, string> = {
-  admin: "Admin",
-  recepcion: "Recepción",
-  caja: "Caja",
-  estilista: "Estilista",
+  Estilistas: "Estilista",
+  Recepción: "Recepción",
+  Caja: "Caja",
 };
 
 interface Empleado {
   id: string;
   nombre: string;
-  rol: RolEmpleado;
+  rolNombre: string;
   puesto: string | null;
   activo: boolean;
   foto_url: string | null;
@@ -72,7 +63,7 @@ export default function PersonalPage() {
       const inicioMesISO = inicioMes.toISOString();
 
       const [{ data: emps }, { data: lineas }, { data: comisiones }] = await Promise.all([
-        supabase.from("empleados").select("id, nombre, rol, puesto, activo, foto_url").order("nombre"),
+        supabase.from("empleados").select("id, nombre, puesto, activo, foto_url, roles(nombre)").order("nombre"),
         supabase
           .from("lineas_factura")
           .select("empleado_id, subtotal, tipo, facturas!inner(estado, cobrada_at)")
@@ -94,14 +85,19 @@ export default function PersonalPage() {
         mapa.set(c.empleado_id, s);
       });
 
-      setEmpleados(emps ?? []);
+      setEmpleados(
+        (emps ?? []).map((e) => {
+          const rol = Array.isArray(e.roles) ? e.roles[0] : e.roles;
+          return { id: e.id, nombre: e.nombre, puesto: e.puesto, activo: e.activo, foto_url: e.foto_url, rolNombre: rol?.nombre ?? "" };
+        })
+      );
       setStats(mapa);
       setCargando(false);
     })();
   }, [supabase]);
 
   const filtered = empleados.filter((e) => {
-    const matchTab = rolFilter[activeTab] === null || e.rol === rolFilter[activeTab];
+    const matchTab = rolFilter[activeTab] === null || e.rolNombre === rolFilter[activeTab];
     const matchSearch = e.nombre.toLowerCase().includes(search.toLowerCase());
     return matchTab && matchSearch;
   });
@@ -167,7 +163,7 @@ export default function PersonalPage() {
         ) : (
           filtered.map((e) => {
             const s = stats.get(e.id);
-            const esEstilista = e.rol === "estilista";
+            const esEstilista = e.rolNombre === "Estilista";
             return (
               <Link
                 key={e.id}
@@ -190,7 +186,7 @@ export default function PersonalPage() {
                 </div>
 
                 <span className="hidden sm:inline-block text-xs font-medium text-zinc-600 border border-zinc-200 px-2.5 py-1 rounded-lg w-fit">
-                  {ROL_LABEL[e.rol]}
+                  {e.rolNombre}
                 </span>
 
                 <span className="hidden sm:block text-sm text-zinc-700">

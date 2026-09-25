@@ -2,45 +2,32 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { Database } from "@/types/database.types";
-
-type RolEmpleado = Database["public"]["Enums"]["rol_empleado"];
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400 mb-1">{children}</p>;
 }
 
-interface Permiso {
-  rol: RolEmpleado;
-  modulo: string;
-  puede_ver: boolean;
+interface Rol {
+  id: string;
+  nombre: string;
+  es_admin_total: boolean;
 }
 
-const ROLES: { rol: RolEmpleado; label: string }[] = [
-  { rol: "recepcion", label: "Recepción" },
-  { rol: "estilista", label: "Estilista" },
-  { rol: "caja", label: "Caja" },
-];
+interface Permiso {
+  clave: string;
+  etiqueta: string;
+  modulo: string;
+  orden: number;
+}
 
-const MODULOS: { modulo: string; label: string }[] = [
-  { modulo: "resumen", label: "Resumen" },
-  { modulo: "agenda", label: "Agenda" },
-  { modulo: "clientas", label: "Clientas" },
-  { modulo: "depositos", label: "Depósitos" },
-  { modulo: "personal", label: "Personal" },
-  { modulo: "catalogo", label: "Catálogo" },
-  { modulo: "proveedores", label: "Proveedores" },
-  { modulo: "facturacion", label: "Facturación" },
-  { modulo: "reportes", label: "Reportes" },
-  { modulo: "configuracion", label: "Configuración" },
-];
-
-function clave(rol: RolEmpleado, modulo: string) {
-  return `${rol}::${modulo}`;
+function clave(rolId: string, permisoClave: string) {
+  return `${rolId}::${permisoClave}`;
 }
 
 export default function PermisosPage() {
   const supabase = useMemo(() => createClient(), []);
+  const [roles, setRoles] = useState<Rol[]>([]);
+  const [catalogo, setCatalogo] = useState<Permiso[]>([]);
   const [permisos, setPermisos] = useState<Map<string, boolean>>(new Map());
   const [original, setOriginal] = useState<Map<string, boolean>>(new Map());
   const [cargando, setCargando] = useState(true);
@@ -50,26 +37,37 @@ export default function PermisosPage() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("permisos_modulo").select("rol, modulo, puede_ver");
+      const [{ data: rolesData }, { data: catalogoData }, { data: rolPermisos }] = await Promise.all([
+        supabase.from("roles").select("id, nombre, es_admin_total").order("nombre"),
+        supabase.from("permisos_catalogo").select("clave, etiqueta, modulo, orden").order("orden"),
+        supabase.from("rol_permisos").select("rol_id, permiso_clave"),
+      ]);
       const mapa = new Map<string, boolean>();
-      (data ?? []).forEach((p: Permiso) => mapa.set(clave(p.rol, p.modulo), p.puede_ver));
+      (rolPermisos ?? []).forEach((p) => mapa.set(clave(p.rol_id, p.permiso_clave), true));
+      setRoles(rolesData ?? []);
+      setCatalogo(catalogoData ?? []);
       setPermisos(mapa);
       setOriginal(mapa);
       setCargando(false);
     })();
   }, [supabase]);
 
+  const rolesEditables = roles.filter((r) => !r.es_admin_total);
+
   const huboCambios = useMemo(() => {
+    if (permisos.size !== original.size) return true;
     for (const [k, v] of permisos) {
       if (original.get(k) !== v) return true;
     }
     return false;
   }, [permisos, original]);
 
-  function toggle(rol: RolEmpleado, modulo: string) {
+  function toggle(rolId: string, permisoClave: string) {
     setPermisos((prev) => {
       const next = new Map(prev);
-      next.set(clave(rol, modulo), !prev.get(clave(rol, modulo)));
+      const k = clave(rolId, permisoClave);
+      if (next.get(k)) next.delete(k);
+      else next.set(k, true);
       return next;
     });
   }
@@ -79,23 +77,46 @@ export default function PermisosPage() {
     setError(null);
     setGuardado(false);
 
-    const filas = ROLES.flatMap(({ rol }) =>
-      MODULOS.map(({ modulo }) => ({
-        rol,
-        modulo,
-        puede_ver: permisos.get(clave(rol, modulo)) ?? true,
-      }))
-    );
+    const aAgregar: { rol_id: string; permiso_clave: string }[] = [];
+    for (const [k, v] of permisos) {
+      if (v && !original.get(k)) {
+        const [rol_id, permiso_clave] = k.split("::");
+        aAgregar.push({ rol_id, permiso_clave });
+      }
+    }
+    const aQuitar: { rol_id: string; permiso_clave: string }[] = [];
+    for (const [k, v] of original) {
+      if (v && !permisos.get(k)) {
+        const [rol_id, permiso_clave] = k.split("::");
+        aQuitar.push({ rol_id, permiso_clave });
+      }
+    }
 
-    const { error } = await supabase.from("permisos_modulo").upsert(filas, { onConflict: "rol,modulo" });
+    if (aAgregar.length > 0) {
+      const { error } = await supabase.from("rol_permisos").insert(aAgregar);
+      if (error) {
+        setGuardando(false);
+        return setError(error.message);
+      }
+    }
+    for (const { rol_id, permiso_clave } of aQuitar) {
+      const { error } = await supabase.from("rol_permisos").delete().eq("rol_id", rol_id).eq("permiso_clave", permiso_clave);
+      if (error) {
+        setGuardando(false);
+        return setError(error.message);
+      }
+    }
+
     setGuardando(false);
-    if (error) return setError(error.message);
     setOriginal(new Map(permisos));
     setGuardado(true);
     setTimeout(() => setGuardado(false), 2500);
   }
 
   if (cargando) return <p className="text-sm text-zinc-400">Cargando…</p>;
+
+  const modulos = catalogo.filter((p) => p.modulo === "modulo");
+  const acciones = catalogo.filter((p) => p.modulo === "accion");
 
   return (
     <div className="space-y-4">
@@ -112,44 +133,62 @@ export default function PermisosPage() {
       </div>
 
       <div className="bg-white rounded-2xl border border-zinc-200 p-5">
-        <SectionLabel>Qué ve cada rol</SectionLabel>
+        <SectionLabel>Permisos por rol</SectionLabel>
         <p className="text-xs text-zinc-400 mb-4">
-          Controla qué secciones aparecen en el menú y a cuáles puede entrar cada rol. Admin siempre ve todo — por
-          seguridad, no se le puede quitar acceso desde aquí. Esto no cambia los permisos de la base de datos
-          (esos siguen siendo igual de estrictos); solo controla la navegación del panel.
+          Controla qué secciones ve cada rol y qué acciones puntuales puede hacer (verificar depósitos, cobrar
+          facturas, gestionar catálogo y personal, ver comisiones de otras). Admin siempre tiene todo — por
+          seguridad, no se le puede quitar acceso desde aquí.
         </p>
 
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[520px]">
             <thead>
               <tr className="text-left text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">
-                <th className="pb-2 pr-3">Módulo</th>
+                <th className="pb-2 pr-3">Permiso</th>
                 <th className="pb-2 px-3 text-center">Admin</th>
-                {ROLES.map(({ rol, label }) => (
-                  <th key={rol} className="pb-2 px-3 text-center">
-                    {label}
+                {rolesEditables.map((r) => (
+                  <th key={r.id} className="pb-2 px-3 text-center">
+                    {r.nombre}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {MODULOS.map(({ modulo, label }) => (
-                <tr key={modulo} className="border-t border-zinc-100">
-                  <td className="py-2.5 pr-3 text-zinc-700 font-medium">{label}</td>
+              {modulos.map((p) => (
+                <tr key={p.clave} className="border-t border-zinc-100">
+                  <td className="py-2.5 pr-3 text-zinc-700 font-medium">{p.etiqueta}</td>
                   <td className="py-2.5 px-3 text-center">
-                    <input
-                      type="checkbox"
-                      checked
-                      disabled
-                      className="w-4 h-4 rounded accent-zinc-300 cursor-not-allowed"
-                    />
+                    <input type="checkbox" checked disabled className="w-4 h-4 rounded accent-zinc-300 cursor-not-allowed" />
                   </td>
-                  {ROLES.map(({ rol }) => (
-                    <td key={rol} className="py-2.5 px-3 text-center">
+                  {rolesEditables.map((r) => (
+                    <td key={r.id} className="py-2.5 px-3 text-center">
                       <input
                         type="checkbox"
-                        checked={permisos.get(clave(rol, modulo)) ?? true}
-                        onChange={() => toggle(rol, modulo)}
+                        checked={!!permisos.get(clave(r.id, p.clave))}
+                        onChange={() => toggle(r.id, p.clave)}
+                        className="w-4 h-4 rounded accent-teal-500 cursor-pointer"
+                      />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+              <tr>
+                <td colSpan={2 + rolesEditables.length} className="pt-4 pb-1 text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">
+                  Acciones
+                </td>
+              </tr>
+              {acciones.map((p) => (
+                <tr key={p.clave} className="border-t border-zinc-100">
+                  <td className="py-2.5 pr-3 text-zinc-700 font-medium">{p.etiqueta}</td>
+                  <td className="py-2.5 px-3 text-center">
+                    <input type="checkbox" checked disabled className="w-4 h-4 rounded accent-zinc-300 cursor-not-allowed" />
+                  </td>
+                  {rolesEditables.map((r) => (
+                    <td key={r.id} className="py-2.5 px-3 text-center">
+                      <input
+                        type="checkbox"
+                        checked={!!permisos.get(clave(r.id, p.clave))}
+                        onChange={() => toggle(r.id, p.clave)}
                         className="w-4 h-4 rounded accent-teal-500 cursor-pointer"
                       />
                     </td>
