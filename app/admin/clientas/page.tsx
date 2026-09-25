@@ -1,12 +1,9 @@
-import Link from "next/link";
+"use client";
 
-function slugify(name: string) {
-  return name
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/\s+/g, "-");
-}
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { toISODate } from "@/lib/dates";
 
 function SearchIcon() {
   return (
@@ -25,76 +22,88 @@ function ChevronIcon() {
   );
 }
 
-const clientRows = [
-  {
-    initial: "V",
-    name: "Valentina Reyes",
-    phone: "809 555 0142",
-    service: 'Tape-in 20"',
-    progress: 90,
-    lastVisit: "24 ago",
-    nextAppt: "3 sep",
-    status: "Activa",
-    statusClass: "bg-green-50 text-green-700",
-  },
-  {
-    initial: "C",
-    name: "Camila Santos",
-    phone: "809 555 0188",
-    service: "Retoque",
-    progress: 50,
-    lastVisit: "18 ago",
-    nextAppt: "18 sep",
-    status: "Activa",
-    statusClass: "bg-green-50 text-green-700",
-  },
-  {
-    initial: "A",
-    name: "Andrea Peña",
-    phone: "809 555 0231",
-    service: "Nano ring",
-    progress: 30,
-    lastVisit: "12 ago",
-    nextAppt: "24 sep",
-    status: "Activa",
-    statusClass: "bg-green-50 text-green-700",
-  },
-  {
-    initial: "R",
-    name: "Renata Morales",
-    phone: "809 555 0377",
-    service: 'Tape-in 18"',
-    progress: 18,
-    lastVisit: "2 sep",
-    nextAppt: "Sin agendar",
-    status: "Molestia",
-    statusClass: "bg-orange-50 text-orange-600",
-  },
-  {
-    initial: "L",
-    name: "Lucia Ferrer",
-    phone: "809 555 0410",
-    service: "Nano ring",
-    progress: 8,
-    lastVisit: "—",
-    nextAppt: "2 sep",
-    status: "Nueva",
-    statusClass: "bg-zinc-100 text-zinc-600",
-  },
-  {
-    initial: "D",
-    name: "Daniela Paz",
-    phone: "809 555 0522",
-    service: "Sin servicio",
-    progress: 55,
-    lastVisit: "4 may",
-    nextAppt: "Sin agendar",
-    status: "Inactiva",
-    statusClass: "bg-zinc-100 text-zinc-500",
-  },
-];
+interface Clienta {
+  id: string;
+  nombre: string;
+  telefono: string;
+}
+interface Cita {
+  clienta_id: string;
+  fecha: string;
+  hora_inicio: string;
+  estado: string;
+  servicios: { nombre: string } | { nombre: string }[] | null;
+}
+
+const statusClass: Record<string, string> = {
+  Molestia: "bg-orange-50 text-orange-600",
+  Nueva: "bg-zinc-100 text-zinc-600",
+  Activa: "bg-green-50 text-green-700",
+  Inactiva: "bg-zinc-100 text-zinc-500",
+};
+
+function nombreServicio(s: Cita["servicios"]) {
+  if (!s) return null;
+  return Array.isArray(s) ? s[0]?.nombre ?? null : s.nombre;
+}
 
 export default function ClientasPage() {
+  const supabase = useMemo(() => createClient(), []);
+  const [clientas, setClientas] = useState<Clienta[]>([]);
+  const [citas, setCitas] = useState<Cita[]>([]);
+  const [ticketsAbiertos, setTicketsAbiertos] = useState<Set<string>>(new Set());
+  const [cargando, setCargando] = useState(true);
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      const [{ data: cl }, { data: ct }, { data: tk }] = await Promise.all([
+        supabase.from("clientas").select("id, nombre, telefono").order("nombre"),
+        supabase.from("citas").select("clienta_id, fecha, hora_inicio, estado, servicios(nombre)").order("fecha", { ascending: false }),
+        supabase.from("tickets_molestia").select("clienta_id").in("estado", ["abierto", "en_proceso"]),
+      ]);
+      setClientas(cl ?? []);
+      setCitas((ct ?? []) as Cita[]);
+      setTicketsAbiertos(new Set((tk ?? []).map((t) => t.clienta_id)));
+      setCargando(false);
+    })();
+  }, [supabase]);
+
+  const hoy = toISODate(new Date());
+
+  const filas = useMemo(() => {
+    return clientas
+      .filter((c) => {
+        const q = search.trim().toLowerCase();
+        if (!q) return true;
+        return c.nombre.toLowerCase().includes(q) || c.telefono.includes(q);
+      })
+      .map((c) => {
+        const propias = citas.filter((ci) => ci.clienta_id === c.id);
+        const completadas = propias.filter((ci) => ci.estado === "completada");
+        const proxima = propias
+          .filter((ci) => (ci.estado === "pendiente_confirmacion" || ci.estado === "confirmada") && ci.fecha >= hoy)
+          .sort((a, b) => (a.fecha + a.hora_inicio).localeCompare(b.fecha + b.hora_inicio))[0];
+        const ultima = completadas.sort((a, b) => (b.fecha + b.hora_inicio).localeCompare(a.fecha + a.hora_inicio))[0];
+
+        let estado: string;
+        if (ticketsAbiertos.has(c.id)) estado = "Molestia";
+        else if (propias.length === 0) estado = "Nueva";
+        else if (proxima) estado = "Activa";
+        else estado = "Inactiva";
+
+        return {
+          ...c,
+          servicio: nombreServicio(proxima?.servicios ?? ultima?.servicios ?? null),
+          ultimaVisita: ultima?.fecha ?? null,
+          proximaCita: proxima?.fecha ?? null,
+          estado,
+        };
+      });
+  }, [clientas, citas, ticketsAbiertos, search, hoy]);
+
+  const citasHoy = citas.filter((c) => c.fecha === hoy && c.estado !== "cancelada").length;
+
   return (
     <div className="min-h-full bg-zinc-50 p-4 sm:p-6 lg:p-8">
 
@@ -109,15 +118,14 @@ export default function ClientasPage() {
             </span>
             <input
               type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar clienta..."
               className="pl-9 pr-4 py-2 text-sm bg-white border border-zinc-200 rounded-xl w-52 text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-300"
             />
           </div>
 
           <div className="ml-auto flex items-center gap-3">
-            <span className="hidden md:block text-sm text-zinc-400 font-medium">
-              Mié 2 sep 2026
-            </span>
             <Link
               href="/admin/clientas/nueva"
               className="bg-zinc-900 text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-zinc-700 transition-colors whitespace-nowrap"
@@ -133,6 +141,8 @@ export default function ClientasPage() {
           </span>
           <input
             type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar clienta..."
             className="w-full pl-9 pr-4 py-2.5 text-sm bg-white border border-zinc-200 rounded-xl text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-300"
           />
@@ -143,15 +153,15 @@ export default function ClientasPage() {
       <div className="flex gap-3 sm:gap-4 mb-5 sm:mb-6">
         <div className="bg-white rounded-2xl p-4 sm:p-5 border border-zinc-100 shadow-sm min-w-[140px]">
           <p className="text-[10px] sm:text-[11px] text-zinc-400 uppercase tracking-widest font-semibold mb-2 sm:mb-3">
-            Clientas activas
+            Clientas registradas
           </p>
-          <p className="text-3xl sm:text-4xl font-bold text-zinc-900">148</p>
+          <p className="text-3xl sm:text-4xl font-bold text-zinc-900">{clientas.length}</p>
         </div>
         <div className="bg-white rounded-2xl p-4 sm:p-5 border border-zinc-100 shadow-sm min-w-[120px]">
           <p className="text-[10px] sm:text-[11px] text-zinc-400 uppercase tracking-widest font-semibold mb-2 sm:mb-3">
             Citas hoy
           </p>
-          <p className="text-3xl sm:text-4xl font-bold text-zinc-900">14</p>
+          <p className="text-3xl sm:text-4xl font-bold text-zinc-900">{citasHoy}</p>
         </div>
       </div>
 
@@ -159,68 +169,66 @@ export default function ClientasPage() {
       <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-zinc-100">
           <h2 className="text-sm font-semibold text-zinc-900">Todas las clientas</h2>
-          <span className="text-xs text-zinc-400">148 clientas · mostrando 6</span>
+          <span className="text-xs text-zinc-400">{clientas.length} clientas · mostrando {filas.length}</span>
         </div>
 
         {/* Columnas header */}
-        <div className="hidden sm:grid grid-cols-[2fr_1.2fr_1fr_1fr_1fr_auto_28px] gap-x-4 px-5 sm:px-6 py-2.5 border-b border-zinc-50">
-          <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">Clienta</span>
-          <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">Servicio actual</span>
-          <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">Progreso</span>
-          <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">Última visita</span>
-          <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">Próxima cita</span>
-          <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">Estado</span>
-          <span />
-        </div>
+        {filas.length > 0 && (
+          <div className="hidden sm:grid grid-cols-[2fr_1.3fr_1fr_1fr_auto_28px] gap-x-4 px-5 sm:px-6 py-2.5 border-b border-zinc-50">
+            <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">Clienta</span>
+            <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">Servicio</span>
+            <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">Última visita</span>
+            <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">Próxima cita</span>
+            <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">Estado</span>
+            <span />
+          </div>
+        )}
 
-        {/* Filas */}
-        {clientRows.map(({ initial, name, phone, service, progress, lastVisit, nextAppt, status, statusClass }) => (
-          <Link
-            key={name}
-            href={`/admin/clientas/${slugify(name)}`}
-            className="flex sm:grid sm:grid-cols-[2fr_1.2fr_1fr_1fr_1fr_auto_28px] gap-x-4 items-center px-5 sm:px-6 py-4 border-b border-zinc-50 last:border-0 hover:bg-zinc-50/70 transition-colors cursor-pointer"
-          >
-            {/* Clienta */}
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-8 h-8 rounded-full bg-zinc-200 flex items-center justify-center text-sm font-semibold text-zinc-600 shrink-0">
-                {initial}
+        {cargando ? (
+          <p className="px-5 sm:px-6 py-8 text-sm text-zinc-400">Cargando…</p>
+        ) : filas.length === 0 ? (
+          <p className="px-5 sm:px-6 py-8 text-sm text-zinc-400">
+            {clientas.length === 0 ? "No hay clientas registradas todavía." : "Ninguna clienta coincide con la búsqueda."}
+          </p>
+        ) : (
+          filas.map((c) => (
+            <Link
+              key={c.id}
+              href={`/admin/clientas/${c.id}`}
+              className="flex sm:grid sm:grid-cols-[2fr_1.3fr_1fr_1fr_auto_28px] gap-x-4 items-center px-5 sm:px-6 py-4 border-b border-zinc-50 last:border-0 hover:bg-zinc-50/70 transition-colors cursor-pointer"
+            >
+              {/* Clienta */}
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-8 h-8 rounded-full bg-zinc-200 flex items-center justify-center text-sm font-semibold text-zinc-600 shrink-0">
+                  {c.nombre.charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-zinc-900 truncate">{c.nombre}</p>
+                  <p className="text-xs text-zinc-400">{c.telefono}</p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-zinc-900 truncate">{name}</p>
-                <p className="text-xs text-zinc-400">{phone}</p>
-              </div>
-            </div>
 
-            {/* Servicio */}
-            <span className="hidden sm:block text-sm text-zinc-600">{service}</span>
+              {/* Servicio */}
+              <span className="hidden sm:block text-sm text-zinc-600">{c.servicio ?? "—"}</span>
 
-            {/* Progreso */}
-            <div className="hidden sm:flex items-center">
-              <div className="w-full h-1.5 bg-zinc-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-zinc-800"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-            </div>
+              {/* Última visita */}
+              <span className="hidden sm:block text-sm text-zinc-500">{c.ultimaVisita ?? "—"}</span>
 
-            {/* Última visita */}
-            <span className="hidden sm:block text-sm text-zinc-500">{lastVisit}</span>
+              {/* Próxima cita */}
+              <span className="hidden sm:block text-sm text-zinc-500">{c.proximaCita ?? "Sin agendar"}</span>
 
-            {/* Próxima cita */}
-            <span className="hidden sm:block text-sm text-zinc-500">{nextAppt}</span>
+              {/* Estado */}
+              <span className={`hidden sm:inline-block text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${statusClass[c.estado]}`}>
+                {c.estado}
+              </span>
 
-            {/* Estado */}
-            <span className={`hidden sm:inline-block text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${statusClass}`}>
-              {status}
-            </span>
-
-            {/* Chevron */}
-            <span className="text-zinc-300 ml-auto sm:ml-0 shrink-0">
-              <ChevronIcon />
-            </span>
-          </Link>
-        ))}
+              {/* Chevron */}
+              <span className="text-zinc-300 ml-auto sm:ml-0 shrink-0">
+                <ChevronIcon />
+              </span>
+            </Link>
+          ))
+        )}
       </div>
     </div>
   );

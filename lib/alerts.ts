@@ -55,7 +55,7 @@ function normalizarTelefonoDO(telefono: string) {
   return digitos;
 }
 
-function enlaceWhatsApp(telefono: string | null | undefined, mensaje: string) {
+export function enlaceWhatsApp(telefono: string | null | undefined, mensaje: string) {
   const texto = encodeURIComponent(mensaje);
   if (telefono && telefono.trim()) {
     return `https://wa.me/${normalizarTelefonoDO(telefono)}?text=${texto}`;

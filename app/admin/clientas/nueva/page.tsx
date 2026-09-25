@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 function BackIcon() {
   return (
@@ -19,19 +21,44 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-const services = [
-  { id: "s1", name: "Tape-in",   detail: "Desde RD$3,200" },
-  { id: "s2", name: "Nano ring", detail: "Desde RD$4,800" },
-  { id: "s3", name: "Bulk",      detail: "Desde RD$2,500" },
-  { id: "s4", name: "Ponytail",  detail: "Desde RD$1,900" },
-];
-
 export default function NuevaClientaPage() {
+  const supabase = useMemo(() => createClient(), []);
+  const router = useRouter();
+
   const [nombre, setNombre] = useState("");
   const [telefono, setTelefono] = useState("");
   const [correo, setCorreo] = useState("");
-  const [selectedService, setSelectedService] = useState<string | null>(null);
+  const [fechaNacimiento, setFechaNacimiento] = useState("");
   const [nota, setNota] = useState("");
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const puedeGuardar = nombre.trim() && telefono.trim() && !guardando;
+
+  async function crearClienta() {
+    if (!nombre.trim() || !telefono.trim()) return setError("Falta el nombre o el teléfono.");
+    setGuardando(true);
+    setError(null);
+
+    const { data: nueva, error: insError } = await supabase
+      .from("clientas")
+      .insert({
+        nombre: nombre.trim(),
+        telefono: telefono.trim(),
+        email: correo.trim() || null,
+        fecha_nacimiento: fechaNacimiento || null,
+        notas: nota.trim() || null,
+      })
+      .select("id")
+      .single();
+
+    setGuardando(false);
+    if (insError || !nueva) {
+      return setError(insError?.code === "23505" ? "Ya existe una clienta con ese teléfono." : insError?.message ?? "No se pudo crear la clienta.");
+    }
+
+    router.push(`/admin/clientas/${nueva.id}`);
+  }
 
   return (
     <div className="min-h-full bg-zinc-50">
@@ -54,7 +81,7 @@ export default function NuevaClientaPage() {
 
           {/* Datos personales */}
           <div className="bg-white rounded-2xl border border-zinc-200 p-5">
-            <SectionLabel>1 · Datos personales</SectionLabel>
+            <SectionLabel>Datos personales</SectionLabel>
             <div className="space-y-3">
               <div>
                 <label className="text-xs font-semibold text-zinc-500 mb-1.5 block">
@@ -92,30 +119,17 @@ export default function NuevaClientaPage() {
                   className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-zinc-400 transition-colors"
                 />
               </div>
-            </div>
-          </div>
-
-          {/* Servicio de interés */}
-          <div className="bg-white rounded-2xl border border-zinc-200 p-5">
-            <SectionLabel>2 · Servicio de interés</SectionLabel>
-            <div className="grid grid-cols-2 gap-2.5">
-              {services.map((s) => {
-                const isSelected = selectedService === s.id;
-                return (
-                  <button
-                    key={s.id}
-                    onClick={() => setSelectedService(s.id)}
-                    className={`text-left px-4 py-3.5 rounded-xl border-2 transition-all ${
-                      isSelected
-                        ? "border-zinc-900 bg-white"
-                        : "border-zinc-100 bg-white hover:border-zinc-200"
-                    }`}
-                  >
-                    <div className="text-sm font-semibold text-zinc-900">{s.name}</div>
-                    <div className="text-xs text-zinc-400 mt-1">{s.detail}</div>
-                  </button>
-                );
-              })}
+              <div>
+                <label className="text-xs font-semibold text-zinc-500 mb-1.5 block">
+                  Fecha de nacimiento
+                </label>
+                <input
+                  type="date"
+                  value={fechaNacimiento}
+                  onChange={(e) => setFechaNacimiento(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 focus:outline-none focus:border-zinc-400 transition-colors"
+                />
+              </div>
             </div>
           </div>
 
@@ -149,22 +163,25 @@ export default function NuevaClientaPage() {
                   <span className="font-semibold text-zinc-900">{telefono || "—"}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-zinc-500">Servicio</span>
-                  <span className="font-semibold text-zinc-900">
-                    {services.find((s) => s.id === selectedService)?.name ?? "—"}
-                  </span>
+                  <span className="text-zinc-500">Correo</span>
+                  <span className="font-semibold text-zinc-900 text-right truncate max-w-[160px]">{correo || "—"}</span>
                 </div>
               </div>
             </div>
             <div className="p-5 flex flex-col gap-3">
+              {error && <p className="text-xs text-red-500">{error}</p>}
               <Link
                 href="/admin/clientas"
                 className="w-full py-3 rounded-xl border border-zinc-200 text-sm font-semibold text-zinc-700 text-center hover:bg-zinc-50 transition-colors"
               >
                 Cancelar
               </Link>
-              <button className="w-full py-3 rounded-xl bg-zinc-900 text-sm font-semibold text-white hover:bg-zinc-700 transition-colors">
-                Crear clienta
+              <button
+                onClick={crearClienta}
+                disabled={!puedeGuardar}
+                className="w-full py-3 rounded-xl bg-zinc-900 text-sm font-semibold text-white hover:bg-zinc-700 transition-colors disabled:opacity-50"
+              >
+                {guardando ? "Creando…" : "Crear clienta"}
               </button>
             </div>
           </div>

@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { addDays, diaAbbr, minutosAHora, horaAMinutos, toISODate } from "@/lib/dates";
 
@@ -92,8 +92,17 @@ const DIAS_A_MOSTRAR = 14;
 
 /* ── Page ── */
 export default function NuevaCitaPage() {
+  return (
+    <Suspense fallback={null}>
+      <NuevaCitaForm />
+    </Suspense>
+  );
+}
+
+function NuevaCitaForm() {
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   /* Paso 1: clienta */
   const [search, setSearch] = useState("");
@@ -103,6 +112,19 @@ export default function NuevaCitaPage() {
   const [modoNueva, setModoNueva] = useState(false);
   const [nuevoNombre, setNuevoNombre] = useState("");
   const [nuevoTelefono, setNuevoTelefono] = useState("");
+
+  /* Preselección de clienta al venir desde su perfil (?clienta_id=) */
+  useEffect(() => {
+    const clientaId = searchParams.get("clienta_id");
+    if (!clientaId) return;
+    (async () => {
+      const { data } = await supabase.from("clientas").select("id, nombre, telefono").eq("id", clientaId).single();
+      if (data) {
+        setSelectedClienta(data);
+        setSearch(data.nombre);
+      }
+    })();
+  }, [supabase, searchParams]);
 
   useEffect(() => {
     if (search.trim().length < 2) {
