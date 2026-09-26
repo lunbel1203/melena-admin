@@ -1108,6 +1108,7 @@ export type Database = {
           duracion_minutos: number
           foto_url: string | null
           id: string
+          mostrar_en_web: boolean
           nombre: string
           precio: number
           slug: string
@@ -1123,6 +1124,7 @@ export type Database = {
           duracion_minutos?: number
           foto_url?: string | null
           id?: string
+          mostrar_en_web?: boolean
           nombre: string
           precio: number
           slug: string
@@ -1138,6 +1140,7 @@ export type Database = {
           duracion_minutos?: number
           foto_url?: string | null
           id?: string
+          mostrar_en_web?: boolean
           nombre?: string
           precio?: number
           slug?: string
@@ -1302,6 +1305,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      crear_cita_publica: {
+        Args: {
+          p_comprobante_url: string
+          p_email: string
+          p_empleado_id: string
+          p_fecha: string
+          p_hora_fin: string
+          p_hora_inicio: string
+          p_nombre: string
+          p_notas: string
+          p_servicio_id: string
+          p_telefono: string
+        }
+        Returns: string
+      }
       empleado_id_actual: { Args: never; Returns: string }
       es_admin: { Args: never; Returns: boolean }
       es_recepcion_o_caja: { Args: never; Returns: boolean }

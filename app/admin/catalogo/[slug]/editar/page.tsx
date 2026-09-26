@@ -47,6 +47,7 @@ interface ServicioRow {
   deposito_monto: number | null;
   dias_seguimiento: number[];
   activo: boolean;
+  mostrar_en_web: boolean;
 }
 
 interface Estilista {
@@ -120,6 +121,7 @@ function EditarServicio({ servicio, slug }: { servicio: ServicioRow; slug: strin
   const [sinDeposito, setSinDeposito] = useState(!servicio.deposito_requerido);
   const [diasSeguimiento, setDiasSeguimiento] = useState(servicio.dias_seguimiento.join(", "));
   const [activo, setActivo] = useState(servicio.activo);
+  const [mostrarEnWeb, setMostrarEnWeb] = useState(servicio.mostrar_en_web);
 
   const [estilistas, setEstilistas] = useState<Estilista[]>([]);
   const [selectedStaff, setSelectedStaff] = useState<string[]>([]);
@@ -171,6 +173,7 @@ function EditarServicio({ servicio, slug }: { servicio: ServicioRow; slug: strin
         deposito_monto: sinDeposito ? null : deposito ? Number(deposito) : null,
         dias_seguimiento: parseDias(diasSeguimiento),
         activo,
+        mostrar_en_web: mostrarEnWeb,
       })
       .eq("id", servicio.id);
 
@@ -323,9 +326,13 @@ function EditarServicio({ servicio, slug }: { servicio: ServicioRow; slug: strin
           {/* Publicación */}
           <div className="bg-white rounded-2xl border border-zinc-200 p-5">
             <SectionLabel>Publicación</SectionLabel>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-3">
               <span className="text-sm text-zinc-700">Activo (visible para agendar)</span>
               <Toggle value={activo} onChange={() => setActivo((v) => !v)} />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-zinc-700">Visible en la web (melena-page)</span>
+              <Toggle value={mostrarEnWeb} onChange={() => setMostrarEnWeb((v) => !v)} />
             </div>
           </div>
         </div>
