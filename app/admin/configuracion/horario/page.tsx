@@ -321,9 +321,10 @@ export default function HorarioAgendaPage() {
             </div>
             <div>
               <label className="text-xs font-semibold text-zinc-500 mb-1 block">Anticipación mínima (h)</label>
-              <input type="number" min={0} value={reglas.anticipacion_minima_horas}
+              <input type="number" min={0} step={0.5} value={reglas.anticipacion_minima_horas}
                 onChange={(e) => setReglas({ ...reglas, anticipacion_minima_horas: Number(e.target.value) })}
                 className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm" />
+              <p className="text-[11px] text-zinc-400 mt-1">Ej. 0.5 = 30 min</p>
             </div>
             <div>
               <label className="text-xs font-semibold text-zinc-500 mb-1 block">Reservar hasta (días)</label>
