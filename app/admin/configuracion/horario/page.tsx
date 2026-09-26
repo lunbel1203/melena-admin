@@ -80,14 +80,34 @@ export default function HorarioAgendaPage() {
   }, []);
 
   function actualizarDia(dia_semana: number, cambios: Partial<DiaHorario>) {
-    setDias((prev) => prev.map((d) => (d.dia_semana === dia_semana ? { ...d, ...cambios } : d)));
+    setDias((prev) =>
+      prev.map((d) => {
+        if (d.dia_semana !== dia_semana) return d;
+        const actualizado = { ...d, ...cambios };
+        // Al activar un día sin horas cargadas, se ponen valores por
+        // defecto — si no, "Guardar" choca con la restricción de la
+        // base de datos (abierto exige apertura y cierre no vacíos).
+        if (actualizado.abierto && !actualizado.apertura && !actualizado.cierre) {
+          actualizado.apertura = "09:00";
+          actualizado.cierre = "18:00";
+        }
+        return actualizado;
+      }),
+    );
   }
 
   async function guardarTodo() {
-    setGuardando(true);
     setError(null);
     setGuardado(false);
 
+    const diaIncompleto = dias.find((d) => d.abierto && (!d.apertura || !d.cierre || d.cierre <= d.apertura));
+    if (diaIncompleto) {
+      return setError(
+        `Falta la hora de ${NOMBRES_DIA[diaIncompleto.dia_semana].toLowerCase()} (el cierre debe ser después de la apertura).`,
+      );
+    }
+
+    setGuardando(true);
     const resultados = await Promise.all([
       ...dias.map((d) =>
         supabase
