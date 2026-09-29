@@ -32,6 +32,14 @@ function ImagePlaceholderIcon() {
     </svg>
   );
 }
+function PdfIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400">
+      <path d="M7 3h11l5 5v17a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" />
+      <path d="M18 3v5h5" />
+    </svg>
+  );
+}
 
 /* ── Tipos ── */
 type StepStatus = "done" | "pending" | "locked" | "rejected";
@@ -64,6 +72,9 @@ function formatPrecio(n: number) {
 }
 function formatFechaHora(iso: string) {
   return new Date(iso).toLocaleString("es-DO", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+}
+function esPdf(url: string) {
+  return /\.pdf(\?|$)/i.test(url);
 }
 
 /* ── Section label ── */
@@ -583,15 +594,27 @@ export default function CitaDetailPage({ params }: { params: Promise<{ id: strin
               <p className="text-sm text-zinc-400 mb-2">Cobro en salón — no requiere depósito.</p>
             ) : (
               <>
-                <a
-                  href={deposito.comprobante_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="border-2 border-dashed border-zinc-200 rounded-xl overflow-hidden flex flex-col items-center gap-2 mb-4 hover:border-zinc-300 transition-all"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={deposito.comprobante_url} alt="Comprobante de depósito" className="w-full max-h-64 object-contain bg-zinc-50" />
-                </a>
+                {esPdf(deposito.comprobante_url) ? (
+                  <a
+                    href={deposito.comprobante_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="border-2 border-dashed border-zinc-200 rounded-xl py-8 flex flex-col items-center gap-2 mb-4 hover:border-zinc-300 hover:bg-zinc-50 transition-all"
+                  >
+                    <PdfIcon />
+                    <p className="text-sm text-zinc-500 font-medium mt-1">Ver comprobante (PDF)</p>
+                  </a>
+                ) : (
+                  <a
+                    href={deposito.comprobante_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="border-2 border-dashed border-zinc-200 rounded-xl overflow-hidden flex flex-col items-center gap-2 mb-4 hover:border-zinc-300 transition-all"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={deposito.comprobante_url} alt="Comprobante de depósito" className="w-full max-h-64 object-contain bg-zinc-50" />
+                  </a>
+                )}
 
                 <div className="space-y-2.5 mb-4">
                   <div className="flex items-center justify-between gap-3">
