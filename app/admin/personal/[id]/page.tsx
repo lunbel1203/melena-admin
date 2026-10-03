@@ -19,7 +19,7 @@ function pad(n: number) {
 
 function traducirErrorCuenta(mensaje: string) {
   if (/already been registered|already exists/i.test(mensaje)) {
-    return "Ese correo ya tiene una cuenta (puede ser de otra empleada o del admin). Revisá el correo de esta empleada en Editar empleada.";
+    return "Ese correo ya tiene una cuenta (puede ser de otra empleada o del admin). Revisa el correo de esta empleada en Editar empleada.";
   }
   return mensaje;
 }
@@ -516,7 +516,7 @@ export default function PerfilEmpleadaPage({ params }: { params: Promise<{ id: s
                 <p className="text-xs text-zinc-400 mt-0.5">
                   {empleado.user_id
                     ? "Puede iniciar sesión en la app con este correo."
-                    : "Creale una cuenta para que pueda entrar a la app con este correo."}
+                    : "Créale una cuenta para que pueda entrar a la app con este correo."}
                 </p>
               </div>
             </div>

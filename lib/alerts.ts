@@ -69,8 +69,12 @@ export async function mostrarCredenciales(opciones: {
   telefono?: string | null;
   email: string;
   password: string;
+  /** a quién se le comparten los datos (para el texto del aviso) */
+  para?: "la empleada" | "la clienta";
 }) {
-  const mensaje = `Hola ${opciones.nombre}, ya podés entrar a la app de Melena con estos datos:\n\nCorreo: ${opciones.email}\nContraseña: ${opciones.password}`;
+  const para = opciones.para ?? "la empleada";
+  const aviso = opciones.para === "la clienta" ? "\n\nEs una contraseña temporal: al entrar, la app te pedirá crear la tuya." : "";
+  const mensaje = `Hola ${opciones.nombre}, ya puedes entrar a la app de Melena con estos datos:\n\nCorreo: ${opciones.email}\nContraseña: ${opciones.password}${aviso}`;
   const linkWhatsApp = enlaceWhatsApp(opciones.telefono, mensaje);
 
   await Swal.fire({
@@ -78,7 +82,7 @@ export async function mostrarCredenciales(opciones: {
     title: opciones.titulo,
     html: `
       <div class="text-left text-sm text-zinc-500 space-y-3">
-        <p>Compartíselos a la empleada — no se van a volver a mostrar.</p>
+        <p>Compártelos con ${para} — no se van a volver a mostrar.${opciones.para === "la clienta" ? " Es temporal: la app le pedirá crear su propia contraseña al entrar." : ""}</p>
         <div class="bg-zinc-50 rounded-xl p-3 space-y-1.5 text-zinc-800">
           <p><span class="font-semibold">Correo:</span> ${opciones.email}</p>
           <p><span class="font-semibold">Contraseña:</span> <span class="font-mono tracking-wide">${opciones.password}</span></p>
@@ -87,7 +91,7 @@ export async function mostrarCredenciales(opciones: {
            class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-teal-500 hover:bg-teal-600 text-white text-sm font-semibold transition-colors no-underline">
           Enviar por WhatsApp
         </a>
-        ${!opciones.telefono ? '<p class="text-xs text-zinc-400 text-center">Esta empleada no tiene teléfono cargado — vas a tener que elegir el chat a mano.</p>' : ""}
+        ${!opciones.telefono ? `<p class="text-xs text-zinc-400 text-center">Esta persona no tiene teléfono cargado — vas a tener que elegir el chat a mano.</p>` : ""}
       </div>
     `,
     confirmButtonText: "Entendido",

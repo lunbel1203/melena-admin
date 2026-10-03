@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { use, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { avisar, confirmar, enlaceWhatsApp } from "@/lib/alerts";
+import { avisar, confirmar, enlaceWhatsApp, mostrarCredenciales } from "@/lib/alerts";
+import { FunctionsHttpError } from "@supabase/supabase-js";
 import { toISODate } from "@/lib/dates";
 import { useRouter } from "next/navigation";
 
@@ -59,6 +60,7 @@ interface Clienta {
   fecha_nacimiento: string | null;
   notas: string | null;
   created_at: string;
+  user_id: string | null;
 }
 interface Cita {
   id: string;
@@ -97,11 +99,12 @@ export default function PerfilClientaPage({ params }: { params: Promise<{ id: st
   const [cantidadFacturas, setCantidadFacturas] = useState(0);
   const [cargando, setCargando] = useState(true);
   const [eliminando, setEliminando] = useState(false);
+  const [gestionandoCuenta, setGestionandoCuenta] = useState(false);
 
   useEffect(() => {
     (async () => {
       const [{ data: cl }, { data: ct }, { data: tk }, { data: fc }] = await Promise.all([
-        supabase.from("clientas").select("id, nombre, telefono, email, fecha_nacimiento, notas, created_at").eq("id", id).single(),
+        supabase.from("clientas").select("id, nombre, telefono, email, fecha_nacimiento, notas, created_at, user_id").eq("id", id).single(),
         supabase
           .from("citas")
           .select("id, fecha, hora_inicio, estado, servicios(nombre), empleados(nombre)")
@@ -123,6 +126,53 @@ export default function PerfilClientaPage({ params }: { params: Promise<{ id: st
       setCargando(false);
     })();
   }, [supabase, id]);
+
+  async function gestionarCuenta(accion: "crear" | "restablecer") {
+    if (!clienta) return;
+    if (!clienta.email) {
+      const ir = await confirmar({
+        titulo: "Falta el correo",
+        texto: "Para invitarla a la app necesita un correo registrado. ¿Quieres agregarlo ahora?",
+        confirmarTexto: "Agregar correo",
+      });
+      if (ir) router.push(`/admin/clientas/${clienta.id}/editar`);
+      return;
+    }
+    if (accion === "restablecer") {
+      const ok = await confirmar({
+        titulo: "¿Restablecer la contraseña?",
+        texto: "Se genera una contraseña nueva y la anterior deja de funcionar.",
+        confirmarTexto: "Restablecer",
+      });
+      if (!ok) return;
+    }
+    setGestionandoCuenta(true);
+    const { data, error: fnError } = await supabase.functions.invoke("gestionar-cuenta-clienta", {
+      body: { clienta_id: clienta.id, accion },
+    });
+    setGestionandoCuenta(false);
+    if (fnError) {
+      let mensaje = fnError.message;
+      if (fnError instanceof FunctionsHttpError) {
+        const body = await fnError.context.json().catch(() => null);
+        if (body?.error) {
+          mensaje = /already been registered|already exists/i.test(body.error)
+            ? "Ese correo ya tiene una cuenta (de otra clienta o del personal). Revisa el correo de esta clienta."
+            : body.error;
+        }
+      }
+      return avisar("No se pudo completar la operación", mensaje);
+    }
+    if (accion === "crear") setClienta({ ...clienta, user_id: "pendiente" });
+    await mostrarCredenciales({
+      titulo: accion === "crear" ? "Invitación creada" : "Contraseña restablecida",
+      nombre: clienta.nombre.split(" ")[0],
+      telefono: clienta.telefono,
+      email: data.email,
+      password: data.password,
+      para: "la clienta",
+    });
+  }
 
   const hoy = toISODate(new Date());
   const ahoraHHMM = new Date().toTimeString().slice(0, 5);
@@ -212,6 +262,20 @@ export default function PerfilClientaPage({ params }: { params: Promise<{ id: st
             >
               Enviar mensaje
             </a>
+            <Link
+              href={`/admin/clientas/${clienta.id}/editar`}
+              className="border border-zinc-200 text-zinc-700 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-zinc-50 transition-colors whitespace-nowrap"
+            >
+              Editar
+            </Link>
+            <button
+              onClick={() => gestionarCuenta(clienta.user_id ? "restablecer" : "crear")}
+              disabled={gestionandoCuenta}
+              title={clienta.user_id ? "Ya tiene acceso a la app" : "Crea su acceso a la app"}
+              className="border border-zinc-200 text-zinc-700 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-zinc-50 disabled:opacity-50 transition-colors whitespace-nowrap"
+            >
+              {gestionandoCuenta ? "Procesando…" : clienta.user_id ? "Restablecer acceso a la app" : "Invitar a la app"}
+            </button>
             <Link
               href={`/admin/agenda/nueva?clienta_id=${clienta.id}`}
               className="bg-zinc-900 text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-zinc-700 transition-colors whitespace-nowrap"
