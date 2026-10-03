@@ -832,8 +832,8 @@ export type Database = {
       }
       ordenes_compra: {
         Row: {
-          created_at: string
           creada_por: string | null
+          created_at: string
           estado: string
           fecha: string
           id: string
@@ -843,8 +843,8 @@ export type Database = {
           total: number
         }
         Insert: {
-          created_at?: string
           creada_por?: string | null
+          created_at?: string
           estado?: string
           fecha?: string
           id?: string
@@ -854,8 +854,8 @@ export type Database = {
           total?: number
         }
         Update: {
-          created_at?: string
           creada_por?: string | null
+          created_at?: string
           estado?: string
           fecha?: string
           id?: string
@@ -1444,11 +1444,94 @@ export type Database = {
           },
         ]
       }
+      web_antes_despues: {
+        Row: {
+          activo: boolean
+          created_at: string
+          descripcion: string | null
+          foto_url: string
+          id: string
+          orden: number
+        }
+        Insert: {
+          activo?: boolean
+          created_at?: string
+          descripcion?: string | null
+          foto_url: string
+          id?: string
+          orden?: number
+        }
+        Update: {
+          activo?: boolean
+          created_at?: string
+          descripcion?: string | null
+          foto_url?: string
+          id?: string
+          orden?: number
+        }
+        Relationships: []
+      }
+      web_contenido: {
+        Row: {
+          clave: string
+          updated_at: string
+          valor: Json
+        }
+        Insert: {
+          clave: string
+          updated_at?: string
+          valor?: Json
+        }
+        Update: {
+          clave?: string
+          updated_at?: string
+          valor?: Json
+        }
+        Relationships: []
+      }
+      web_testimonios: {
+        Row: {
+          activo: boolean
+          created_at: string
+          estrellas: number
+          id: string
+          nombre: string
+          orden: number
+          texto: string
+        }
+        Insert: {
+          activo?: boolean
+          created_at?: string
+          estrellas?: number
+          id?: string
+          nombre: string
+          orden?: number
+          texto: string
+        }
+        Update: {
+          activo?: boolean
+          created_at?: string
+          estrellas?: number
+          id?: string
+          nombre?: string
+          orden?: number
+          texto?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      actualizar_mis_datos: {
+        Args: {
+          p_fecha_nacimiento?: string
+          p_nombre: string
+          p_telefono: string
+        }
+        Returns: undefined
+      }
       agregar_linea_factura: {
         Args: {
           p_cantidad?: number
@@ -1458,30 +1541,21 @@ export type Database = {
         }
         Returns: string
       }
-      cobrar_factura: {
-        Args: { p_factura_id: string; p_metodo_pago: string }
+      aplicar_recepcion_orden: {
+        Args: { p_orden_id: string }
         Returns: undefined
       }
       cambiar_estado_orden_compra: {
         Args: { p_estado: string; p_orden_id: string }
         Returns: undefined
       }
-      crear_orden_compra: {
-        Args: {
-          p_estado: string
-          p_fecha: string
-          p_lineas: Json
-          p_notas: string
-          p_proveedor_id: string
-        }
-        Returns: string
-      }
-      actualizar_mis_datos: {
-        Args: { p_fecha_nacimiento?: string; p_nombre: string; p_telefono: string }
-        Returns: undefined
-      }
       cancelar_mi_cita: { Args: { p_cita_id: string }; Returns: undefined }
       clienta_id_actual: { Args: never; Returns: string }
+      cobrar_factura: {
+        Args: { p_factura_id: string; p_metodo_pago: string }
+        Returns: undefined
+      }
+      contenido_web: { Args: never; Returns: Json }
       crear_cita_clienta: {
         Args: {
           p_comprobante_path?: string
@@ -1493,13 +1567,102 @@ export type Database = {
         }
         Returns: string
       }
+      crear_cita_publica: {
+        Args: {
+          p_comprobante_url: string
+          p_email: string
+          p_empleado_id: string
+          p_fecha: string
+          p_hora_fin: string
+          p_hora_inicio: string
+          p_nombre: string
+          p_notas: string
+          p_servicio_id: string
+          p_telefono: string
+        }
+        Returns: string
+      }
+      crear_orden_compra: {
+        Args: {
+          p_estado: string
+          p_fecha: string
+          p_lineas: Json
+          p_notas: string
+          p_proveedor_id: string
+        }
+        Returns: string
+      }
+      dar_entrada_clienta: {
+        Args: {
+          p_cita_id?: string
+          p_clienta_id: string
+          p_estilista_id: string
+          p_notas?: string
+          p_servicio_id: string
+          p_visita_id?: string
+        }
+        Returns: string
+      }
+      empleado_id_actual: { Args: never; Returns: string }
+      es_admin: { Args: never; Returns: boolean }
+      es_recepcion_o_caja: { Args: never; Returns: boolean }
+      es_staff: { Args: never; Returns: boolean }
+      estilistas_disponibles: {
+        Args: {
+          p_fecha: string
+          p_hora_fin: string
+          p_hora_inicio: string
+          p_servicio_id: string
+        }
+        Returns: {
+          empleado_id: string
+          foto_url: string
+          nombre: string
+        }[]
+      }
       estilistas_publicos: {
         Args: { p_servicio_id: string }
-        Returns: { foto_url: string; id: string; nombre: string }[]
+        Returns: {
+          foto_url: string
+          id: string
+          nombre: string
+        }[]
+      }
+      horario_salon: {
+        Args: { p_fecha: string }
+        Returns: {
+          abierto: boolean
+          apertura: string
+          cierre: string
+          pausa_fin: string
+          pausa_inicio: string
+        }[]
+      }
+      horarios_disponibles_estilista: {
+        Args: {
+          p_duracion_minutos: number
+          p_empleado_id: string
+          p_fecha: string
+        }
+        Returns: {
+          hora_fin: string
+          hora_inicio: string
+        }[]
       }
       horarios_disponibles_rango: {
-        Args: { p_dias?: number; p_duracion_minutos: number; p_empleado_id: string }
-        Returns: { fecha: string; hora_inicio: string }[]
+        Args: {
+          p_dias?: number
+          p_duracion_minutos: number
+          p_empleado_id: string
+        }
+        Returns: {
+          fecha: string
+          hora_inicio: string
+        }[]
+      }
+      invocar_edge_function: {
+        Args: { p_body: Json; p_nombre: string }
+        Returns: undefined
       }
       marcar_password_cambiada: { Args: never; Returns: undefined }
       mi_cabello: {
@@ -1515,7 +1678,13 @@ export type Database = {
       }
       mi_historial: {
         Args: { p_limite?: number }
-        Returns: { detalle: string; estilista: string; fecha: string; id: string; servicio: string }[]
+        Returns: {
+          detalle: string
+          estilista: string
+          fecha: string
+          id: string
+          servicio: string
+        }[]
       }
       mis_checkins_pendientes: {
         Args: never
@@ -1556,9 +1725,27 @@ export type Database = {
           tipos_molestia: string[]
         }[]
       }
+      porcentaje_comision_efectivo: {
+        Args: {
+          p_empleado_id: string
+          p_tipo: Database["public"]["Enums"]["tipo_linea_factura"]
+        }
+        Returns: number
+      }
       reagendar_mi_cita: {
         Args: { p_cita_id: string; p_fecha: string; p_hora_inicio: string }
         Returns: undefined
+      }
+      responder_checkin: {
+        Args: {
+          p_check_in_id: string
+          p_descripcion?: string
+          p_foto_url?: string
+          p_intensidad?: number
+          p_respuesta: Database["public"]["Enums"]["respuesta_checkin"]
+          p_tipos_molestia?: string[]
+        }
+        Returns: string
       }
       responder_mi_checkin: {
         Args: {
@@ -1575,87 +1762,8 @@ export type Database = {
         Args: { p_cita_id: string; p_comprobante_path: string }
         Returns: undefined
       }
-      tipo_de_usuario: { Args: never; Returns: string }
-      crear_cita_publica: {
-        Args: {
-          p_comprobante_url: string
-          p_email: string
-          p_empleado_id: string
-          p_fecha: string
-          p_hora_fin: string
-          p_hora_inicio: string
-          p_nombre: string
-          p_notas: string
-          p_servicio_id: string
-          p_telefono: string
-        }
-        Returns: string
-      }
-      dar_entrada_clienta: {
-        Args: {
-          p_cita_id?: string
-          p_clienta_id: string
-          p_estilista_id: string
-          p_notas?: string
-          p_servicio_id: string
-          p_visita_id?: string
-        }
-        Returns: string
-      }
-      empleado_id_actual: { Args: never; Returns: string }
-      es_admin: { Args: never; Returns: boolean }
-      es_recepcion_o_caja: { Args: never; Returns: boolean }
-      es_staff: { Args: never; Returns: boolean }
-      estilistas_disponibles: {
-        Args: {
-          p_fecha: string
-          p_hora_fin: string
-          p_hora_inicio: string
-          p_servicio_id: string
-        }
-        Returns: {
-          empleado_id: string
-          foto_url: string
-          nombre: string
-        }[]
-      }
-      horario_salon: {
-        Args: { p_fecha: string }
-        Returns: {
-          abierto: boolean
-          apertura: string
-          cierre: string
-          pausa_fin: string
-          pausa_inicio: string
-        }[]
-      }
-      horarios_disponibles_estilista: {
-        Args: {
-          p_duracion_minutos: number
-          p_empleado_id: string
-          p_fecha: string
-        }
-        Returns: {
-          hora_fin: string
-          hora_inicio: string
-        }[]
-      }
-      invocar_edge_function: {
-        Args: { p_body: Json; p_nombre: string }
-        Returns: undefined
-      }
-      responder_checkin: {
-        Args: {
-          p_check_in_id: string
-          p_descripcion?: string
-          p_foto_url?: string
-          p_intensidad?: number
-          p_respuesta: Database["public"]["Enums"]["respuesta_checkin"]
-          p_tipos_molestia?: string[]
-        }
-        Returns: string
-      }
       tiene_permiso: { Args: { p_clave: string }; Returns: boolean }
+      tipo_de_usuario: { Args: never; Returns: string }
     }
     Enums: {
       estado_checkin: "pendiente" | "enviado" | "respondido"
@@ -1667,8 +1775,8 @@ export type Database = {
         | "no_show"
       estado_deposito: "pendiente" | "verificado" | "rechazado"
       estado_factura: "abierta" | "cobrada" | "cancelada"
-      estado_visita: "en_espera" | "en_atencion" | "por_cobrar" | "cerrada"
       estado_ticket: "abierto" | "en_proceso" | "resuelto"
+      estado_visita: "en_espera" | "en_atencion" | "por_cobrar" | "cerrada"
       respuesta_checkin: "bien" | "molestia"
       tipo_cabello: "virgin" | "remy"
       tipo_linea_factura: "servicio" | "producto"
@@ -1809,8 +1917,8 @@ export const Constants = {
       ],
       estado_deposito: ["pendiente", "verificado", "rechazado"],
       estado_factura: ["abierta", "cobrada", "cancelada"],
-      estado_visita: ["en_espera", "en_atencion", "por_cobrar", "cerrada"],
       estado_ticket: ["abierto", "en_proceso", "resuelto"],
+      estado_visita: ["en_espera", "en_atencion", "por_cobrar", "cerrada"],
       respuesta_checkin: ["bien", "molestia"],
       tipo_cabello: ["virgin", "remy"],
       tipo_linea_factura: ["servicio", "producto"],

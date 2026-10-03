@@ -113,6 +113,15 @@ function ShieldIcon() {
   );
 }
 
+function GlobeIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="8" cy="8" r="6.5" />
+      <path d="M1.5 8h13M8 1.5c2 2 3 4.2 3 6.5s-1 4.5-3 6.5c-2-2-3-4.2-3-6.5s1-4.5 3-6.5z" />
+    </svg>
+  );
+}
+
 const navItems = [
   { name: "Resumen",     href: "/admin/resumen",     icon: GridIcon,     modulo: "resumen" },
   { name: "Agenda",      href: "/admin/agenda",      icon: CalendarIcon, modulo: "agenda" },
@@ -123,6 +132,7 @@ const navItems = [
   { name: "Proveedores", href: "/admin/proveedores",  icon: TruckIcon,   modulo: "proveedores" },
   { name: "Facturación", href: "/admin/facturacion", icon: ReceiptIcon,  modulo: "facturacion" },
   { name: "Reportes",    href: "/admin/reportes",    icon: ChartIcon,    modulo: "reportes" },
+  { name: "Página web", href: "/admin/pagina-web", icon: GlobeIcon, modulo: "pagina_web" },
   { name: "Configuración", href: "/admin/configuracion", icon: GearIcon, modulo: "configuracion" },
 ];
 

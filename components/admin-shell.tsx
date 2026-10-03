@@ -17,7 +17,7 @@ function MenuIcon() {
 // "seguridad" no está acá a propósito: se controla aparte, solo por esAdmin (no delegable).
 const MODULOS_CONTROLADOS = new Set([
   "resumen", "agenda", "clientas", "depositos", "personal",
-  "catalogo", "proveedores", "facturacion", "reportes", "configuracion",
+  "catalogo", "proveedores", "facturacion", "reportes", "configuracion", "pagina_web",
 ]);
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
@@ -68,7 +68,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     })();
   }, [supabase, router]);
 
-  const modulo = pathname.split("/")[2] ?? "";
+  const modulo = (pathname.split("/")[2] ?? "").replace(/-/g, "_");
   const esRutaSeguridad = modulo === "seguridad";
   const rutaControlada = MODULOS_CONTROLADOS.has(modulo);
   const permitido = esRutaSeguridad

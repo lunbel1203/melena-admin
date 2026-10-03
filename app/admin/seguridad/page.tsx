@@ -33,6 +33,7 @@ const MODULOS: { modulo: string; etiqueta: string }[] = [
   { modulo: "facturacion", etiqueta: "Facturación" },
   { modulo: "reportes", etiqueta: "Reportes" },
   { modulo: "configuracion", etiqueta: "Configuración" },
+  { modulo: "pagina_web", etiqueta: "Página web" },
 ];
 
 function clave(rolId: string, permisoClave: string) {
