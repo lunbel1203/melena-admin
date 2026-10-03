@@ -1829,6 +1829,7 @@ export type Database = {
         }[]
       }
       mis_notificaciones_sin_leer: { Args: never; Returns: number }
+      mis_permisos: { Args: never; Returns: string[] }
       mis_reportes_molestia: {
         Args: never
         Returns: {
