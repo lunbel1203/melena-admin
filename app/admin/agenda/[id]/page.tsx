@@ -5,6 +5,7 @@ import Link from "next/link";
 import { use } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { confirmar } from "@/lib/alerts";
+import { BOTON_WHATSAPP_CLASES, enlaceCitaConfirmada } from "@/lib/whatsapp-citas";
 import {
   addDays,
   diaAbbr,
@@ -582,6 +583,24 @@ export default function CitaDetailPage({ params }: { params: Promise<{ id: strin
                 <span className="text-xs font-medium text-zinc-700 text-right">{ultimoServicio ?? "…"}</span>
               </div>
             </div>
+
+            {cita.estado === "confirmada" && (
+              <a
+                href={enlaceCitaConfirmada({
+                  telefono: cita.clienta.telefono,
+                  nombre: cita.clienta.nombre,
+                  servicio: cita.servicio.nombre,
+                  fecha: cita.fecha,
+                  hora: cita.hora_inicio,
+                  estilista: cita.empleado?.nombre,
+                })}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`${BOTON_WHATSAPP_CLASES} mb-2`}
+              >
+                Notificar por WhatsApp
+              </a>
+            )}
 
             <Link
               href={`/admin/clientas/${cita.clienta.id}`}

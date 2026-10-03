@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { confirmar } from "@/lib/alerts";
+import { BOTON_WHATSAPP_CLASES, enlaceCitaConfirmada } from "@/lib/whatsapp-citas";
 import { toISODate } from "@/lib/dates";
 
 /* ── Icons ── */
@@ -37,6 +38,7 @@ interface DepositoRow {
   created_at: string;
   cita_id: string;
   clienta_nombre: string;
+  clienta_telefono: string | null;
   fecha: string;
   hora_inicio: string;
   servicio_nombre: string;
@@ -76,7 +78,7 @@ export default function DepositosPage() {
     const { data } = await supabase
       .from("depositos")
       .select(
-        "id, monto, comprobante_url, estado, verificado_at, created_at, cita_id, citas(fecha, hora_inicio, clientas(nombre), servicios(nombre), empleados(nombre))",
+        "id, monto, comprobante_url, estado, verificado_at, created_at, cita_id, citas(fecha, hora_inicio, clientas(nombre, telefono), servicios(nombre), empleados(nombre))",
       )
       .order("created_at", { ascending: false });
 
@@ -94,6 +96,7 @@ export default function DepositosPage() {
         created_at: d.created_at,
         cita_id: d.cita_id,
         clienta_nombre: clienta?.nombre ?? "—",
+        clienta_telefono: clienta?.telefono ?? null,
         fecha: cita?.fecha ?? "",
         hora_inicio: cita?.hora_inicio?.slice(0, 5) ?? "",
         servicio_nombre: servicio?.nombre ?? "—",
@@ -393,6 +396,24 @@ export default function DepositosPage() {
                     Validar y confirmar
                   </button>
                 </div>
+              )}
+
+              {selected.estado === "verificado" && (
+                <a
+                  href={enlaceCitaConfirmada({
+                    telefono: selected.clienta_telefono,
+                    nombre: selected.clienta_nombre,
+                    servicio: selected.servicio_nombre,
+                    fecha: selected.fecha,
+                    hora: selected.hora_inicio,
+                    estilista: selected.estilista_nombre,
+                  })}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`${BOTON_WHATSAPP_CLASES} mb-3`}
+                >
+                  Notificar por WhatsApp
+                </a>
               )}
 
               <Link
