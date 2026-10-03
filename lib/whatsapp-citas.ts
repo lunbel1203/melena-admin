@@ -19,6 +19,15 @@ export const PLANTILLA_DEPOSITO_RECHAZADO = `Hola {nombre}, no pudimos validar e
 
 Si quieres, puedes reservar de nuevo y subir el comprobante otra vez. Estamos para ayudarte por aquí.`;
 
+export const PLANTILLA_RECORDATORIO = `Hola {nombre}, te recordamos tu cita en Melena:
+
+• Servicio: {servicio}
+• Fecha: {fecha}
+• Hora: {hora}
+• Estilista: {estilista}
+
+Si no puedes asistir, avísanos por aquí para reagendar.`;
+
 export const VARIABLES_CITA = ["{nombre}", "{servicio}", "{fecha}", "{hora}", "{estilista}"];
 export const VARIABLES_DEPOSITO = ["{nombre}", "{servicio}", "{fecha}", "{hora}"];
 
@@ -75,6 +84,21 @@ export function useMensajeDepositoRechazado() {
     (async () => {
       const { data } = await supabase.from("negocio_config").select("mensaje_deposito_rechazado").eq("id", true).maybeSingle();
       if (data?.mensaje_deposito_rechazado?.trim()) setPlantilla(data.mensaje_deposito_rechazado);
+    })();
+  }, [supabase]);
+
+  return plantilla;
+}
+
+// Plantilla del recordatorio de cita enviado desde el panel
+export function useMensajeRecordatorio() {
+  const supabase = useMemo(() => createClient(), []);
+  const [plantilla, setPlantilla] = useState(PLANTILLA_RECORDATORIO);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("negocio_config").select("mensaje_recordatorio_cita").eq("id", true).maybeSingle();
+      if (data?.mensaje_recordatorio_cita?.trim()) setPlantilla(data.mensaje_recordatorio_cita);
     })();
   }, [supabase]);
 

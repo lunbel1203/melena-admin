@@ -4,12 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { use } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { confirmar } from "@/lib/alerts";
+import { avisar, confirmar } from "@/lib/alerts";
 import {
   BOTON_WHATSAPP_CLASES,
   enlaceCitaConfirmada,
   useMensajeCitaConfirmada,
   useMensajeDepositoRechazado,
+  useMensajeRecordatorio,
 } from "@/lib/whatsapp-citas";
 import {
   addDays,
@@ -131,6 +132,8 @@ export default function CitaDetailPage({ params }: { params: Promise<{ id: strin
 
   const plantillaMensaje = useMensajeCitaConfirmada();
   const plantillaRechazo = useMensajeDepositoRechazado();
+  const plantillaRecordatorio = useMensajeRecordatorio();
+  const [enviandoRecordatorio, setEnviandoRecordatorio] = useState(false);
 
   async function cargar() {
     setCargando(true);
@@ -260,6 +263,18 @@ export default function CitaDetailPage({ params }: { params: Promise<{ id: strin
     setAccionando(false);
     if (error) return setError(error.message);
     cargar();
+  }
+
+  async function enviarRecordatorioApp() {
+    setEnviandoRecordatorio(true);
+    const { data, error } = await supabase.rpc("enviar_recordatorio_cita", { p_cita_id: id });
+    setEnviandoRecordatorio(false);
+    if (error) return avisar("No se pudo enviar el recordatorio", error.message);
+    if (data) {
+      await avisar("Recordatorio enviado", "La clienta lo verá en las notificaciones de la app.");
+    } else {
+      await avisar("Esta clienta no usa la app", "No tiene cuenta en la app. Envíale el recordatorio por WhatsApp.");
+    }
   }
 
   async function cancelarCita() {
@@ -582,6 +597,35 @@ export default function CitaDetailPage({ params }: { params: Promise<{ id: strin
                 <span className="text-xs font-medium text-zinc-700 text-right">{ultimoServicio ?? "…"}</span>
               </div>
             </div>
+
+            {cita.estado === "confirmada" && cita.fecha >= toISODate(new Date()) && (
+              <div className="mb-3 space-y-2 rounded-xl border border-zinc-100 bg-zinc-50 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400">Recordatorio</p>
+                <button
+                  type="button"
+                  onClick={enviarRecordatorioApp}
+                  disabled={enviandoRecordatorio}
+                  className="w-full py-2.5 rounded-xl border border-zinc-200 bg-white text-sm font-semibold text-zinc-700 hover:bg-zinc-100 transition-colors disabled:opacity-50"
+                >
+                  {enviandoRecordatorio ? "Enviando…" : "Enviar recordatorio a la app"}
+                </button>
+                <a
+                  href={enlaceCitaConfirmada(plantillaRecordatorio, {
+                    telefono: cita.clienta.telefono,
+                    nombre: cita.clienta.nombre,
+                    servicio: cita.servicio.nombre,
+                    fecha: cita.fecha,
+                    hora: cita.hora_inicio,
+                    estilista: cita.empleado?.nombre,
+                  })}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={BOTON_WHATSAPP_CLASES}
+                >
+                  Recordar por WhatsApp
+                </a>
+              </div>
+            )}
 
             {cita.estado === "confirmada" && (
               <a

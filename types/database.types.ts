@@ -819,6 +819,7 @@ export type Database = {
           instagram: string | null
           mensaje_cita_confirmada: string
           mensaje_deposito_rechazado: string
+          mensaje_recordatorio_cita: string
           moneda: string
           nombre_comercial: string
           telefono: string | null
@@ -831,6 +832,7 @@ export type Database = {
           instagram?: string | null
           mensaje_cita_confirmada?: string
           mensaje_deposito_rechazado?: string
+          mensaje_recordatorio_cita?: string
           moneda?: string
           nombre_comercial?: string
           telefono?: string | null
@@ -843,6 +845,7 @@ export type Database = {
           instagram?: string | null
           mensaje_cita_confirmada?: string
           mensaje_deposito_rechazado?: string
+          mensaje_recordatorio_cita?: string
           moneda?: string
           nombre_comercial?: string
           telefono?: string | null
@@ -1698,6 +1701,10 @@ export type Database = {
         Returns: string
       }
       empleado_id_actual: { Args: never; Returns: string }
+      enviar_recordatorio_cita: {
+        Args: { p_cita_id: string }
+        Returns: boolean
+      }
       es_admin: { Args: never; Returns: boolean }
       es_recepcion_o_caja: { Args: never; Returns: boolean }
       es_staff: { Args: never; Returns: boolean }
