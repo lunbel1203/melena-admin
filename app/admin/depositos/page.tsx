@@ -101,6 +101,16 @@ export default function DepositosPage() {
       };
     });
 
+    // Los comprobantes nuevos guardan la ruta del bucket privado: se firma el enlace al abrirlos
+    const rutas = filas.map((f) => f.comprobante_url).filter((u) => u && !/^https?:/i.test(u));
+    if (rutas.length > 0) {
+      const { data: firmadas } = await supabase.storage.from("comprobantes-deposito").createSignedUrls(rutas, 60 * 60);
+      const porRuta = new Map((firmadas ?? []).map((f) => [f.path, f.signedUrl]));
+      for (const f of filas) {
+        if (porRuta.has(f.comprobante_url)) f.comprobante_url = porRuta.get(f.comprobante_url)!;
+      }
+    }
+
     setDepositos(filas);
     setSelectedId((prev) => (prev && filas.some((f) => f.id === prev) ? prev : filas[0]?.id ?? null));
     setCargando(false);
