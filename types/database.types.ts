@@ -624,6 +624,7 @@ export type Database = {
         Row: {
           id: boolean
           itbis_porcentaje: number
+          pie_factura: string
           razon_social: string | null
           rnc: string | null
           updated_at: string
@@ -631,6 +632,7 @@ export type Database = {
         Insert: {
           id?: boolean
           itbis_porcentaje?: number
+          pie_factura?: string
           razon_social?: string | null
           rnc?: string | null
           updated_at?: string
@@ -638,6 +640,7 @@ export type Database = {
         Update: {
           id?: boolean
           itbis_porcentaje?: number
+          pie_factura?: string
           razon_social?: string | null
           rnc?: string | null
           updated_at?: string
@@ -655,6 +658,7 @@ export type Database = {
           id: string
           itbis: number
           metodo_pago: string | null
+          numero: number
           subtotal: number
           total: number
           visita_id: string
@@ -669,6 +673,7 @@ export type Database = {
           id?: string
           itbis?: number
           metodo_pago?: string | null
+          numero?: number
           subtotal?: number
           total?: number
           visita_id: string
@@ -683,6 +688,7 @@ export type Database = {
           id?: string
           itbis?: number
           metodo_pago?: string | null
+          numero?: number
           subtotal?: number
           total?: number
           visita_id?: string

@@ -45,6 +45,7 @@ interface FacturacionConfig {
   rnc: string | null;
   razon_social: string | null;
   itbis_porcentaje: number;
+  pie_factura: string;
 }
 
 export default function FacturacionPage() {
@@ -74,6 +75,7 @@ export default function FacturacionPage() {
         rnc: config.rnc?.trim() || null,
         razon_social: config.razon_social?.trim() || null,
         itbis_porcentaje: config.itbis_porcentaje,
+        pie_factura: config.pie_factura.trim() || "Gracias por tu visita.",
       })
       .eq("id", true);
     setGuardando(false);
@@ -115,6 +117,17 @@ export default function FacturacionPage() {
             placeholder="Melena Human Hair SRL"
           />
         </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-zinc-200 p-5">
+        <SectionLabel>Pie de la factura</SectionLabel>
+        <p className="text-xs text-zinc-400 mb-4">Texto que aparece al final del PDF de la factura (agradecimiento, política de garantía, etc.).</p>
+        <textarea
+          value={config.pie_factura}
+          onChange={(e) => setConfig({ ...config, pie_factura: e.target.value })}
+          rows={3}
+          className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 focus:outline-none focus:border-zinc-400 transition-colors resize-y"
+        />
       </div>
 
       <div className="bg-white rounded-2xl border border-zinc-200 p-5">

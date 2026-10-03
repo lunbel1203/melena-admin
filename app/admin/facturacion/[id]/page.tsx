@@ -4,6 +4,7 @@ import Link from "next/link";
 import { use, useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { avisar, confirmar, enlaceWhatsApp } from "@/lib/alerts";
+import { cargarLogo, descargarPdf, generarFacturaPdf, imprimirPdf } from "@/lib/factura-pdf";
 
 function ChevronLeft() {
   return (
@@ -40,6 +41,7 @@ type Linea = {
 
 type Factura = {
   id: string;
+  numero: number;
   estado: "abierta" | "cobrada" | "cancelada";
   subtotal: number;
   itbis: number;
@@ -67,7 +69,7 @@ type Factura = {
 type Catalogo = { id: string; nombre: string; precio: number; detalle?: string; foto?: string | null };
 
 const FACTURA_SELECT = `
-  id, estado, subtotal, itbis, total, deposito_aplicado, metodo_pago, cobrada_at, created_at,
+  id, numero, estado, subtotal, itbis, total, deposito_aplicado, metodo_pago, cobrada_at, created_at,
   clientas ( id, nombre, telefono, email, notas, created_at ),
   cobrador:empleados!facturas_cobrada_por_fkey ( nombre ),
   lineas_factura ( id, tipo, descripcion, cantidad, precio_unitario, subtotal, porcentaje_comision, created_at, empleado_id,
@@ -135,6 +137,7 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
   const [metodoPago, setMetodoPago] = useState<MetodoPago>("tarjeta");
   const [whatsapp, setWhatsapp] = useState(false);
   const [procesando, setProcesando] = useState(false);
+  const [generandoPdf, setGenerandoPdf] = useState(false);
 
   // Panel "Agregar"
   const [agregando, setAgregando] = useState(false);
@@ -298,6 +301,64 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
   const principal = servicios[0];
   const lista = (catalogo?.[tipoAgregar] ?? []).filter((c) => c.nombre.toLowerCase().includes(busqueda.trim().toLowerCase()));
 
+  async function crearPdf() {
+    if (!factura) return null;
+    const [{ data: neg }, { data: cfg }, logo] = await Promise.all([
+      supabase.from("negocio_config").select("nombre_comercial, telefono, direccion, instagram").eq("id", true).maybeSingle(),
+      supabase.from("facturacion_config").select("rnc, razon_social, itbis_porcentaje, pie_factura").eq("id", true).maybeSingle(),
+      cargarLogo("/Melena logo.png"),
+    ]);
+    const atendio = Array.from(new Set(factura.lineas_factura.map((l) => l.empleados?.nombre).filter(Boolean) as string[]));
+    return generarFacturaPdf({
+      numero: factura.numero,
+      estado: factura.estado,
+      creadaAt: factura.visitas?.created_at ?? factura.created_at,
+      cobradaAt: factura.cobrada_at,
+      metodoPago: factura.metodo_pago,
+      subtotal: Number(factura.subtotal),
+      itbis: Number(factura.itbis),
+      itbisPorcentaje: Number(cfg?.itbis_porcentaje ?? itbisPct),
+      depositoAplicado: Number(factura.deposito_aplicado),
+      total: Number(factura.total),
+      clienta: factura.clientas ? { nombre: factura.clientas.nombre, telefono: factura.clientas.telefono, email: factura.clientas.email } : null,
+      atendidaPor: atendio,
+      cobradaPor: factura.cobrador?.nombre ?? null,
+      lineas: [...factura.lineas_factura]
+        .sort((a, b) => a.created_at.localeCompare(b.created_at))
+        .map((l) => ({
+          descripcion: l.descripcion,
+          tipo: l.tipo,
+          cantidad: l.cantidad,
+          precioUnitario: Number(l.precio_unitario),
+          subtotal: Number(l.subtotal),
+          empleado: l.empleados?.nombre ?? null,
+        })),
+      negocio: {
+        nombre: neg?.nombre_comercial ?? "Melena",
+        razonSocial: cfg?.razon_social ?? null,
+        rnc: cfg?.rnc ?? null,
+        direccion: neg?.direccion ?? null,
+        telefono: neg?.telefono ?? null,
+        instagram: neg?.instagram ?? null,
+      },
+      pie: cfg?.pie_factura ?? "Gracias por tu visita.",
+      logo,
+    });
+  }
+
+  async function imprimirFactura(descargar: boolean) {
+    setGenerandoPdf(true);
+    try {
+      const doc = await crearPdf();
+      if (!doc || !factura) return;
+      if (descargar) descargarPdf(doc, factura.numero);
+      else imprimirPdf(doc);
+    } catch (e) {
+      await avisar("No se pudo generar el PDF", e instanceof Error ? e.message : "Inténtalo de nuevo.");
+    }
+    setGenerandoPdf(false);
+  }
+
   return (
     <div className="min-h-full bg-zinc-50 p-5 sm:p-7 lg:p-8">
 
@@ -337,11 +398,19 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
 
           <div className="flex items-center gap-2 flex-wrap print:hidden">
             <button
-              onClick={() => window.print()}
-              className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-zinc-700 bg-white border border-zinc-200 rounded-xl hover:bg-zinc-50 transition-colors"
+              onClick={() => imprimirFactura(false)}
+              disabled={generandoPdf}
+              className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-zinc-700 bg-white border border-zinc-200 rounded-xl hover:bg-zinc-50 transition-colors disabled:opacity-50"
             >
               <PrintIcon />
-              Imprimir
+              {generandoPdf ? "Generando…" : "Imprimir"}
+            </button>
+            <button
+              onClick={() => imprimirFactura(true)}
+              disabled={generandoPdf}
+              className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-zinc-700 bg-white border border-zinc-200 rounded-xl hover:bg-zinc-50 transition-colors disabled:opacity-50"
+            >
+              Descargar PDF
             </button>
             {abierta && (
               <button
