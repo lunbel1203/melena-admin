@@ -818,6 +818,7 @@ export type Database = {
           id: boolean
           instagram: string | null
           mensaje_cita_confirmada: string
+          mensaje_deposito_rechazado: string
           moneda: string
           nombre_comercial: string
           telefono: string | null
@@ -829,6 +830,7 @@ export type Database = {
           id?: boolean
           instagram?: string | null
           mensaje_cita_confirmada?: string
+          mensaje_deposito_rechazado?: string
           moneda?: string
           nombre_comercial?: string
           telefono?: string | null
@@ -840,6 +842,7 @@ export type Database = {
           id?: boolean
           instagram?: string | null
           mensaje_cita_confirmada?: string
+          mensaje_deposito_rechazado?: string
           moneda?: string
           nombre_comercial?: string
           telefono?: string | null
@@ -1077,63 +1080,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      productos_respaldo_20261002: {
-        Row: {
-          activo: boolean | null
-          categoria: string | null
-          color: string | null
-          costo: number | null
-          created_at: string | null
-          descripcion: string | null
-          foto_url: string | null
-          id: string | null
-          largo_pulgadas: number | null
-          nombre: string | null
-          precio: number | null
-          proveedor_id: string | null
-          slug: string | null
-          stock: number | null
-          stock_minimo: number | null
-          tipo_cabello: Database["public"]["Enums"]["tipo_cabello"] | null
-        }
-        Insert: {
-          activo?: boolean | null
-          categoria?: string | null
-          color?: string | null
-          costo?: number | null
-          created_at?: string | null
-          descripcion?: string | null
-          foto_url?: string | null
-          id?: string | null
-          largo_pulgadas?: number | null
-          nombre?: string | null
-          precio?: number | null
-          proveedor_id?: string | null
-          slug?: string | null
-          stock?: number | null
-          stock_minimo?: number | null
-          tipo_cabello?: Database["public"]["Enums"]["tipo_cabello"] | null
-        }
-        Update: {
-          activo?: boolean | null
-          categoria?: string | null
-          color?: string | null
-          costo?: number | null
-          created_at?: string | null
-          descripcion?: string | null
-          foto_url?: string | null
-          id?: string | null
-          largo_pulgadas?: number | null
-          nombre?: string | null
-          precio?: number | null
-          proveedor_id?: string | null
-          slug?: string | null
-          stock?: number | null
-          stock_minimo?: number | null
-          tipo_cabello?: Database["public"]["Enums"]["tipo_cabello"] | null
-        }
-        Relationships: []
       }
       proveedores: {
         Row: {
@@ -1925,6 +1871,7 @@ export type Database = {
         Args: { p_cita_id: string; p_comprobante_path: string }
         Returns: undefined
       }
+      texto_cita: { Args: { p_fecha: string; p_hora: string }; Returns: string }
       tiene_permiso: { Args: { p_clave: string }; Returns: boolean }
       tipo_de_usuario: { Args: never; Returns: string }
     }

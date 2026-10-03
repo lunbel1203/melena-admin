@@ -5,7 +5,12 @@ import Link from "next/link";
 import { use } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { confirmar } from "@/lib/alerts";
-import { BOTON_WHATSAPP_CLASES, enlaceCitaConfirmada, useMensajeCitaConfirmada } from "@/lib/whatsapp-citas";
+import {
+  BOTON_WHATSAPP_CLASES,
+  enlaceCitaConfirmada,
+  useMensajeCitaConfirmada,
+  useMensajeDepositoRechazado,
+} from "@/lib/whatsapp-citas";
 import {
   addDays,
   diaAbbr,
@@ -21,15 +26,6 @@ function BackIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M11 14L6 9l5-5" />
-    </svg>
-  );
-}
-function ImagePlaceholderIcon() {
-  return (
-    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-300">
-      <rect x="3" y="3" width="26" height="26" rx="3" />
-      <circle cx="11" cy="11" r="3" />
-      <path d="M3 22l7-7 5 5 4-4 10 10" />
     </svg>
   );
 }
@@ -134,6 +130,7 @@ export default function CitaDetailPage({ params }: { params: Promise<{ id: strin
   const [cargandoHoras, setCargandoHoras] = useState(false);
 
   const plantillaMensaje = useMensajeCitaConfirmada();
+  const plantillaRechazo = useMensajeDepositoRechazado();
 
   async function cargar() {
     setCargando(true);
@@ -595,6 +592,23 @@ export default function CitaDetailPage({ params }: { params: Promise<{ id: strin
                   fecha: cita.fecha,
                   hora: cita.hora_inicio,
                   estilista: cita.empleado?.nombre,
+                })}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`${BOTON_WHATSAPP_CLASES} mb-2`}
+              >
+                Notificar por WhatsApp
+              </a>
+            )}
+
+            {deposito?.estado === "rechazado" && cita.estado === "cancelada" && (
+              <a
+                href={enlaceCitaConfirmada(plantillaRechazo, {
+                  telefono: cita.clienta.telefono,
+                  nombre: cita.clienta.nombre,
+                  servicio: cita.servicio.nombre,
+                  fecha: cita.fecha,
+                  hora: cita.hora_inicio,
                 })}
                 target="_blank"
                 rel="noopener noreferrer"

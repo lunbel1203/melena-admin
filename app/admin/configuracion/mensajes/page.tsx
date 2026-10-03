@@ -2,7 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { armarMensajeCita, PLANTILLA_CITA_CONFIRMADA, VARIABLES_CITA } from "@/lib/whatsapp-citas";
+import {
+  armarMensajeCita,
+  PLANTILLA_CITA_CONFIRMADA,
+  PLANTILLA_DEPOSITO_RECHAZADO,
+  VARIABLES_CITA,
+  VARIABLES_DEPOSITO,
+} from "@/lib/whatsapp-citas";
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400 mb-3">{children}</p>;
@@ -11,6 +17,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 export default function MensajesPage() {
   const supabase = useMemo(() => createClient(), []);
   const [plantilla, setPlantilla] = useState("");
+  const [plantillaRechazo, setPlantillaRechazo] = useState("");
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [guardado, setGuardado] = useState(false);
@@ -18,18 +25,23 @@ export default function MensajesPage() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("negocio_config").select("mensaje_cita_confirmada").eq("id", true).maybeSingle();
+      const { data } = await supabase
+        .from("negocio_config")
+        .select("mensaje_cita_confirmada, mensaje_deposito_rechazado")
+        .eq("id", true)
+        .maybeSingle();
       setPlantilla(data?.mensaje_cita_confirmada ?? PLANTILLA_CITA_CONFIRMADA);
+      setPlantillaRechazo(data?.mensaje_deposito_rechazado ?? PLANTILLA_DEPOSITO_RECHAZADO);
       setCargando(false);
     })();
   }, [supabase]);
 
   async function guardar() {
-    if (!plantilla.trim()) return setError("El mensaje no puede quedar vacío.");
+    if (!plantilla.trim() || !plantillaRechazo.trim()) return setError("Los mensajes no pueden quedar vacíos.");
     setGuardando(true);
     setError(null);
     setGuardado(false);
-    const { error } = await supabase.from("negocio_config").update({ mensaje_cita_confirmada: plantilla }).eq("id", true);
+    const { error } = await supabase.from("negocio_config").update({ mensaje_cita_confirmada: plantilla, mensaje_deposito_rechazado: plantillaRechazo }).eq("id", true);
     setGuardando(false);
     if (error) return setError(error.message);
     setGuardado(true);
@@ -42,6 +54,13 @@ export default function MensajesPage() {
     fecha: new Date().toISOString().slice(0, 10),
     hora: "16:00",
     estilista: "Angie",
+  });
+
+  const vistaRechazo = armarMensajeCita(plantillaRechazo, {
+    nombre: "Valentina Rojas",
+    servicio: "Nano ring",
+    fecha: new Date().toISOString().slice(0, 10),
+    hora: "16:00",
   });
 
   if (cargando) return <p className="text-sm text-zinc-400">Cargando…</p>;
@@ -84,6 +103,26 @@ export default function MensajesPage() {
 
       <p className="text-xs font-semibold text-zinc-500 mt-6 mb-1.5">Vista previa (con datos de ejemplo)</p>
       <div className="bg-green-50 border border-green-100 rounded-xl p-4 text-sm text-zinc-800 whitespace-pre-wrap">{vistaPrevia}</div>
+
+      <hr className="border-zinc-100 my-6" />
+
+      <label className="text-xs font-semibold text-zinc-500 mb-1.5 block">Comprobante rechazado (botón &quot;Notificar por WhatsApp&quot; en depósitos rechazados)</label>
+      <textarea
+        value={plantillaRechazo}
+        onChange={(e) => setPlantillaRechazo(e.target.value)}
+        rows={7}
+        className="w-full px-4 py-3 border border-zinc-200 rounded-xl text-sm text-zinc-800 focus:outline-none focus:border-zinc-400 transition-colors resize-y"
+      />
+      <p className="text-[11px] text-zinc-400 mt-1.5">Variables: {VARIABLES_DEPOSITO.join(", ")}.</p>
+      <button
+        type="button"
+        onClick={() => setPlantillaRechazo(PLANTILLA_DEPOSITO_RECHAZADO)}
+        className="text-xs font-semibold text-zinc-500 hover:text-zinc-800 mt-2"
+      >
+        Restaurar el texto original
+      </button>
+      <p className="text-xs font-semibold text-zinc-500 mt-6 mb-1.5">Vista previa (con datos de ejemplo)</p>
+      <div className="bg-green-50 border border-green-100 rounded-xl p-4 text-sm text-zinc-800 whitespace-pre-wrap">{vistaRechazo}</div>
     </div>
   );
 }

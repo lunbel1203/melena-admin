@@ -4,19 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { confirmar } from "@/lib/alerts";
-import { BOTON_WHATSAPP_CLASES, enlaceCitaConfirmada, useMensajeCitaConfirmada } from "@/lib/whatsapp-citas";
+import {
+  BOTON_WHATSAPP_CLASES,
+  enlaceCitaConfirmada,
+  useMensajeCitaConfirmada,
+  useMensajeDepositoRechazado,
+} from "@/lib/whatsapp-citas";
 import { toISODate } from "@/lib/dates";
 
 /* ── Icons ── */
-function ImagePlaceholderIcon() {
-  return (
-    <svg width="36" height="36" viewBox="0 0 36 36" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-300">
-      <rect x="3" y="3" width="30" height="30" rx="4" />
-      <circle cx="12" cy="12" r="3.5" />
-      <path d="M3 25l9-9 6 6 4-4 11 11" />
-    </svg>
-  );
-}
 function PdfIcon() {
   return (
     <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400">
@@ -74,6 +70,7 @@ export default function DepositosPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const plantillaMensaje = useMensajeCitaConfirmada();
+  const plantillaRechazo = useMensajeDepositoRechazado();
 
   async function cargar() {
     setCargando(true);
@@ -398,6 +395,23 @@ export default function DepositosPage() {
                     Validar y confirmar
                   </button>
                 </div>
+              )}
+
+              {selected.estado === "rechazado" && (
+                <a
+                  href={enlaceCitaConfirmada(plantillaRechazo, {
+                    telefono: selected.clienta_telefono,
+                    nombre: selected.clienta_nombre,
+                    servicio: selected.servicio_nombre,
+                    fecha: selected.fecha,
+                    hora: selected.hora_inicio,
+                  })}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`${BOTON_WHATSAPP_CLASES} mb-3`}
+                >
+                  Notificar por WhatsApp
+                </a>
               )}
 
               {selected.estado === "verificado" && (

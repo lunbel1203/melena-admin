@@ -123,7 +123,8 @@ export default function EditarEmpleadaPage({ params }: { params: Promise<{ id: s
   function toggleServicio(servicioId: string) {
     setAsignados((prev) => {
       const next = new Set(prev);
-      next.has(servicioId) ? next.delete(servicioId) : next.add(servicioId);
+      if (next.has(servicioId)) next.delete(servicioId);
+      else next.add(servicioId);
       return next;
     });
   }

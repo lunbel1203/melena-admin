@@ -15,7 +15,12 @@ export const PLANTILLA_CITA_CONFIRMADA = `Hola {nombre}, tu cita en Melena está
 
 Te esperamos. Si necesitas reagendar o cancelar, avísanos por aquí.`;
 
+export const PLANTILLA_DEPOSITO_RECHAZADO = `Hola {nombre}, no pudimos validar el comprobante de tu depósito para {servicio} ({fecha}, {hora}), por lo que la cita se canceló y el horario quedó libre.
+
+Si quieres, puedes reservar de nuevo y subir el comprobante otra vez. Estamos para ayudarte por aquí.`;
+
 export const VARIABLES_CITA = ["{nombre}", "{servicio}", "{fecha}", "{hora}", "{estilista}"];
+export const VARIABLES_DEPOSITO = ["{nombre}", "{servicio}", "{fecha}", "{hora}"];
 
 function hora12(hhmm: string) {
   const [h, m] = hhmm.slice(0, 5).split(":").map(Number);
@@ -55,6 +60,21 @@ export function useMensajeCitaConfirmada() {
     (async () => {
       const { data } = await supabase.from("negocio_config").select("mensaje_cita_confirmada").eq("id", true).maybeSingle();
       if (data?.mensaje_cita_confirmada?.trim()) setPlantilla(data.mensaje_cita_confirmada);
+    })();
+  }, [supabase]);
+
+  return plantilla;
+}
+
+// Plantilla del aviso de comprobante rechazado
+export function useMensajeDepositoRechazado() {
+  const supabase = useMemo(() => createClient(), []);
+  const [plantilla, setPlantilla] = useState(PLANTILLA_DEPOSITO_RECHAZADO);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("negocio_config").select("mensaje_deposito_rechazado").eq("id", true).maybeSingle();
+      if (data?.mensaje_deposito_rechazado?.trim()) setPlantilla(data.mensaje_deposito_rechazado);
     })();
   }, [supabase]);
 

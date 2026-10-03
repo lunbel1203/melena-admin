@@ -85,15 +85,16 @@ export default function SeguridadPage() {
   }
 
   const rolesRenombrados = rolesEditables.filter((r) => nombresOriginales.get(r.id) !== r.nombre);
+  const hayRolesRenombrados = rolesRenombrados.length > 0;
 
   const huboCambios = useMemo(() => {
-    if (rolesRenombrados.length > 0) return true;
+    if (hayRolesRenombrados) return true;
     if (permisos.size !== original.size) return true;
     for (const [k, v] of permisos) {
       if (original.get(k) !== v) return true;
     }
     return false;
-  }, [permisos, original, rolesRenombrados]);
+  }, [permisos, original, hayRolesRenombrados]);
 
   function toggle(rolId: string, permisoClave: string) {
     setPermisos((prev) => {
