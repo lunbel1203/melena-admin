@@ -1,0 +1,89 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { armarMensajeCita, PLANTILLA_CITA_CONFIRMADA, VARIABLES_CITA } from "@/lib/whatsapp-citas";
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400 mb-3">{children}</p>;
+}
+
+export default function MensajesPage() {
+  const supabase = useMemo(() => createClient(), []);
+  const [plantilla, setPlantilla] = useState("");
+  const [cargando, setCargando] = useState(true);
+  const [guardando, setGuardando] = useState(false);
+  const [guardado, setGuardado] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("negocio_config").select("mensaje_cita_confirmada").eq("id", true).maybeSingle();
+      setPlantilla(data?.mensaje_cita_confirmada ?? PLANTILLA_CITA_CONFIRMADA);
+      setCargando(false);
+    })();
+  }, [supabase]);
+
+  async function guardar() {
+    if (!plantilla.trim()) return setError("El mensaje no puede quedar vacío.");
+    setGuardando(true);
+    setError(null);
+    setGuardado(false);
+    const { error } = await supabase.from("negocio_config").update({ mensaje_cita_confirmada: plantilla }).eq("id", true);
+    setGuardando(false);
+    if (error) return setError(error.message);
+    setGuardado(true);
+    setTimeout(() => setGuardado(false), 2500);
+  }
+
+  const vistaPrevia = armarMensajeCita(plantilla, {
+    nombre: "Valentina Rojas",
+    servicio: "Nano ring",
+    fecha: new Date().toISOString().slice(0, 10),
+    hora: "16:00",
+    estilista: "Angie",
+  });
+
+  if (cargando) return <p className="text-sm text-zinc-400">Cargando…</p>;
+
+  return (
+    <div className="bg-white rounded-2xl border border-zinc-200 p-5">
+      <div className="flex items-center justify-between mb-3">
+        <SectionLabel>Mensajes a clientas</SectionLabel>
+        <div className="flex items-center gap-3">
+          {guardado && <span className="text-xs font-medium text-teal-600">Guardado ✓</span>}
+          <button
+            onClick={guardar}
+            disabled={guardando}
+            className="text-sm font-semibold text-white bg-zinc-900 px-4 py-2 rounded-xl hover:bg-zinc-700 transition-colors disabled:opacity-50"
+          >
+            {guardando ? "Guardando…" : "Guardar cambios"}
+          </button>
+        </div>
+      </div>
+
+      {error && <p className="text-xs text-red-500 mb-3">{error}</p>}
+
+      <label className="text-xs font-semibold text-zinc-500 mb-1.5 block">Cita confirmada (botón &quot;Notificar por WhatsApp&quot;)</label>
+      <textarea
+        value={plantilla}
+        onChange={(e) => setPlantilla(e.target.value)}
+        rows={10}
+        className="w-full px-4 py-3 border border-zinc-200 rounded-xl text-sm text-zinc-800 focus:outline-none focus:border-zinc-400 transition-colors resize-y"
+      />
+      <p className="text-[11px] text-zinc-400 mt-1.5">
+        Variables que se reemplazan solas: {VARIABLES_CITA.join(", ")}. Si la cita no tiene estilista, se quita el renglón que menciona {"{estilista}"}.
+      </p>
+      <button
+        type="button"
+        onClick={() => setPlantilla(PLANTILLA_CITA_CONFIRMADA)}
+        className="text-xs font-semibold text-zinc-500 hover:text-zinc-800 mt-2"
+      >
+        Restaurar el texto original
+      </button>
+
+      <p className="text-xs font-semibold text-zinc-500 mt-6 mb-1.5">Vista previa (con datos de ejemplo)</p>
+      <div className="bg-green-50 border border-green-100 rounded-xl p-4 text-sm text-zinc-800 whitespace-pre-wrap">{vistaPrevia}</div>
+    </div>
+  );
+}

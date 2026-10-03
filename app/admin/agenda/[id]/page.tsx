@@ -5,7 +5,7 @@ import Link from "next/link";
 import { use } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { confirmar } from "@/lib/alerts";
-import { BOTON_WHATSAPP_CLASES, enlaceCitaConfirmada } from "@/lib/whatsapp-citas";
+import { BOTON_WHATSAPP_CLASES, enlaceCitaConfirmada, useMensajeCitaConfirmada } from "@/lib/whatsapp-citas";
 import {
   addDays,
   diaAbbr,
@@ -132,6 +132,8 @@ export default function CitaDetailPage({ params }: { params: Promise<{ id: strin
   const [horasDisponibles, setHorasDisponibles] = useState<string[]>([]);
   const [nuevaHora, setNuevaHora] = useState<string | null>(null);
   const [cargandoHoras, setCargandoHoras] = useState(false);
+
+  const plantillaMensaje = useMensajeCitaConfirmada();
 
   async function cargar() {
     setCargando(true);
@@ -586,7 +588,7 @@ export default function CitaDetailPage({ params }: { params: Promise<{ id: strin
 
             {cita.estado === "confirmada" && (
               <a
-                href={enlaceCitaConfirmada({
+                href={enlaceCitaConfirmada(plantillaMensaje, {
                   telefono: cita.clienta.telefono,
                   nombre: cita.clienta.nombre,
                   servicio: cita.servicio.nombre,

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { confirmar } from "@/lib/alerts";
-import { BOTON_WHATSAPP_CLASES, enlaceCitaConfirmada } from "@/lib/whatsapp-citas";
+import { BOTON_WHATSAPP_CLASES, enlaceCitaConfirmada, useMensajeCitaConfirmada } from "@/lib/whatsapp-citas";
 import { toISODate } from "@/lib/dates";
 
 /* ── Icons ── */
@@ -72,6 +72,8 @@ export default function DepositosPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>("pendientes");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const plantillaMensaje = useMensajeCitaConfirmada();
 
   async function cargar() {
     setCargando(true);
@@ -400,7 +402,7 @@ export default function DepositosPage() {
 
               {selected.estado === "verificado" && (
                 <a
-                  href={enlaceCitaConfirmada({
+                  href={enlaceCitaConfirmada(plantillaMensaje, {
                     telefono: selected.clienta_telefono,
                     nombre: selected.clienta_nombre,
                     servicio: selected.servicio_nombre,

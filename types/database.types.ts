@@ -817,6 +817,7 @@ export type Database = {
           direccion: string | null
           id: boolean
           instagram: string | null
+          mensaje_cita_confirmada: string
           moneda: string
           nombre_comercial: string
           telefono: string | null
@@ -827,6 +828,7 @@ export type Database = {
           direccion?: string | null
           id?: boolean
           instagram?: string | null
+          mensaje_cita_confirmada?: string
           moneda?: string
           nombre_comercial?: string
           telefono?: string | null
@@ -837,6 +839,7 @@ export type Database = {
           direccion?: string | null
           id?: boolean
           instagram?: string | null
+          mensaje_cita_confirmada?: string
           moneda?: string
           nombre_comercial?: string
           telefono?: string | null

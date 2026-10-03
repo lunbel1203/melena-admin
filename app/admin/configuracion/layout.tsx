@@ -8,6 +8,7 @@ const secciones = [
   { href: "/admin/configuracion/horario", label: "Horario y agenda" },
   { href: "/admin/configuracion/depositos", label: "Depósitos y pagos" },
   { href: "/admin/configuracion/recordatorios", label: "Recordatorios" },
+  { href: "/admin/configuracion/mensajes", label: "Mensajes a clientas" },
   { href: "/admin/configuracion/seguimiento", label: "Seguimiento post-servicio" },
   { href: "/admin/configuracion/comisiones", label: "Comisiones" },
   { href: "/admin/configuracion/facturacion", label: "Facturación e impuestos" },
