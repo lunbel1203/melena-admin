@@ -249,7 +249,7 @@ export default function CitaDetailPage({ params }: { params: Promise<{ id: strin
     if (!deposito) return;
     const ok = await confirmar({
       titulo: "¿Rechazar este comprobante?",
-      texto: "La cita seguirá pendiente de confirmación.",
+      texto: "La cita se cancelará y el horario quedará libre.",
       confirmarTexto: "Rechazar",
       peligroso: true,
     });

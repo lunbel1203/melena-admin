@@ -162,7 +162,7 @@ export default function DepositosPage() {
     if (!selected) return;
     const ok = await confirmar({
       titulo: `¿Rechazar el comprobante de ${selected.clienta_nombre}?`,
-      texto: "La cita seguirá pendiente de confirmación.",
+      texto: "La cita se cancelará y el horario quedará libre.",
       confirmarTexto: "Rechazar",
       peligroso: true,
     });
