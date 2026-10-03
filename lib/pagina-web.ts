@@ -84,6 +84,41 @@ export interface TextosAgenda {
   exito_titulo: string;
   exito_mensaje: string;
   exito_boton: string;
+  etiqueta_nombre: string;
+  placeholder_nombre: string;
+  etiqueta_telefono: string;
+  placeholder_telefono: string;
+  etiqueta_correo: string;
+  placeholder_correo: string;
+  paso_servicio: string;
+  paso_servicio_cabello: string;
+  cargando_servicios: string;
+  paso_estilista: string;
+  buscando_estilistas: string;
+  paso_fecha: string;
+  buscando_horarios: string;
+  sin_horarios: string;
+  sin_cupos: string;
+  deposito_monto: string;
+  comprobante_etiqueta: string;
+  comprobante_formatos: string;
+  etiqueta_comentario: string;
+  placeholder_comentario: string;
+  enviando: string;
+}
+export interface TextosWhatsApp {
+  servicio_intro: string;
+  servicio_incluye: string;
+  servicio_cierre: string;
+  producto_intro: string;
+  producto_precios: string;
+  producto_elegido: string;
+  producto_cierre: string;
+  etiqueta_precio: string;
+  etiqueta_color: string;
+  etiqueta_largo: string;
+  ver_en_web: string;
+  reserva: string;
 }
 export interface Seo {
   titulo: string;
