@@ -1244,6 +1244,10 @@ export type Database = {
           nombre: string
           precio: number
           slug: string
+          web_dura: string | null
+          web_incluye: string[]
+          web_orden: number
+          web_retoque: string | null
         }
         Insert: {
           activo?: boolean
@@ -1260,6 +1264,10 @@ export type Database = {
           nombre: string
           precio: number
           slug: string
+          web_dura?: string | null
+          web_incluye?: string[]
+          web_orden?: number
+          web_retoque?: string | null
         }
         Update: {
           activo?: boolean
@@ -1276,6 +1284,10 @@ export type Database = {
           nombre?: string
           precio?: number
           slug?: string
+          web_dura?: string | null
+          web_incluye?: string[]
+          web_orden?: number
+          web_retoque?: string | null
         }
         Relationships: []
       }
@@ -1758,6 +1770,7 @@ export type Database = {
         }
         Returns: string
       }
+      servicios_web: { Args: never; Returns: Json }
       subir_comprobante_cita: {
         Args: { p_cita_id: string; p_comprobante_path: string }
         Returns: undefined

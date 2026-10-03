@@ -48,6 +48,10 @@ interface ServicioRow {
   dias_seguimiento: number[];
   activo: boolean;
   mostrar_en_web: boolean;
+  web_dura: string | null;
+  web_retoque: string | null;
+  web_incluye: string[];
+  web_orden: number;
 }
 
 interface Estilista {
@@ -122,6 +126,10 @@ function EditarServicio({ servicio, slug }: { servicio: ServicioRow; slug: strin
   const [diasSeguimiento, setDiasSeguimiento] = useState(servicio.dias_seguimiento.join(", "));
   const [activo, setActivo] = useState(servicio.activo);
   const [mostrarEnWeb, setMostrarEnWeb] = useState(servicio.mostrar_en_web);
+  const [webDura, setWebDura] = useState(servicio.web_dura ?? "");
+  const [webRetoque, setWebRetoque] = useState(servicio.web_retoque ?? "");
+  const [webIncluye, setWebIncluye] = useState(servicio.web_incluye.join("\n"));
+  const [webOrden, setWebOrden] = useState(String(servicio.web_orden));
 
   const [estilistas, setEstilistas] = useState<Estilista[]>([]);
   const [selectedStaff, setSelectedStaff] = useState<string[]>([]);
@@ -174,6 +182,10 @@ function EditarServicio({ servicio, slug }: { servicio: ServicioRow; slug: strin
         dias_seguimiento: parseDias(diasSeguimiento),
         activo,
         mostrar_en_web: mostrarEnWeb,
+        web_dura: webDura.trim() || null,
+        web_retoque: webRetoque.trim() || null,
+        web_incluye: webIncluye.split("\n").map((l) => l.trim()).filter(Boolean),
+        web_orden: Math.max(0, Math.round(Number(webOrden)) || 0),
       })
       .eq("id", servicio.id);
 
@@ -275,6 +287,37 @@ function EditarServicio({ servicio, slug }: { servicio: ServicioRow; slug: strin
                 <input type="checkbox" checked={sinDeposito} onChange={(e) => setSinDeposito(e.target.checked)} className="w-4 h-4 accent-zinc-900" />
                 <span className="text-sm text-zinc-600">Sin depósito requerido</span>
               </label>
+            </div>
+          </div>
+
+          {/* Ficha en la web */}
+          <div className="bg-white rounded-2xl border border-zinc-200 p-5">
+            <SectionLabel>Ficha en la web</SectionLabel>
+            <p className="text-xs text-zinc-400 mb-3">
+              Se muestra en la página del servicio si está activado &quot;Visible en la web&quot;. La duración, el precio y la descripción salen de los campos de arriba; la foto, de la ficha del servicio.
+            </p>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="text-xs font-semibold text-zinc-500 mb-1.5 block">Dura</label>
+                <input value={webDura} onChange={(e) => setWebDura(e.target.value)} placeholder="6 a 8 semanas"
+                  className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-zinc-400 transition-colors" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-zinc-500 mb-1.5 block">Retoque</label>
+                <input value={webRetoque} onChange={(e) => setWebRetoque(e.target.value)} placeholder="Cada 2 meses"
+                  className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-zinc-400 transition-colors" />
+              </div>
+            </div>
+            <div className="mb-3">
+              <label className="text-xs font-semibold text-zinc-500 mb-1.5 block">Qué incluye (una línea por renglón)</label>
+              <textarea value={webIncluye} onChange={(e) => setWebIncluye(e.target.value)} rows={4}
+                className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 focus:outline-none focus:border-zinc-400 transition-colors resize-y" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 mb-1.5 block">Orden en la web</label>
+              <input type="number" min={0} value={webOrden} onChange={(e) => setWebOrden(e.target.value)}
+                className="w-32 px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 focus:outline-none focus:border-zinc-400 transition-colors" />
+              <p className="text-[11px] text-zinc-400 mt-1">1 aparece primero; 0 va al final. La portada muestra los 3 primeros.</p>
             </div>
           </div>
 
