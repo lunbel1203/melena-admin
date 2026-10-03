@@ -71,10 +71,19 @@ export async function mostrarCredenciales(opciones: {
   password: string;
   /** a quién se le comparten los datos (para el texto del aviso) */
   para?: "la empleada" | "la clienta";
+  /** dónde entra la persona: la app, el panel administrativo o ambos (empleadas) */
+  plataformas?: "app" | "panel" | "ambas";
 }) {
   const para = opciones.para ?? "la empleada";
   const aviso = opciones.para === "la clienta" ? "\n\nEs una contraseña temporal: al entrar, la app te pedirá crear la tuya." : "";
-  const mensaje = `Hola ${opciones.nombre}, ya puedes entrar a la app de Melena con estos datos:\n\nCorreo: ${opciones.email}\nContraseña: ${opciones.password}${aviso}`;
+  const panel = typeof window !== "undefined" ? window.location.origin : "";
+  const dondeEntra =
+    opciones.plataformas === "ambas"
+      ? `la app de Melena y al panel administrativo (${panel})`
+      : opciones.plataformas === "panel"
+      ? `el panel administrativo de Melena (${panel})`
+      : "la app de Melena";
+  const mensaje = `Hola ${opciones.nombre}, ya puedes entrar a ${dondeEntra} con estos datos:\n\nCorreo: ${opciones.email}\nContraseña: ${opciones.password}${opciones.plataformas === "ambas" ? "\n\nEs la misma cuenta para la app y el panel." : ""}${aviso}`;
   const linkWhatsApp = enlaceWhatsApp(opciones.telefono, mensaje);
 
   await Swal.fire({

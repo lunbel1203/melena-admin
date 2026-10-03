@@ -95,6 +95,9 @@ export default function PerfilEmpleadaPage({ params }: { params: Promise<{ id: s
   const inicioMesISO = new Date(anio, mes, 1).toISOString();
   const diasEnMes = new Date(anio, mes + 1, 0).getDate();
 
+  // A qué plataformas da acceso el rol de la empleada (lo define Seguridad)
+  const [acceso, setAcceso] = useState<{ app: boolean; panel: boolean }>({ app: false, panel: false });
+
   async function cargar() {
     const { data: empRaw } = await supabase
       .from("empleados")
@@ -105,6 +108,14 @@ export default function PerfilEmpleadaPage({ params }: { params: Promise<{ id: s
     const rol = Array.isArray(empRaw.roles) ? empRaw.roles[0] : empRaw.roles;
     const emp: Empleado = { ...empRaw, rolNombre: rol?.nombre ?? "", esAdminTotal: rol?.es_admin_total ?? false };
     setEmpleado(emp);
+
+    if (emp.esAdminTotal) {
+      setAcceso({ app: true, panel: true });
+    } else {
+      const { data: plat } = await supabase.from("rol_permisos").select("permiso_clave").eq("rol_id", emp.rol_id).in("permiso_clave", ["acceso.app_movil", "acceso.panel_admin"]);
+      const claves = new Set((plat ?? []).map((p) => p.permiso_clave));
+      setAcceso({ app: claves.has("acceso.app_movil"), panel: claves.has("acceso.panel_admin") });
+    }
 
     const [{ data: lineasData }, { data: serviciosEmp }, { data: permisos }, { data: disponibilidad }] = await Promise.all([
       supabase
@@ -186,6 +197,8 @@ export default function PerfilEmpleadaPage({ params }: { params: Promise<{ id: s
     setEmpleado({ ...empleado, activo: !empleado.activo });
   }
 
+  const plataformas = acceso.app && acceso.panel ? "la app y el panel administrativo" : acceso.app ? "la app" : acceso.panel ? "el panel administrativo" : null;
+
   async function gestionarCuenta(accion: "crear" | "restablecer") {
     if (!empleado) return;
     if (!empleado.email) {
@@ -223,6 +236,7 @@ export default function PerfilEmpleadaPage({ params }: { params: Promise<{ id: s
       telefono: empleado.telefono,
       email: data.email,
       password: data.password,
+      plataformas: acceso.app && acceso.panel ? "ambas" : acceso.panel ? "panel" : "app",
     });
   }
 
@@ -511,12 +525,18 @@ export default function PerfilEmpleadaPage({ params }: { params: Promise<{ id: s
               </div>
               <div>
                 <p className="text-sm font-semibold text-zinc-900">
-                  {empleado.user_id ? "Tiene cuenta de la app" : "Sin cuenta de la app"}
+                  {empleado.user_id ? "Tiene cuenta" : "Sin cuenta"}
                 </p>
                 <p className="text-xs text-zinc-400 mt-0.5">
-                  {empleado.user_id
-                    ? "Puede iniciar sesión en la app con este correo."
-                    : "Créale una cuenta para que pueda entrar a la app con este correo."}
+                  {!plataformas
+                    ? "Su rol no da acceso a la app ni al panel. Actívalo en Seguridad para poder crearle una cuenta."
+                    : empleado.user_id
+                    ? `Puede iniciar sesión con este correo en ${plataformas}.`
+                    : acceso.app && acceso.panel
+                    ? "Se le creará una sola cuenta, con el mismo correo y contraseña, que funciona tanto en la app como en el panel administrativo."
+                    : acceso.app
+                    ? "Se le creará una cuenta para entrar a la app con este correo. Su rol no da acceso al panel administrativo."
+                    : "Se le creará una cuenta para entrar al panel administrativo con este correo. Su rol no da acceso a la app."}
                 </p>
               </div>
             </div>
