@@ -131,6 +131,7 @@ export type Database = {
           hora_inicio: string
           id: string
           notas: string | null
+          origen: string | null
           rango: unknown
           recordatorio_24h_enviado: boolean
           recordatorio_2h_enviado: boolean
@@ -147,6 +148,7 @@ export type Database = {
           hora_inicio: string
           id?: string
           notas?: string | null
+          origen?: string | null
           rango?: unknown
           recordatorio_24h_enviado?: boolean
           recordatorio_2h_enviado?: boolean
@@ -163,6 +165,7 @@ export type Database = {
           hora_inicio?: string
           id?: string
           notas?: string | null
+          origen?: string | null
           rango?: unknown
           recordatorio_24h_enviado?: boolean
           recordatorio_2h_enviado?: boolean
@@ -196,6 +199,7 @@ export type Database = {
       clientas: {
         Row: {
           created_at: string
+          debe_cambiar_password: boolean
           email: string | null
           fecha_nacimiento: string | null
           id: string
@@ -203,9 +207,11 @@ export type Database = {
           notas: string | null
           telefono: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
+          debe_cambiar_password?: boolean
           email?: string | null
           fecha_nacimiento?: string | null
           id?: string
@@ -213,9 +219,11 @@ export type Database = {
           notas?: string | null
           telefono: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
+          debe_cambiar_password?: boolean
           email?: string | null
           fecha_nacimiento?: string | null
           id?: string
@@ -223,6 +231,7 @@ export type Database = {
           notas?: string | null
           telefono?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -630,6 +639,7 @@ export type Database = {
           estado: Database["public"]["Enums"]["estado_factura"]
           id: string
           itbis: number
+          metodo_pago: string | null
           subtotal: number
           total: number
           visita_id: string
@@ -643,6 +653,7 @@ export type Database = {
           estado?: Database["public"]["Enums"]["estado_factura"]
           id?: string
           itbis?: number
+          metodo_pago?: string | null
           subtotal?: number
           total?: number
           visita_id: string
@@ -656,6 +667,7 @@ export type Database = {
           estado?: Database["public"]["Enums"]["estado_factura"]
           id?: string
           itbis?: number
+          metodo_pago?: string | null
           subtotal?: number
           total?: number
           visita_id?: string
@@ -818,6 +830,102 @@ export type Database = {
         }
         Relationships: []
       }
+      ordenes_compra: {
+        Row: {
+          created_at: string
+          creada_por: string | null
+          estado: string
+          fecha: string
+          id: string
+          notas: string | null
+          proveedor_id: string
+          recibida_at: string | null
+          total: number
+        }
+        Insert: {
+          created_at?: string
+          creada_por?: string | null
+          estado?: string
+          fecha?: string
+          id?: string
+          notas?: string | null
+          proveedor_id: string
+          recibida_at?: string | null
+          total?: number
+        }
+        Update: {
+          created_at?: string
+          creada_por?: string | null
+          estado?: string
+          fecha?: string
+          id?: string
+          notas?: string | null
+          proveedor_id?: string
+          recibida_at?: string | null
+          total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ordenes_compra_creada_por_fkey"
+            columns: ["creada_por"]
+            isOneToOne: false
+            referencedRelation: "empleados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ordenes_compra_proveedor_id_fkey"
+            columns: ["proveedor_id"]
+            isOneToOne: false
+            referencedRelation: "proveedores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ordenes_compra_lineas: {
+        Row: {
+          cantidad: number
+          costo_unitario: number
+          descripcion: string
+          id: string
+          orden_id: string
+          producto_id: string | null
+          subtotal: number | null
+        }
+        Insert: {
+          cantidad: number
+          costo_unitario: number
+          descripcion: string
+          id?: string
+          orden_id: string
+          producto_id?: string | null
+          subtotal?: number | null
+        }
+        Update: {
+          cantidad?: number
+          costo_unitario?: number
+          descripcion?: string
+          id?: string
+          orden_id?: string
+          producto_id?: string | null
+          subtotal?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ordenes_compra_lineas_orden_id_fkey"
+            columns: ["orden_id"]
+            isOneToOne: false
+            referencedRelation: "ordenes_compra"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ordenes_compra_lineas_producto_id_fkey"
+            columns: ["producto_id"]
+            isOneToOne: false
+            referencedRelation: "productos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       permisos_catalogo: {
         Row: {
           clave: string
@@ -907,32 +1015,56 @@ export type Database = {
       proveedores: {
         Row: {
           activo: boolean
+          categoria: string
           contacto: string | null
           created_at: string
           direccion: string | null
           email: string | null
+          forma_pago: string
           id: string
+          moneda: string
           nombre: string
+          nota: string | null
+          pais: string
+          plazo_entrega: string
+          rnc: string | null
+          suministra: string[]
           telefono: string | null
         }
         Insert: {
           activo?: boolean
+          categoria?: string
           contacto?: string | null
           created_at?: string
           direccion?: string | null
           email?: string | null
+          forma_pago?: string
           id?: string
+          moneda?: string
           nombre: string
+          nota?: string | null
+          pais?: string
+          plazo_entrega?: string
+          rnc?: string | null
+          suministra?: string[]
           telefono?: string | null
         }
         Update: {
           activo?: boolean
+          categoria?: string
           contacto?: string | null
           created_at?: string
           direccion?: string | null
           email?: string | null
+          forma_pago?: string
           id?: string
+          moneda?: string
           nombre?: string
+          nota?: string | null
+          pais?: string
+          plazo_entrega?: string
+          rnc?: string | null
+          suministra?: string[]
           telefono?: string | null
         }
         Relationships: []
@@ -1246,28 +1378,40 @@ export type Database = {
       }
       visitas: {
         Row: {
+          atencion_inicio_at: string | null
           cita_id: string | null
           clienta_id: string
           created_at: string
           empleado_recepcion_id: string
+          estado: Database["public"]["Enums"]["estado_visita"]
           estilista_id: string | null
           id: string
+          notas: string | null
+          servicio_fin_at: string | null
         }
         Insert: {
+          atencion_inicio_at?: string | null
           cita_id?: string | null
           clienta_id: string
           created_at?: string
           empleado_recepcion_id: string
+          estado?: Database["public"]["Enums"]["estado_visita"]
           estilista_id?: string | null
           id?: string
+          notas?: string | null
+          servicio_fin_at?: string | null
         }
         Update: {
+          atencion_inicio_at?: string | null
           cita_id?: string | null
           clienta_id?: string
           created_at?: string
           empleado_recepcion_id?: string
+          estado?: Database["public"]["Enums"]["estado_visita"]
           estilista_id?: string | null
           id?: string
+          notas?: string | null
+          servicio_fin_at?: string | null
         }
         Relationships: [
           {
@@ -1305,6 +1449,133 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      agregar_linea_factura: {
+        Args: {
+          p_cantidad?: number
+          p_factura_id: string
+          p_item_id: string
+          p_tipo: Database["public"]["Enums"]["tipo_linea_factura"]
+        }
+        Returns: string
+      }
+      cobrar_factura: {
+        Args: { p_factura_id: string; p_metodo_pago: string }
+        Returns: undefined
+      }
+      cambiar_estado_orden_compra: {
+        Args: { p_estado: string; p_orden_id: string }
+        Returns: undefined
+      }
+      crear_orden_compra: {
+        Args: {
+          p_estado: string
+          p_fecha: string
+          p_lineas: Json
+          p_notas: string
+          p_proveedor_id: string
+        }
+        Returns: string
+      }
+      actualizar_mis_datos: {
+        Args: { p_fecha_nacimiento?: string; p_nombre: string; p_telefono: string }
+        Returns: undefined
+      }
+      cancelar_mi_cita: { Args: { p_cita_id: string }; Returns: undefined }
+      clienta_id_actual: { Args: never; Returns: string }
+      crear_cita_clienta: {
+        Args: {
+          p_comprobante_path?: string
+          p_empleado_id: string
+          p_fecha: string
+          p_hora_inicio: string
+          p_notas?: string
+          p_servicio_id: string
+        }
+        Returns: string
+      }
+      estilistas_publicos: {
+        Args: { p_servicio_id: string }
+        Returns: { foto_url: string; id: string; nombre: string }[]
+      }
+      horarios_disponibles_rango: {
+        Args: { p_dias?: number; p_duracion_minutos: number; p_empleado_id: string }
+        Returns: { fecha: string; hora_inicio: string }[]
+      }
+      marcar_password_cambiada: { Args: never; Returns: undefined }
+      mi_cabello: {
+        Args: never
+        Returns: {
+          color: string
+          instalada: string
+          largo: number
+          proximo_mantenimiento: string
+          servicio: string
+          tipo_cabello: Database["public"]["Enums"]["tipo_cabello"]
+        }[]
+      }
+      mi_historial: {
+        Args: { p_limite?: number }
+        Returns: { detalle: string; estilista: string; fecha: string; id: string; servicio: string }[]
+      }
+      mis_checkins_pendientes: {
+        Args: never
+        Returns: {
+          dia_programado: number
+          estilista_nombre: string
+          id: string
+          instalada: string
+          servicio_nombre: string
+        }[]
+      }
+      mis_citas: {
+        Args: never
+        Returns: {
+          deposito_estado: Database["public"]["Enums"]["estado_deposito"]
+          deposito_limite: string
+          deposito_monto: number
+          empleado_id: string
+          empleado_nombre: string
+          estado: Database["public"]["Enums"]["estado_cita"]
+          fecha: string
+          hora_fin: string
+          hora_inicio: string
+          id: string
+          requiere_deposito: boolean
+          servicio_id: string
+          servicio_nombre: string
+        }[]
+      }
+      mis_reportes_molestia: {
+        Args: never
+        Returns: {
+          created_at: string
+          descripcion: string
+          estado: Database["public"]["Enums"]["estado_ticket"]
+          id: string
+          intensidad: number
+          tipos_molestia: string[]
+        }[]
+      }
+      reagendar_mi_cita: {
+        Args: { p_cita_id: string; p_fecha: string; p_hora_inicio: string }
+        Returns: undefined
+      }
+      responder_mi_checkin: {
+        Args: {
+          p_check_in_id: string
+          p_descripcion?: string
+          p_foto_path?: string
+          p_intensidad?: number
+          p_respuesta: Database["public"]["Enums"]["respuesta_checkin"]
+          p_tipos_molestia?: string[]
+        }
+        Returns: string
+      }
+      subir_comprobante_cita: {
+        Args: { p_cita_id: string; p_comprobante_path: string }
+        Returns: undefined
+      }
+      tipo_de_usuario: { Args: never; Returns: string }
       crear_cita_publica: {
         Args: {
           p_comprobante_url: string
@@ -1317,6 +1588,17 @@ export type Database = {
           p_notas: string
           p_servicio_id: string
           p_telefono: string
+        }
+        Returns: string
+      }
+      dar_entrada_clienta: {
+        Args: {
+          p_cita_id?: string
+          p_clienta_id: string
+          p_estilista_id: string
+          p_notas?: string
+          p_servicio_id: string
+          p_visita_id?: string
         }
         Returns: string
       }
@@ -1385,6 +1667,7 @@ export type Database = {
         | "no_show"
       estado_deposito: "pendiente" | "verificado" | "rechazado"
       estado_factura: "abierta" | "cobrada" | "cancelada"
+      estado_visita: "en_espera" | "en_atencion" | "por_cobrar" | "cerrada"
       estado_ticket: "abierto" | "en_proceso" | "resuelto"
       respuesta_checkin: "bien" | "molestia"
       tipo_cabello: "virgin" | "remy"
@@ -1526,6 +1809,7 @@ export const Constants = {
       ],
       estado_deposito: ["pendiente", "verificado", "rechazado"],
       estado_factura: ["abierta", "cobrada", "cancelada"],
+      estado_visita: ["en_espera", "en_atencion", "por_cobrar", "cerrada"],
       estado_ticket: ["abierto", "en_proceso", "resuelto"],
       respuesta_checkin: ["bien", "molestia"],
       tipo_cabello: ["virgin", "remy"],
