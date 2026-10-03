@@ -314,6 +314,7 @@ function NuevaCitaForm() {
           hora_fin: horaFin,
           estado: payInSalon ? "confirmada" : "pendiente_confirmacion",
           notas: note.trim() || null,
+          origen: "panel",
         })
         .select("id")
         .single();
