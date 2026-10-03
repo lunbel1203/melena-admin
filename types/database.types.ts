@@ -848,6 +848,54 @@ export type Database = {
         }
         Relationships: []
       }
+      notificaciones_clientas: {
+        Row: {
+          cita_id: string | null
+          clienta_id: string
+          created_at: string
+          id: string
+          leida_at: string | null
+          mensaje: string
+          tipo: string
+          titulo: string
+        }
+        Insert: {
+          cita_id?: string | null
+          clienta_id: string
+          created_at?: string
+          id?: string
+          leida_at?: string | null
+          mensaje: string
+          tipo: string
+          titulo: string
+        }
+        Update: {
+          cita_id?: string | null
+          clienta_id?: string
+          created_at?: string
+          id?: string
+          leida_at?: string | null
+          mensaje?: string
+          tipo?: string
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notificaciones_clientas_cita_id_fkey"
+            columns: ["cita_id"]
+            isOneToOne: false
+            referencedRelation: "citas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notificaciones_clientas_clienta_id_fkey"
+            columns: ["clienta_id"]
+            isOneToOne: false
+            referencedRelation: "clientas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ordenes_compra: {
         Row: {
           creada_por: string | null
@@ -1764,6 +1812,7 @@ export type Database = {
         Args: { p_body: Json; p_nombre: string }
         Returns: undefined
       }
+      marcar_notificaciones_leidas: { Args: never; Returns: undefined }
       marcar_password_cambiada: { Args: never; Returns: undefined }
       mi_cabello: {
         Args: never
@@ -1814,6 +1863,19 @@ export type Database = {
           servicio_nombre: string
         }[]
       }
+      mis_notificaciones: {
+        Args: never
+        Returns: {
+          cita_id: string
+          created_at: string
+          id: string
+          leida: boolean
+          mensaje: string
+          tipo: string
+          titulo: string
+        }[]
+      }
+      mis_notificaciones_sin_leer: { Args: never; Returns: number }
       mis_reportes_molestia: {
         Args: never
         Returns: {
