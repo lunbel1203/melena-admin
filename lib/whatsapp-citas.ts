@@ -6,7 +6,7 @@ import { parseISODate } from "@/lib/dates";
 import { createClient } from "@/lib/supabase/client";
 
 // Texto por defecto; el real se edita en Configuración → Mensajes (negocio_config.mensaje_cita_confirmada)
-export const PLANTILLA_CITA_CONFIRMADA = `Hola {nombre}, tu cita en Melena está confirmada ✅
+export const PLANTILLA_CITA_CONFIRMADA = `Hola {nombre}, tu cita en Melena está confirmada.
 
 • Servicio: {servicio}
 • Fecha: {fecha}

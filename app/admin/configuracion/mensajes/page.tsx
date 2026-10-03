@@ -72,7 +72,7 @@ export default function MensajesPage() {
         className="w-full px-4 py-3 border border-zinc-200 rounded-xl text-sm text-zinc-800 focus:outline-none focus:border-zinc-400 transition-colors resize-y"
       />
       <p className="text-[11px] text-zinc-400 mt-1.5">
-        Variables que se reemplazan solas: {VARIABLES_CITA.join(", ")}. Si la cita no tiene estilista, se quita el renglón que menciona {"{estilista}"}.
+        Evita los emojis: WhatsApp de escritorio (Mac y Windows) no los muestra bien cuando el mensaje se abre desde un enlace y salen como &quot;�&quot;. Variables que se reemplazan solas: {VARIABLES_CITA.join(", ")}. Si la cita no tiene estilista, se quita el renglón que menciona {"{estilista}"}.
       </p>
       <button
         type="button"
