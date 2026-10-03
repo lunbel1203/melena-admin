@@ -120,6 +120,12 @@ export interface TextosWhatsApp {
   ver_en_web: string;
   reserva: string;
 }
+export interface NoEncontrada {
+  titulo: string;
+  mensaje: string;
+  boton_texto: string;
+  boton_enlace: string;
+}
 export interface Seo {
   titulo: string;
   descripcion: string;

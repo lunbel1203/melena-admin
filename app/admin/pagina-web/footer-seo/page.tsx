@@ -1,10 +1,11 @@
 "use client";
 
-import { useBloque, type Footer, type Seo } from "@/lib/pagina-web";
+import { useBloque, type Footer, type NoEncontrada, type Seo } from "@/lib/pagina-web";
 import { Area, BarraGuardar, Campo, Etiqueta, Tarjeta } from "@/components/pagina-web/campos";
 
 const FOOTER: Footer = { descripcion: "", navegacion: [], copyright: "", titulo_navegacion: "", titulo_contacto: "" };
 const SEO: Seo = { titulo: "", descripcion: "" };
+const NO_ENCONTRADA: NoEncontrada = { titulo: "", mensaje: "", boton_texto: "", boton_enlace: "/" };
 
 function FooterCard() {
   const b = useBloque<Footer>("footer", FOOTER);
@@ -79,11 +80,35 @@ function SeoCard() {
   );
 }
 
+function NoEncontradaCard() {
+  const b = useBloque<NoEncontrada>("no_encontrada", NO_ENCONTRADA);
+  const set = (k: keyof NoEncontrada) => (v: string) => b.setValor({ ...b.valor, [k]: v });
+  if (b.cargando) return <p className="text-sm text-zinc-400">Cargando…</p>;
+  return (
+    <Tarjeta>
+      <Etiqueta>Página no encontrada (404)</Etiqueta>
+      <p className="text-xs text-zinc-400 mb-4">Lo que ve quien entra a un enlace que no existe.</p>
+      <div className="grid sm:grid-cols-2 gap-4 mb-4">
+        <div className="sm:col-span-2">
+          <Campo label="Título" value={b.valor.titulo} onChange={set("titulo")} />
+        </div>
+        <div className="sm:col-span-2">
+          <Area label="Mensaje" value={b.valor.mensaje} onChange={set("mensaje")} filas={2} />
+        </div>
+        <Campo label="Texto del botón" value={b.valor.boton_texto} onChange={set("boton_texto")} />
+        <Campo label="Enlace del botón" value={b.valor.boton_enlace} onChange={set("boton_enlace")} />
+      </div>
+      <BarraGuardar guardando={b.guardando} guardado={b.guardado} error={b.error} onGuardar={b.guardar} />
+    </Tarjeta>
+  );
+}
+
 export default function FooterSeoPage() {
   return (
     <>
       <FooterCard />
       <SeoCard />
+      <NoEncontradaCard />
     </>
   );
 }
