@@ -37,6 +37,11 @@ interface Empleado {
   puesto: string | null;
   activo: boolean;
   foto_url: string | null;
+  /** Tiene una cuenta (correo y contraseña) para entrar */
+  tieneCuenta: boolean;
+  /** Plataformas a las que su rol le da acceso */
+  accesoApp: boolean;
+  accesoPanel: boolean;
 }
 
 interface Stats {
@@ -45,12 +50,16 @@ interface Stats {
   comision: number;
 }
 
+type FiltroCuenta = "Todas" | "Con cuenta" | "Sin cuenta";
+const filtrosCuenta: FiltroCuenta[] = ["Todas", "Con cuenta", "Sin cuenta"];
+
 const formatoRD = new Intl.NumberFormat("es-DO", { style: "currency", currency: "DOP", maximumFractionDigits: 0 });
 
 export default function PersonalPage() {
   const supabase = useMemo(() => createClient(), []);
   const [activeTab, setActiveTab] = useState<FilterTab>("Todas");
   const [search, setSearch] = useState("");
+  const [filtroCuenta, setFiltroCuenta] = useState<FiltroCuenta>("Todas");
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [stats, setStats] = useState<Map<string, Stats>>(new Map());
   const [cargando, setCargando] = useState(true);
@@ -62,15 +71,24 @@ export default function PersonalPage() {
       inicioMes.setHours(0, 0, 0, 0);
       const inicioMesISO = inicioMes.toISOString();
 
-      const [{ data: emps }, { data: lineas }, { data: comisiones }] = await Promise.all([
-        supabase.from("empleados").select("id, nombre, puesto, activo, foto_url, roles(nombre)").order("nombre"),
+      const [{ data: emps }, { data: lineas }, { data: comisiones }, { data: permisosRol }] = await Promise.all([
+        supabase.from("empleados").select("id, nombre, puesto, activo, foto_url, user_id, rol_id, roles(nombre, es_admin_total)").order("nombre"),
         supabase
           .from("lineas_factura")
           .select("empleado_id, subtotal, tipo, facturas!inner(estado, cobrada_at)")
           .eq("facturas.estado", "cobrada")
           .gte("facturas.cobrada_at", inicioMesISO),
         supabase.from("comisiones").select("empleado_id, monto").gte("created_at", inicioMesISO),
+        supabase.from("rol_permisos").select("rol_id, permiso_clave").in("permiso_clave", ["acceso.app_movil", "acceso.panel_admin"]),
       ]);
+
+      // plataformas que permite cada rol (el admin total entra a todo)
+      const accesoPorRol = new Map<string, Set<string>>();
+      (permisosRol ?? []).forEach((p) => {
+        const set = accesoPorRol.get(p.rol_id) ?? new Set<string>();
+        set.add(p.permiso_clave);
+        accesoPorRol.set(p.rol_id, set);
+      });
 
       const mapa = new Map<string, Stats>();
       (lineas ?? []).forEach((l) => {
@@ -88,7 +106,18 @@ export default function PersonalPage() {
       setEmpleados(
         (emps ?? []).map((e) => {
           const rol = Array.isArray(e.roles) ? e.roles[0] : e.roles;
-          return { id: e.id, nombre: e.nombre, puesto: e.puesto, activo: e.activo, foto_url: e.foto_url, rolNombre: rol?.nombre ?? "" };
+          const acceso = accesoPorRol.get(e.rol_id);
+          return {
+            id: e.id,
+            nombre: e.nombre,
+            puesto: e.puesto,
+            activo: e.activo,
+            foto_url: e.foto_url,
+            rolNombre: rol?.nombre ?? "",
+            tieneCuenta: !!e.user_id,
+            accesoApp: !!rol?.es_admin_total || !!acceso?.has("acceso.app_movil"),
+            accesoPanel: !!rol?.es_admin_total || !!acceso?.has("acceso.panel_admin"),
+          };
         })
       );
       setStats(mapa);
@@ -99,8 +128,13 @@ export default function PersonalPage() {
   const filtered = empleados.filter((e) => {
     const matchTab = rolFilter[activeTab] === null || e.rolNombre === rolFilter[activeTab];
     const matchSearch = e.nombre.toLowerCase().includes(search.toLowerCase());
-    return matchTab && matchSearch;
+    const matchCuenta = filtroCuenta === "Todas" || (filtroCuenta === "Con cuenta" ? e.tieneCuenta : !e.tieneCuenta);
+    return matchTab && matchSearch && matchCuenta;
   });
+
+  const conCuenta = empleados.filter((e) => e.tieneCuenta);
+  const entranApp = conCuenta.filter((e) => e.accesoApp).length;
+  const entranPanel = conCuenta.filter((e) => e.accesoPanel).length;
 
   const totalComisiones = Array.from(stats.values()).reduce((acc, s) => acc + s.comision, 0);
 
@@ -135,6 +169,33 @@ export default function PersonalPage() {
         </Link>
       </div>
 
+      {/* ── Acceso: quiénes ya tienen cuenta ── */}
+      <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm px-5 py-4 mb-4 flex items-center gap-x-8 gap-y-3 flex-wrap">
+        <div>
+          <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-0.5">Con cuenta</p>
+          <p className="text-lg font-bold text-zinc-900">{conCuenta.length} <span className="text-sm font-medium text-zinc-400">de {empleados.length}</span></p>
+        </div>
+        <div>
+          <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-0.5">Entran a la app</p>
+          <p className="text-lg font-bold text-zinc-900">{entranApp}</p>
+        </div>
+        <div>
+          <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-0.5">Entran al panel</p>
+          <p className="text-lg font-bold text-zinc-900">{entranPanel}</p>
+        </div>
+        <div className="flex items-center bg-zinc-100 rounded-xl p-1 ml-auto">
+          {filtrosCuenta.map((f) => (
+            <button
+              key={f}
+              onClick={() => setFiltroCuenta(f)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${filtroCuenta === f ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500 hover:text-zinc-700"}`}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* ── Search ── */}
       <div className="relative mb-4 max-w-xs">
         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none">
@@ -152,8 +213,8 @@ export default function PersonalPage() {
       {/* ── Tabla ── */}
       <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm overflow-hidden">
 
-        <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_1.3fr_1.3fr_1fr_28px] gap-x-4 px-5 sm:px-6 py-3 border-b border-zinc-100">
-          {["Empleada", "Rol", "Servicios (mes)", "Facturado (mes)", "Comisión (mes)", "Estado", ""].map((h) => (
+        <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_1.3fr_1.3fr_1.3fr_1fr_28px] gap-x-4 px-5 sm:px-6 py-3 border-b border-zinc-100">
+          {["Empleada", "Rol", "Servicios (mes)", "Facturado (mes)", "Comisión (mes)", "Acceso", "Estado", ""].map((h) => (
             <span key={h} className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">{h}</span>
           ))}
         </div>
@@ -168,7 +229,7 @@ export default function PersonalPage() {
               <Link
                 key={e.id}
                 href={`/admin/personal/${e.id}`}
-                className="flex sm:grid sm:grid-cols-[2fr_1fr_1fr_1.3fr_1.3fr_1fr_28px] gap-x-4 items-center px-5 sm:px-6 py-4 border-b border-zinc-100 last:border-0 hover:bg-zinc-50/70 transition-colors"
+                className="flex sm:grid sm:grid-cols-[2fr_1fr_1fr_1.3fr_1.3fr_1.3fr_1fr_28px] gap-x-4 items-center px-5 sm:px-6 py-4 border-b border-zinc-100 last:border-0 hover:bg-zinc-50/70 transition-colors"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-8 h-8 rounded-full bg-zinc-200 flex items-center justify-center text-sm font-bold text-zinc-600 shrink-0 overflow-hidden">
@@ -200,6 +261,17 @@ export default function PersonalPage() {
                 <span className="hidden sm:block text-sm font-medium text-zinc-900">
                   {s && s.comision > 0 ? formatoRD.format(s.comision) : "—"}
                 </span>
+
+                <div className="hidden sm:flex flex-col items-start gap-1">
+                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${e.tieneCuenta ? "bg-teal-50 text-teal-700" : "bg-zinc-100 text-zinc-500"}`}>
+                    {e.tieneCuenta ? "Con cuenta" : "Sin cuenta"}
+                  </span>
+                  {e.tieneCuenta ? (
+                    <span className="text-[10px] font-medium text-zinc-400">
+                      {[e.accesoApp ? "App" : null, e.accesoPanel ? "Panel" : null].filter(Boolean).join(" · ") || "Sin acceso por su rol"}
+                    </span>
+                  ) : null}
+                </div>
 
                 <div className="hidden sm:block">
                   <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
