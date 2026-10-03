@@ -114,7 +114,6 @@ export default function ProveedorDetailPage({ params }: { params: Promise<{ slug
   }, [supabase, id]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     cargar();
   }, [cargar]);
 

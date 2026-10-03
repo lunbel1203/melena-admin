@@ -173,7 +173,6 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
   }, [supabase, id]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     cargar();
   }, [cargar]);
 

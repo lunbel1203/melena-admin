@@ -159,7 +159,6 @@ function CheckInForm() {
   // Al elegir clienta con cita hoy: precargar servicio y estilista de la cita
   useEffect(() => {
     if (!citaClienta) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedService((prev) => prev ?? services.find((s) => s.id === citaClienta.servicio_id) ?? null);
     setSelectedStylist((prev) => prev ?? stylists.find((s) => s.id === citaClienta.empleado_id) ?? null);
   }, [citaClienta, services, stylists]);

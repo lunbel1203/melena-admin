@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -373,9 +374,9 @@ export default function HorarioAgendaPage() {
         <p className="text-xs text-zinc-400">
           Cada empleada usa este horario por defecto. Sus turnos, días libres y bloqueos se ajustan desde su perfil en Personal.
         </p>
-        <a href="/admin/personal" className="text-xs font-semibold text-zinc-700 border border-zinc-200 px-3 py-1.5 rounded-lg hover:bg-zinc-50 transition-colors whitespace-nowrap">
+        <Link href="/admin/personal" className="text-xs font-semibold text-zinc-700 border border-zinc-200 px-3 py-1.5 rounded-lg hover:bg-zinc-50 transition-colors whitespace-nowrap">
           Ir a disponibilidad del personal
-        </a>
+        </Link>
       </div>
     </div>
   );

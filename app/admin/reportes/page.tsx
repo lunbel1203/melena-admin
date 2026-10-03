@@ -124,7 +124,6 @@ export default function ReportesPage() {
 
   useEffect(() => {
     let vivo = true;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setRows(null);
     (async () => {
       const desde = rango.anterior.inicio;

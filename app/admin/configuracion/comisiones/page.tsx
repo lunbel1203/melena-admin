@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Database } from "@/types/database.types";
@@ -187,9 +188,9 @@ export default function ComisionesPage() {
         <p className="text-xs text-zinc-400">
           Para dar un porcentaje distinto a una empleada específica, edítalo desde su perfil en Personal.
         </p>
-        <a href="/admin/personal" className="text-xs font-semibold text-zinc-700 border border-zinc-200 px-3 py-1.5 rounded-lg hover:bg-zinc-50 transition-colors whitespace-nowrap">
+        <Link href="/admin/personal" className="text-xs font-semibold text-zinc-700 border border-zinc-200 px-3 py-1.5 rounded-lg hover:bg-zinc-50 transition-colors whitespace-nowrap">
           Ir a Personal
-        </a>
+        </Link>
       </div>
     </div>
   );
