@@ -120,6 +120,11 @@ export interface TextosWhatsApp {
   ver_en_web: string;
   reserva: string;
 }
+export interface Privacidad {
+  titulo: string;
+  actualizado: string;
+  texto: string;
+}
 export interface NoEncontrada {
   titulo: string;
   mensaje: string;

@@ -1,10 +1,11 @@
 "use client";
 
-import { useBloque, type Footer, type NoEncontrada, type Seo } from "@/lib/pagina-web";
+import { useBloque, type Footer, type NoEncontrada, type Privacidad, type Seo } from "@/lib/pagina-web";
 import { Area, BarraGuardar, Campo, Etiqueta, Tarjeta } from "@/components/pagina-web/campos";
 
 const FOOTER: Footer = { descripcion: "", navegacion: [], copyright: "", titulo_navegacion: "", titulo_contacto: "" };
 const SEO: Seo = { titulo: "", descripcion: "" };
+const PRIVACIDAD: Privacidad = { titulo: "", actualizado: "", texto: "" };
 const NO_ENCONTRADA: NoEncontrada = { titulo: "", mensaje: "", boton_texto: "", boton_enlace: "/" };
 
 function FooterCard() {
@@ -80,6 +81,29 @@ function SeoCard() {
   );
 }
 
+function PrivacidadCard() {
+  const b = useBloque<Privacidad>("privacidad", PRIVACIDAD);
+  const set = (k: keyof Privacidad) => (v: string) => b.setValor({ ...b.valor, [k]: v });
+  if (b.cargando) return <p className="text-sm text-zinc-400">Cargando…</p>;
+  return (
+    <Tarjeta>
+      <Etiqueta>Política de privacidad</Etiqueta>
+      <p className="text-xs text-zinc-400 mb-4">
+        Se publica en <span className="font-mono">/privacidad</span> y la app enlaza a esa página. Formato: una línea que empieza con &quot;## &quot; abre una sección,
+        con &quot;- &quot; es un elemento de lista, y el resto son párrafos. {"{correo}"} se reemplaza por el correo de contacto. Es un texto base: conviene que lo revise un abogado.
+      </p>
+      <div className="grid sm:grid-cols-2 gap-4 mb-4">
+        <Campo label="Título" value={b.valor.titulo} onChange={set("titulo")} />
+        <Campo label="Última actualización" value={b.valor.actualizado} onChange={set("actualizado")} placeholder="3 de octubre de 2026" />
+        <div className="sm:col-span-2">
+          <Area label="Texto" value={b.valor.texto} onChange={set("texto")} filas={22} />
+        </div>
+      </div>
+      <BarraGuardar guardando={b.guardando} guardado={b.guardado} error={b.error} onGuardar={b.guardar} />
+    </Tarjeta>
+  );
+}
+
 function NoEncontradaCard() {
   const b = useBloque<NoEncontrada>("no_encontrada", NO_ENCONTRADA);
   const set = (k: keyof NoEncontrada) => (v: string) => b.setValor({ ...b.valor, [k]: v });
@@ -108,6 +132,7 @@ export default function FooterSeoPage() {
     <>
       <FooterCard />
       <SeoCard />
+      <PrivacidadCard />
       <NoEncontradaCard />
     </>
   );
