@@ -86,3 +86,28 @@ export function minutosAHora(min: number) {
   const m = min % 60;
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
+
+/** "1994-03-18" → "18/03/1994" */
+export function isoADma(iso: string | null | undefined) {
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-");
+  return y && m && d ? `${d}/${m}/${y}` : "";
+}
+
+/** Mientras se escribe: deja solo dígitos y agrega las barras → "18/03/1994" */
+export function formatearDma(texto: string) {
+  const d = texto.replace(/\D/g, "").slice(0, 8);
+  if (d.length <= 2) return d;
+  if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
+  return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
+}
+
+/** "18/03/1994" → "1994-03-18"; null si no es una fecha real */
+export function dmaAIso(dma: string) {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(dma);
+  if (!m) return null;
+  const [, dd, mm, yyyy] = m;
+  const f = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+  const valida = f.getFullYear() === Number(yyyy) && f.getMonth() === Number(mm) - 1 && f.getDate() === Number(dd);
+  return valida ? `${yyyy}-${mm}-${dd}` : null;
+}

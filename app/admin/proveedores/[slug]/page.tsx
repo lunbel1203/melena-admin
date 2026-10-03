@@ -5,6 +5,7 @@ import { use, useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { avisar, confirmar, enlaceWhatsApp } from "@/lib/alerts";
 import { parseISODate, toISODate } from "@/lib/dates";
+import CampoFecha from "@/components/campo-fecha";
 
 function ChevronLeft() {
   return (
@@ -153,6 +154,10 @@ export default function ProveedorDetailPage({ params }: { params: Promise<{ slug
     const validas = lineas.filter((l) => l.productoId || l.descripcion.trim());
     if (validas.length === 0 || validas.some((l) => l.cantidad < 1 || l.costo < 0)) {
       await avisar("Revisa las líneas", "Cada línea necesita un producto o descripción, cantidad y costo.");
+      return;
+    }
+    if (!fecha) {
+      await avisar("Fecha no válida", "Escribe la fecha con el formato día/mes/año, por ejemplo 18/03/2026.");
       return;
     }
     setProcesando(true);
@@ -436,7 +441,7 @@ export default function ProveedorDetailPage({ params }: { params: Promise<{ slug
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-1.5">Fecha</label>
-                  <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className={inputCls} />
+                  <CampoFecha value={fecha} onChange={setFecha} className={inputCls} />
                 </div>
                 <div>
                   <label className="block text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-1.5">Estado</label>

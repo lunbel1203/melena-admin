@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import CampoFecha from "@/components/campo-fecha";
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400 mb-1">{children}</p>;
@@ -272,7 +273,7 @@ export default function HorarioAgendaPage() {
 
           {mostrarNuevoEspecial ? (
             <div className="border border-zinc-200 rounded-xl p-3 space-y-2">
-              <input type="date" value={nuevaFecha} onChange={(e) => setNuevaFecha(e.target.value)}
+              <CampoFecha value={nuevaFecha} onChange={setNuevaFecha}
                 className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm" />
               <input value={nuevoNombre} onChange={(e) => setNuevoNombre(e.target.value)} placeholder="Nombre del día"
                 className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm placeholder-zinc-400" />

@@ -4,6 +4,7 @@ import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import CampoFecha from "@/components/campo-fecha";
 
 function BackIcon() {
   return (
@@ -30,6 +31,7 @@ export default function EditarClientaPage({ params }: { params: Promise<{ id: st
   const [telefono, setTelefono] = useState("");
   const [correo, setCorreo] = useState("");
   const [fechaNacimiento, setFechaNacimiento] = useState("");
+  const [fechaInvalida, setFechaInvalida] = useState(false);
   const [nota, setNota] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +63,7 @@ export default function EditarClientaPage({ params }: { params: Promise<{ id: st
 
   async function guardar() {
     if (!nombre.trim() || !telefono.trim()) return setError("Falta el nombre o el teléfono.");
+    if (fechaInvalida) return setError("La fecha de nacimiento no es válida. Usa día/mes/año, por ejemplo 18/03/1994.");
     setGuardando(true);
     setError(null);
 
@@ -160,10 +163,10 @@ export default function EditarClientaPage({ params }: { params: Promise<{ id: st
                 <label className="text-xs font-semibold text-zinc-500 mb-1.5 block">
                   Fecha de nacimiento
                 </label>
-                <input
-                  type="date"
+                <CampoFecha
                   value={fechaNacimiento}
-                  onChange={(e) => setFechaNacimiento(e.target.value)}
+                  onChange={setFechaNacimiento}
+                  onInvalidChange={setFechaInvalida}
                   className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 focus:outline-none focus:border-zinc-400 transition-colors"
                 />
               </div>
