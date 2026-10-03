@@ -130,6 +130,9 @@ export default function CitaDetailPage({ params }: { params: Promise<{ id: strin
   const [nuevaHora, setNuevaHora] = useState<string | null>(null);
   const [cargandoHoras, setCargandoHoras] = useState(false);
 
+  const [visita, setVisita] = useState<{ id: string; facturaId: string | null } | null>(null);
+  const [puedeCheckin, setPuedeCheckin] = useState(false);
+  const [marcandoLlegada, setMarcandoLlegada] = useState(false);
   const plantillaMensaje = useMensajeCitaConfirmada();
   const plantillaRechazo = useMensajeDepositoRechazado();
   const plantillaRecordatorio = useMensajeRecordatorio();
@@ -178,6 +181,11 @@ export default function CitaDetailPage({ params }: { params: Promise<{ id: strin
       if (firmada?.signedUrl) dep.comprobante_url = firmada.signedUrl;
     }
     setDeposito(dep);
+
+    // ¿la clienta ya llegó? (visita creada por el check-in) y su factura
+    const { data: vis } = await supabase.from("visitas").select("id, facturas ( id )").eq("cita_id", id).limit(1).maybeSingle();
+    const fac = vis?.facturas as unknown as { id: string } | { id: string }[] | null | undefined;
+    setVisita(vis ? { id: vis.id, facturaId: (Array.isArray(fac) ? fac[0]?.id : fac?.id) ?? null } : null);
 
     const { count } = await supabase
       .from("citas")
@@ -275,6 +283,32 @@ export default function CitaDetailPage({ params }: { params: Promise<{ id: strin
     } else {
       await avisar("Esta clienta no usa la app", "No tiene cuenta en la app. Envíale el recordatorio por WhatsApp.");
     }
+  }
+
+  useEffect(() => {
+    supabase.rpc("tiene_permiso", { p_clave: "facturacion.crear" }).then(({ data }) => setPuedeCheckin(!!data));
+  }, [supabase]);
+
+  // Marcar llegada = hacer el check-in en Facturación: se crea la visita y la factura abierta
+  async function marcarLlegada() {
+    if (!cita) return;
+    if (!cita.empleado_id) return avisar("Falta la estilista", "Asigna una estilista a la cita antes de marcar la llegada.");
+    const ok = await confirmar({
+      titulo: "¿Marcar llegada?",
+      texto: `${cita.clienta.nombre} pasa a la lista de espera del salón y se abre su factura en Facturación.`,
+      confirmarTexto: "Marcar llegada",
+    });
+    if (!ok) return;
+    setMarcandoLlegada(true);
+    const { error } = await supabase.rpc("dar_entrada_clienta", {
+      p_clienta_id: cita.clienta.id,
+      p_servicio_id: cita.servicio.id,
+      p_estilista_id: cita.empleado_id,
+      p_cita_id: cita.id,
+    });
+    setMarcandoLlegada(false);
+    if (error) return avisar("No se pudo marcar la llegada", error.message);
+    await cargar();
   }
 
   async function cancelarCita() {
@@ -400,6 +434,23 @@ export default function CitaDetailPage({ params }: { params: Promise<{ id: strin
               <span className="text-sm font-medium text-orange-500 border border-orange-200 px-3 py-2 rounded-xl bg-orange-50 whitespace-nowrap">
                 Depósito por validar
               </span>
+            )}
+            {visita && (
+              <Link
+                href={visita.facturaId ? `/admin/facturacion/${visita.facturaId}` : "/admin/facturacion"}
+                className="text-sm font-semibold text-green-700 border border-green-200 bg-green-50 px-4 py-2 rounded-xl hover:bg-green-100 transition-colors whitespace-nowrap"
+              >
+                Llegó · Ver en facturación
+              </Link>
+            )}
+            {!cancelada && !visita && cita.estado === "confirmada" && cita.fecha === toISODate(new Date()) && puedeCheckin && (
+              <button
+                onClick={marcarLlegada}
+                disabled={marcandoLlegada}
+                className="text-sm font-semibold text-white bg-teal-600 px-4 py-2 rounded-xl hover:bg-teal-700 transition-colors whitespace-nowrap disabled:opacity-50"
+              >
+                {marcandoLlegada ? "Marcando…" : "Marcar llegada"}
+              </button>
             )}
             {!cancelada && (
               <>
