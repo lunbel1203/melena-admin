@@ -41,11 +41,49 @@ export interface Contacto {
   titulo: string;
   subtitulo: string;
   boton_whatsapp: string;
+  titulo_direccion: string;
+  titulo_horario: string;
+  titulo_telefono: string;
+  titulo_correo: string;
 }
 export interface Footer {
   descripcion: string;
   navegacion: { etiqueta: string; enlace: string }[];
   copyright: string;
+  titulo_navegacion: string;
+  titulo_contacto: string;
+}
+export interface Menu {
+  enlaces: { etiqueta: string; enlace: string }[];
+  boton_texto: string;
+  boton_enlace: string;
+}
+export interface Marca {
+  nombre: string;
+  logo: string;
+  favicon: string;
+}
+export interface Botones {
+  whatsapp: string;
+  agendar: string;
+}
+export interface TextosSeccion {
+  titulo_inicio: string;
+  subtitulo_inicio: string;
+  titulo_pagina: string;
+  subtitulo_pagina: string;
+  boton_ver_mas: string;
+  boton_tarjeta: string;
+}
+export interface TextosAgenda {
+  titulo: string;
+  subtitulo: string;
+  deposito_titulo: string;
+  boton_enviar: string;
+  aviso_revision: string;
+  exito_titulo: string;
+  exito_mensaje: string;
+  exito_boton: string;
 }
 export interface Seo {
   titulo: string;

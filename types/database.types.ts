@@ -1317,8 +1317,12 @@ export type Database = {
           precio: number
           slug: string
           web_dura: string | null
+          web_foto_antes: string | null
+          web_foto_despues: string | null
+          web_foto_proceso: string | null
           web_incluye: string[]
           web_orden: number
+          web_precio_desde: boolean
           web_retoque: string | null
         }
         Insert: {
@@ -1337,8 +1341,12 @@ export type Database = {
           precio: number
           slug: string
           web_dura?: string | null
+          web_foto_antes?: string | null
+          web_foto_despues?: string | null
+          web_foto_proceso?: string | null
           web_incluye?: string[]
           web_orden?: number
+          web_precio_desde?: boolean
           web_retoque?: string | null
         }
         Update: {
@@ -1357,8 +1365,12 @@ export type Database = {
           precio?: number
           slug?: string
           web_dura?: string | null
+          web_foto_antes?: string | null
+          web_foto_despues?: string | null
+          web_foto_proceso?: string | null
           web_incluye?: string[]
           web_orden?: number
+          web_precio_desde?: boolean
           web_retoque?: string | null
         }
         Relationships: []

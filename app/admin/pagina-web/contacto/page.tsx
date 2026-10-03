@@ -13,7 +13,15 @@ const GENERAL: General = {
   mapa_consulta: "",
   redes: [],
 };
-const CONTACTO: Contacto = { titulo: "", subtitulo: "", boton_whatsapp: "" };
+const CONTACTO: Contacto = {
+  titulo: "",
+  subtitulo: "",
+  boton_whatsapp: "",
+  titulo_direccion: "",
+  titulo_horario: "",
+  titulo_telefono: "",
+  titulo_correo: "",
+};
 
 function DatosCard() {
   const b = useBloque<General>("general", GENERAL);
@@ -84,6 +92,10 @@ function TextosCard() {
         <div className="sm:col-span-2">
           <Campo label="Subtítulo" value={b.valor.subtitulo} onChange={set("subtitulo")} />
         </div>
+        <Campo label="Título de la tarjeta de dirección" value={b.valor.titulo_direccion} onChange={set("titulo_direccion")} />
+        <Campo label="Título de la tarjeta de horario" value={b.valor.titulo_horario} onChange={set("titulo_horario")} />
+        <Campo label="Título de la tarjeta de teléfono" value={b.valor.titulo_telefono} onChange={set("titulo_telefono")} />
+        <Campo label="Título de la tarjeta de correo" value={b.valor.titulo_correo} onChange={set("titulo_correo")} />
       </div>
       <BarraGuardar guardando={b.guardando} guardado={b.guardado} error={b.error} onGuardar={b.guardar} />
     </Tarjeta>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { use, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { SubirFoto } from "@/components/pagina-web/campos";
 
 function CameraIcon() {
   return (
@@ -52,6 +53,10 @@ interface ServicioRow {
   web_retoque: string | null;
   web_incluye: string[];
   web_orden: number;
+  web_foto_antes: string | null;
+  web_foto_proceso: string | null;
+  web_foto_despues: string | null;
+  web_precio_desde: boolean;
 }
 
 interface Estilista {
@@ -130,6 +135,10 @@ function EditarServicio({ servicio, slug }: { servicio: ServicioRow; slug: strin
   const [webRetoque, setWebRetoque] = useState(servicio.web_retoque ?? "");
   const [webIncluye, setWebIncluye] = useState(servicio.web_incluye.join("\n"));
   const [webOrden, setWebOrden] = useState(String(servicio.web_orden));
+  const [fotoAntes, setFotoAntes] = useState(servicio.web_foto_antes ?? "");
+  const [fotoProceso, setFotoProceso] = useState(servicio.web_foto_proceso ?? "");
+  const [fotoDespues, setFotoDespues] = useState(servicio.web_foto_despues ?? "");
+  const [precioDesde, setPrecioDesde] = useState(servicio.web_precio_desde);
 
   const [estilistas, setEstilistas] = useState<Estilista[]>([]);
   const [selectedStaff, setSelectedStaff] = useState<string[]>([]);
@@ -186,6 +195,10 @@ function EditarServicio({ servicio, slug }: { servicio: ServicioRow; slug: strin
         web_retoque: webRetoque.trim() || null,
         web_incluye: webIncluye.split("\n").map((l) => l.trim()).filter(Boolean),
         web_orden: Math.max(0, Math.round(Number(webOrden)) || 0),
+        web_foto_antes: fotoAntes || null,
+        web_foto_proceso: fotoProceso || null,
+        web_foto_despues: fotoDespues || null,
+        web_precio_desde: precioDesde,
       })
       .eq("id", servicio.id);
 
@@ -318,6 +331,16 @@ function EditarServicio({ servicio, slug }: { servicio: ServicioRow; slug: strin
               <input type="number" min={0} value={webOrden} onChange={(e) => setWebOrden(e.target.value)}
                 className="w-32 px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 focus:outline-none focus:border-zinc-400 transition-colors" />
               <p className="text-[11px] text-zinc-400 mt-1">1 aparece primero; 0 va al final. La portada muestra los 3 primeros.</p>
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer mt-4">
+              <input type="checkbox" checked={precioDesde} onChange={(e) => setPrecioDesde(e.target.checked)} className="w-4 h-4 accent-zinc-900" />
+              <span className="text-sm text-zinc-600">Mostrar el precio como &quot;Desde RD$…&quot;</span>
+            </label>
+            <p className="text-xs font-semibold text-zinc-500 mt-5 mb-2">Galería de la ficha (opcional)</p>
+            <div className="grid grid-cols-3 gap-3">
+              <SubirFoto label="Antes" value={fotoAntes} onChange={setFotoAntes} carpeta="servicios" proporcion="aspect-[3/4]" />
+              <SubirFoto label="Proceso" value={fotoProceso} onChange={setFotoProceso} carpeta="servicios" proporcion="aspect-[3/4]" />
+              <SubirFoto label="Después" value={fotoDespues} onChange={setFotoDespues} carpeta="servicios" proporcion="aspect-[3/4]" />
             </div>
           </div>
 

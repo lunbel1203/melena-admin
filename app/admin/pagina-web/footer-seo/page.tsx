@@ -3,7 +3,7 @@
 import { useBloque, type Footer, type Seo } from "@/lib/pagina-web";
 import { Area, BarraGuardar, Campo, Etiqueta, Tarjeta } from "@/components/pagina-web/campos";
 
-const FOOTER: Footer = { descripcion: "", navegacion: [], copyright: "" };
+const FOOTER: Footer = { descripcion: "", navegacion: [], copyright: "", titulo_navegacion: "", titulo_contacto: "" };
 const SEO: Seo = { titulo: "", descripcion: "" };
 
 function FooterCard() {
@@ -20,6 +20,10 @@ function FooterCard() {
       </p>
       <div className="space-y-4 mb-4">
         <Area label="Descripción" value={b.valor.descripcion} onChange={(v) => b.setValor({ ...b.valor, descripcion: v })} filas={2} />
+        <div className="grid sm:grid-cols-2 gap-4">
+          <Campo label="Título de la columna de navegación" value={b.valor.titulo_navegacion} onChange={(v) => b.setValor({ ...b.valor, titulo_navegacion: v })} />
+          <Campo label="Título de la columna de contacto" value={b.valor.titulo_contacto} onChange={(v) => b.setValor({ ...b.valor, titulo_contacto: v })} />
+        </div>
         <div>
           <p className="text-xs font-semibold text-zinc-500 mb-1.5">Enlaces de navegación</p>
           <div className="space-y-3">
