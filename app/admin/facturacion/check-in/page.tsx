@@ -1,7 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { avisar } from "@/lib/alerts";
+import { toISODate } from "@/lib/dates";
 
 function ChevronLeft() {
   return (
@@ -20,59 +24,176 @@ function SearchIcon() {
   );
 }
 
-type Client = { id: string; initial: string; name: string; phone: string; hasCita: boolean };
+type Client = { id: string; initial: string; name: string; phone: string };
+type Cita = {
+  id: string;
+  clienta_id: string;
+  servicio_id: string;
+  empleado_id: string | null;
+  hora_inicio: string;
+  deposito: number;
+};
 type Service = { id: string; name: string; duration: string; price: number; priceLabel: string };
-type Stylist = { id: string; initial: string; name: string; status: "disponible" | "ocupada" | "casi-libre"; detail: string };
-
-const allClients: Client[] = [
-  { id: "c1", initial: "R", name: "Renata Morales",   phone: "809 555 0377", hasCita: false },
-  { id: "c2", initial: "V", name: "Valentina Reyes",  phone: "809 555 1201", hasCita: true  },
-  { id: "c3", initial: "C", name: "Camila Santos",    phone: "809 555 4390", hasCita: true  },
-  { id: "c4", initial: "A", name: "Andrea Peña",      phone: "809 555 7823", hasCita: false },
-  { id: "c5", initial: "L", name: "Lucía Ferrer",     phone: "809 555 6614", hasCita: true  },
-  { id: "c6", initial: "D", name: "Daniela Paz",      phone: "809 555 9902", hasCita: false },
-];
-
-const services: Service[] = [
-  { id: "tape-in",  name: "Tape-in",   duration: "1.5 h",   price: 3200, priceLabel: "RD$3,200" },
-  { id: "nano",     name: "Nano ring", duration: "3 h",     price: 4800, priceLabel: "RD$4,800" },
-  { id: "ponytail", name: "Ponytail",  duration: "30 min",  price: 1900, priceLabel: "RD$1,900" },
-  { id: "retoque",  name: "Retoque",   duration: "45 min",  price: 1800, priceLabel: "RD$1,800" },
-];
-
-const stylists: Stylist[] = [
-  { id: "mariana", initial: "M", name: "Mariana Ríos",  status: "ocupada",     detail: "Atendiendo a Valentina Reyes" },
-  { id: "vanessa", initial: "V", name: "Vanessa Gil",   status: "disponible",  detail: "Libre hasta las 11:30 am" },
-  { id: "sofia",   initial: "S", name: "Sofía Luna",    status: "casi-libre",  detail: "Termina en 25 min" },
-];
+type Stylist = { id: string; initial: string; name: string; status: "disponible" | "ocupada"; detail: string };
 
 const statusBadge: Record<Stylist["status"], string> = {
-  disponible:  "bg-green-50 text-green-700",
-  ocupada:     "bg-zinc-100 text-zinc-500",
-  "casi-libre":"bg-orange-50 text-orange-600",
+  disponible: "bg-green-50 text-green-700",
+  ocupada:    "bg-zinc-100 text-zinc-500",
 };
 
 const statusLabel: Record<Stylist["status"], string> = {
-  disponible:  "Disponible",
-  ocupada:     "Ocupada",
-  "casi-libre":"Casi libre",
+  disponible: "Disponible",
+  ocupada:    "Ocupada",
 };
 
-export default function CheckInPage() {
+const rd = (n: number) => `RD$${Math.round(n).toLocaleString("es-DO")}`;
+
+function duracion(min: number) {
+  if (min < 60) return `${min} min`;
+  const h = min / 60;
+  return `${Number.isInteger(h) ? h : h.toFixed(1)} h`;
+}
+
+function CheckInForm() {
+  const supabase = useMemo(() => createClient(), []);
+  const router = useRouter();
+  const visitaParam = useSearchParams().get("visita");
+
   const [search,          setSearch]          = useState("");
-  const [selectedClient,  setSelectedClient]  = useState<Client | null>(allClients[0]);
-  const [selectedService, setSelectedService] = useState<Service | null>(services[0]);
-  const [selectedStylist, setSelectedStylist] = useState<Stylist | null>(stylists[1]);
-  const [addProduct,      setAddProduct]      = useState(false);
+  const [resultados,      setResultados]      = useState<Client[]>([]);
+  const [selectedClient,  setSelectedClient]  = useState<Client | null>(null);
+  const [services,        setServices]        = useState<Service[]>([]);
+  const [stylists,        setStylists]        = useState<Stylist[]>([]);
+  const [serviciosPorEmpleado, setServiciosPorEmpleado] = useState<Record<string, Set<string>>>({});
+  const [citasHoy,        setCitasHoy]        = useState<Cita[]>([]);
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [selectedStylist, setSelectedStylist] = useState<Stylist | null>(null);
   const [nota,            setNota]            = useState("");
+  const [guardando,       setGuardando]       = useState(false);
+  const [entrada]                             = useState(() => new Date());
 
-  const filtered = allClients.filter(
-    (c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.phone.includes(search)
-  );
+  const citaClienta = selectedClient ? citasHoy.find((c) => c.clienta_id === selectedClient.id) ?? null : null;
 
-  const showList = search.length > 0 || !selectedClient;
+  // Carga inicial: catálogo, estilistas, citas de hoy y, si viene ?visita=, su clienta
+  useEffect(() => {
+    (async () => {
+      const hoy = toISODate(new Date());
+      const [svc, emp, se, citas, ocupadas] = await Promise.all([
+        supabase.from("servicios").select("id, nombre, precio, duracion_minutos").eq("activo", true).order("nombre"),
+        supabase.from("empleados").select("id, nombre").eq("activo", true).order("nombre"),
+        supabase.from("servicios_empleados").select("servicio_id, empleado_id"),
+        supabase
+          .from("citas")
+          .select("id, clienta_id, servicio_id, empleado_id, hora_inicio, depositos ( monto, estado )")
+          .eq("fecha", hoy)
+          .in("estado", ["pendiente_confirmacion", "confirmada"]),
+        supabase.from("visitas").select("estilista_id, clientas ( nombre )").eq("estado", "en_atencion"),
+      ]);
+
+      const atendiendo = new Map<string, string>();
+      for (const o of (ocupadas.data ?? []) as unknown as { estilista_id: string | null; clientas: { nombre: string } | null }[]) {
+        if (o.estilista_id) atendiendo.set(o.estilista_id, o.clientas?.nombre ?? "una clienta");
+      }
+
+      setServices(
+        (svc.data ?? []).map((s) => ({
+          id: s.id,
+          name: s.nombre,
+          duration: duracion(s.duracion_minutos),
+          price: Number(s.precio),
+          priceLabel: rd(Number(s.precio)),
+        })),
+      );
+      setStylists(
+        (emp.data ?? []).map((e) => ({
+          id: e.id,
+          initial: e.nombre.charAt(0).toUpperCase(),
+          name: e.nombre,
+          status: atendiendo.has(e.id) ? "ocupada" : "disponible",
+          detail: atendiendo.has(e.id) ? `Atendiendo a ${atendiendo.get(e.id)} · la clienta quedará en espera` : "Libre ahora",
+        })),
+      );
+      const mapa: Record<string, Set<string>> = {};
+      for (const r of se.data ?? []) (mapa[r.servicio_id] ??= new Set()).add(r.empleado_id);
+      setServiciosPorEmpleado(mapa);
+      setCitasHoy(
+        ((citas.data ?? []) as unknown as (Omit<Cita, "deposito"> & { depositos: { monto: number; estado: string }[] | null })[]).map((c) => ({
+          id: c.id,
+          clienta_id: c.clienta_id,
+          servicio_id: c.servicio_id,
+          empleado_id: c.empleado_id,
+          hora_inicio: c.hora_inicio,
+          deposito: (c.depositos ?? []).filter((d) => d.estado === "verificado").reduce((s, d) => s + Number(d.monto), 0),
+        })),
+      );
+
+      if (visitaParam) {
+        const { data } = await supabase
+          .from("visitas")
+          .select("clienta_id, clientas ( id, nombre, telefono )")
+          .eq("id", visitaParam)
+          .maybeSingle();
+        const cl = (data as unknown as { clientas: { id: string; nombre: string; telefono: string } | null } | null)?.clientas;
+        if (cl) setSelectedClient({ id: cl.id, initial: cl.nombre.charAt(0).toUpperCase(), name: cl.nombre, phone: cl.telefono });
+      }
+    })();
+  }, [supabase, visitaParam]);
+
+  // Búsqueda de clientas por nombre o teléfono
+  useEffect(() => {
+    const q = search.trim();
+    if (!q) return;
+    const t = setTimeout(async () => {
+      const limpio = q.replace(/[%,()]/g, "");
+      const { data } = await supabase
+        .from("clientas")
+        .select("id, nombre, telefono")
+        .or(`nombre.ilike.%${limpio}%,telefono.ilike.%${limpio}%`)
+        .order("nombre")
+        .limit(8);
+      setResultados((data ?? []).map((c) => ({ id: c.id, initial: c.nombre.charAt(0).toUpperCase(), name: c.nombre, phone: c.telefono })));
+    }, 250);
+    return () => clearTimeout(t);
+  }, [search, supabase]);
+
+  // Al elegir clienta con cita hoy: precargar servicio y estilista de la cita
+  useEffect(() => {
+    if (!citaClienta) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSelectedService((prev) => prev ?? services.find((s) => s.id === citaClienta.servicio_id) ?? null);
+    setSelectedStylist((prev) => prev ?? stylists.find((s) => s.id === citaClienta.empleado_id) ?? null);
+  }, [citaClienta, services, stylists]);
+
+  // Las ocupadas también se pueden elegir: la clienta queda en espera hasta que termine
+  const estilistasVisibles = useMemo(() => {
+    const permitidas = selectedService ? serviciosPorEmpleado[selectedService.id] : undefined;
+    const lista = permitidas && permitidas.size > 0 ? stylists.filter((s) => permitidas.has(s.id)) : stylists;
+    return [...lista].sort((a, b) => Number(a.status === "ocupada") - Number(b.status === "ocupada"));
+  }, [stylists, serviciosPorEmpleado, selectedService]);
+
+  const showList = search.trim().length > 0 || !selectedClient;
+  const filtered = search.trim() ? resultados : [];
+  const deposito = citaClienta?.deposito ?? 0;
+  const puedeConfirmar = !!selectedClient && !!selectedService && !!selectedStylist && !guardando;
+
+  async function darEntrada() {
+    if (!selectedClient || !selectedService || !selectedStylist) return;
+    setGuardando(true);
+    const { error } = await supabase.rpc("dar_entrada_clienta", {
+      p_clienta_id: selectedClient.id,
+      p_servicio_id: selectedService.id,
+      p_estilista_id: selectedStylist.id,
+      p_cita_id: citaClienta?.id,
+      p_notas: nota.trim() || undefined,
+      p_visita_id: visitaParam ?? undefined,
+    });
+    if (error) {
+      await avisar("No se pudo dar entrada", error.message);
+      setGuardando(false);
+      return;
+    }
+    router.push("/admin/facturacion");
+  }
 
   return (
     <div className="min-h-full bg-zinc-50 p-5 sm:p-7 lg:p-8">
@@ -116,12 +237,15 @@ export default function CheckInPage() {
             {/* Client list when searching */}
             {showList && (
               <div className="border border-zinc-200 rounded-xl overflow-hidden mb-3">
+                {filtered.length === 0 && (
+                  <p className="px-4 py-3 text-sm text-zinc-400">Sin resultados.</p>
+                )}
                 {filtered.map((c) => {
                   const isSelected = selectedClient?.id === c.id;
                   return (
                     <button
                       key={c.id}
-                      onClick={() => { setSelectedClient(c); setSearch(""); }}
+                      onClick={() => { setSelectedClient(c); setSearch(""); setSelectedService(null); setSelectedStylist(null); }}
                       className={`w-full flex items-center gap-3 px-4 py-3 text-left border-b border-zinc-100 last:border-0 transition-colors ${
                         isSelected ? "bg-zinc-50" : "hover:bg-zinc-50"
                       }`}
@@ -132,7 +256,7 @@ export default function CheckInPage() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-zinc-900">{c.name}</p>
                         <p className="text-xs text-zinc-400">
-                          {c.phone} · {c.hasCita ? "cita hoy" : "sin cita para hoy"}
+                          {c.phone} · {citasHoy.some((x) => x.clienta_id === c.id) ? "cita hoy" : "sin cita para hoy"}
                         </p>
                       </div>
                       {isSelected && (
@@ -155,7 +279,7 @@ export default function CheckInPage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-zinc-900">{selectedClient.name}</p>
                   <p className="text-xs text-zinc-400">
-                    {selectedClient.phone} · {selectedClient.hasCita ? "cita hoy" : "sin cita para hoy"}
+                    {selectedClient.phone} · {citaClienta ? "cita hoy" : "sin cita para hoy"}
                   </p>
                 </div>
                 <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-zinc-900 text-white shrink-0">
@@ -164,7 +288,7 @@ export default function CheckInPage() {
               </div>
             )}
 
-            <p className="text-xs text-zinc-400">Si es su primera vez, el perfil se crea con este check-in.</p>
+            <p className="text-xs text-zinc-400">¿Primera vez? <Link href="/admin/clientas/nueva" className="underline hover:text-zinc-600">Crea su perfil primero</Link>.</p>
           </div>
 
           {/* Step 2 — Servicio */}
@@ -173,7 +297,7 @@ export default function CheckInPage() {
               2 · Servicio
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {services.map((svc) => {
                 const isSelected = selectedService?.id === svc.id;
                 return (
@@ -193,35 +317,27 @@ export default function CheckInPage() {
               })}
             </div>
 
-            <label className="flex items-center gap-2.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={addProduct}
-                onChange={(e) => setAddProduct(e.target.checked)}
-                className="w-4 h-4 rounded border-zinc-300 accent-zinc-900"
-              />
-              <span className="text-sm text-zinc-600">Agregar producto de cabello a la factura</span>
-            </label>
           </div>
 
           {/* Step 3 — Estilista */}
           <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-5 sm:p-6">
             <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-4">
-              3 · Estilista disponible ahora
+              3 · Estilista
             </p>
 
             <div className="flex flex-col gap-2">
-              {stylists.map((st) => {
+              {estilistasVisibles.length === 0 && (
+                <p className="text-sm text-zinc-400">No hay estilistas para este servicio.</p>
+              )}
+              {estilistasVisibles.map((st) => {
                 const isSelected = selectedStylist?.id === st.id;
                 return (
                   <button
                     key={st.id}
-                    onClick={() => st.status !== "ocupada" && setSelectedStylist(st)}
+                    onClick={() => setSelectedStylist(st)}
                     className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-colors ${
                       isSelected
                         ? "border-zinc-900 bg-zinc-50"
-                        : st.status === "ocupada"
-                        ? "border-zinc-100 bg-white cursor-default opacity-70"
                         : "border-zinc-200 bg-white hover:border-zinc-300"
                     }`}
                   >
@@ -265,7 +381,7 @@ export default function CheckInPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-zinc-400">Entrada</span>
-                <span className="text-zinc-900 font-medium">11:05 am</span>
+                <span className="text-zinc-900 font-medium">{entrada.toLocaleTimeString("es-DO", { hour: "numeric", minute: "2-digit", hour12: true }).toLowerCase()}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-zinc-400">Duración estimada</span>
@@ -276,7 +392,7 @@ export default function CheckInPage() {
             <div className="flex items-center justify-between bg-zinc-900 text-white rounded-xl px-4 py-3">
               <span className="text-xs font-semibold text-zinc-400">Total estimado</span>
               <span className="text-base font-bold">
-                {selectedService ? `RD$${selectedService.price.toLocaleString("es-DO")}` : "—"}
+                {selectedService ? rd(selectedService.price) : "—"}
               </span>
             </div>
           </div>
@@ -288,15 +404,17 @@ export default function CheckInPage() {
             </p>
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-zinc-500">
-                {selectedClient?.hasCita ? "Depósito previo" : "Sin depósito previo"}
+                {deposito > 0 ? "Depósito previo" : "Sin depósito previo"}
               </span>
               <span className="text-sm font-semibold text-zinc-900">
-                {selectedClient?.hasCita ? "RD$1,000" : "RD$0"}
+                {rd(deposito)}
               </span>
             </div>
             <p className="text-xs text-zinc-400">
-              {selectedClient?.hasCita
-                ? "Depósito registrado al reservar la cita."
+              {deposito > 0
+                ? "Depósito verificado al reservar la cita; se descuenta de la factura."
+                : citaClienta
+                ? "La cita no tiene depósito verificado."
                 : "Llegó sin reservar, se cobra el total al cerrar la factura."}
             </p>
           </div>
@@ -323,12 +441,24 @@ export default function CheckInPage() {
             >
               Cancelar
             </Link>
-            <button className="py-2.5 text-sm font-semibold text-white bg-zinc-900 rounded-xl hover:bg-zinc-700 transition-colors">
-              Dar entrada
+            <button
+              onClick={darEntrada}
+              disabled={!puedeConfirmar}
+              className="py-2.5 text-sm font-semibold text-white bg-zinc-900 rounded-xl hover:bg-zinc-700 disabled:opacity-50 transition-colors"
+            >
+              {guardando ? "Guardando…" : "Dar entrada"}
             </button>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CheckInPage() {
+  return (
+    <Suspense fallback={null}>
+      <CheckInForm />
+    </Suspense>
   );
 }
