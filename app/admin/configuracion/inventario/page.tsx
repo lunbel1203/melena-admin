@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { confirmar } from "@/lib/alerts";
+import { Area, SubirFoto } from "@/components/pagina-web/campos";
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400 mb-1">{children}</p>;
@@ -25,6 +26,11 @@ interface Categoria {
   nombre: string;
   activo: boolean;
   es_cabello: boolean;
+  web_visible: boolean;
+  web_orden: number;
+  web_descripcion: string | null;
+  web_nota: string | null;
+  web_foto_url: string | null;
 }
 
 export default function InventarioPage() {
@@ -37,6 +43,10 @@ export default function InventarioPage() {
   const [nuevoNombre, setNuevoNombre] = useState("");
   const [nuevoEsCabello, setNuevoEsCabello] = useState(false);
   const [creando, setCreando] = useState(false);
+
+  const [abierta, setAbierta] = useState<string | null>(null);
+  const [ficha, setFicha] = useState({ visible: false, orden: "0", descripcion: "", nota: "", foto: "" });
+  const [guardandoFicha, setGuardandoFicha] = useState(false);
 
   async function cargar() {
     setCargando(true);
@@ -61,6 +71,37 @@ export default function InventarioPage() {
     setError(null);
     const { error } = await supabase.from("categorias_productos").update({ es_cabello: !c.es_cabello }).eq("id", c.id);
     if (error) return setError(error.message);
+    cargar();
+  }
+
+  function abrirFicha(c: Categoria) {
+    if (abierta === c.id) return setAbierta(null);
+    setFicha({
+      visible: c.web_visible,
+      orden: String(c.web_orden),
+      descripcion: c.web_descripcion ?? "",
+      nota: c.web_nota ?? "",
+      foto: c.web_foto_url ?? "",
+    });
+    setAbierta(c.id);
+  }
+
+  async function guardarFicha(c: Categoria) {
+    setGuardandoFicha(true);
+    setError(null);
+    const { error } = await supabase
+      .from("categorias_productos")
+      .update({
+        web_visible: ficha.visible,
+        web_orden: Math.max(0, Math.round(Number(ficha.orden)) || 0),
+        web_descripcion: ficha.descripcion.trim() || null,
+        web_nota: ficha.nota.trim() || null,
+        web_foto_url: ficha.foto || null,
+      })
+      .eq("id", c.id);
+    setGuardandoFicha(false);
+    if (error) return setError(error.message);
+    setAbierta(null);
     cargar();
   }
 
@@ -116,23 +157,68 @@ export default function InventarioPage() {
         <div className="space-y-2 mb-3">
           {categorias.length === 0 && <p className="text-sm text-zinc-400">Sin categorías todavía.</p>}
           {categorias.map((c) => (
-            <div key={c.id} className="flex items-center justify-between gap-3 border border-zinc-100 rounded-xl px-4 py-3">
-              <span className={`text-sm font-medium ${c.activo ? "text-zinc-900" : "text-zinc-400"}`}>{c.nombre}</span>
-              <div className="flex items-center gap-4 shrink-0">
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={c.es_cabello}
-                    onChange={() => toggleEsCabello(c)}
-                    className="w-3.5 h-3.5 accent-zinc-900"
-                  />
-                  <span className="text-xs text-zinc-500">Es cabello</span>
-                </label>
-                <Toggle activo={c.activo} onClick={() => toggleActivo(c)} />
-                <button onClick={() => eliminarCategoria(c)} className="text-xs text-zinc-400 hover:text-red-500">
-                  Eliminar
-                </button>
+            <div key={c.id} className="border border-zinc-100 rounded-xl">
+              <div className="flex items-center justify-between gap-3 px-4 py-3">
+                <span className={`text-sm font-medium ${c.activo ? "text-zinc-900" : "text-zinc-400"}`}>
+                  {c.nombre}
+                  {c.web_visible && <span className="ml-2 text-[10px] font-semibold text-teal-600 uppercase tracking-wide">En la web</span>}
+                </span>
+                <div className="flex items-center gap-4 shrink-0">
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={c.es_cabello}
+                      onChange={() => toggleEsCabello(c)}
+                      className="w-3.5 h-3.5 accent-zinc-900"
+                    />
+                    <span className="text-xs text-zinc-500">Es cabello</span>
+                  </label>
+                  {c.es_cabello && (
+                    <button onClick={() => abrirFicha(c)} className="text-xs font-semibold text-zinc-600 hover:text-zinc-900">
+                      {abierta === c.id ? "Cerrar" : "Ficha web"}
+                    </button>
+                  )}
+                  <Toggle activo={c.activo} onClick={() => toggleActivo(c)} />
+                  <button onClick={() => eliminarCategoria(c)} className="text-xs text-zinc-400 hover:text-red-500">
+                    Eliminar
+                  </button>
+                </div>
               </div>
+
+              {abierta === c.id && (
+                <div className="border-t border-zinc-100 px-4 py-4 space-y-4 bg-zinc-50 rounded-b-xl">
+                  <p className="text-xs text-zinc-400">
+                    Así aparece esta línea en el catálogo de la web. Los precios, colores y largos salen de los productos de la categoría (solo los activos con precio mayor a 0).
+                  </p>
+                  <label className="flex items-center justify-between gap-3">
+                    <span className="text-sm text-zinc-700">Mostrar en la web</span>
+                    <Toggle activo={ficha.visible} onClick={() => setFicha({ ...ficha, visible: !ficha.visible })} />
+                  </label>
+                  <div>
+                    <label className="text-xs font-semibold text-zinc-500 mb-1.5 block">Orden en la web</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={ficha.orden}
+                      onChange={(e) => setFicha({ ...ficha, orden: e.target.value })}
+                      className="w-28 px-3 py-2 border border-zinc-200 rounded-lg text-sm"
+                    />
+                    <p className="text-[11px] text-zinc-400 mt-1">1 aparece primero. La portada muestra las 3 primeras.</p>
+                  </div>
+                  <Area label="Descripción" value={ficha.descripcion} onChange={(v) => setFicha({ ...ficha, descripcion: v })} filas={2} />
+                  <Area label="Nota debajo de los botones" value={ficha.nota} onChange={(v) => setFicha({ ...ficha, nota: v })} filas={2} ayuda="Ej. postura, si el precio incluye instalación…" />
+                  <SubirFoto label="Foto" value={ficha.foto} onChange={(url) => setFicha({ ...ficha, foto: url })} carpeta="catalogo" />
+                  <div className="flex justify-end">
+                    <button
+                      onClick={() => guardarFicha(c)}
+                      disabled={guardandoFicha}
+                      className="text-sm font-semibold text-white bg-zinc-900 px-4 py-2 rounded-xl hover:bg-zinc-700 disabled:opacity-50"
+                    >
+                      {guardandoFicha ? "Guardando…" : "Guardar ficha"}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>

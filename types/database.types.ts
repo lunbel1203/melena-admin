@@ -39,6 +39,11 @@ export type Database = {
           es_cabello: boolean
           id: string
           nombre: string
+          web_descripcion: string | null
+          web_foto_url: string | null
+          web_nota: string | null
+          web_orden: number
+          web_visible: boolean
         }
         Insert: {
           activo?: boolean
@@ -46,6 +51,11 @@ export type Database = {
           es_cabello?: boolean
           id?: string
           nombre: string
+          web_descripcion?: string | null
+          web_foto_url?: string | null
+          web_nota?: string | null
+          web_orden?: number
+          web_visible?: boolean
         }
         Update: {
           activo?: boolean
@@ -53,6 +63,11 @@ export type Database = {
           es_cabello?: boolean
           id?: string
           nombre?: string
+          web_descripcion?: string | null
+          web_foto_url?: string | null
+          web_nota?: string | null
+          web_orden?: number
+          web_visible?: boolean
         }
         Relationships: []
       }
@@ -1012,6 +1027,63 @@ export type Database = {
           },
         ]
       }
+      productos_respaldo_20261002: {
+        Row: {
+          activo: boolean | null
+          categoria: string | null
+          color: string | null
+          costo: number | null
+          created_at: string | null
+          descripcion: string | null
+          foto_url: string | null
+          id: string | null
+          largo_pulgadas: number | null
+          nombre: string | null
+          precio: number | null
+          proveedor_id: string | null
+          slug: string | null
+          stock: number | null
+          stock_minimo: number | null
+          tipo_cabello: Database["public"]["Enums"]["tipo_cabello"] | null
+        }
+        Insert: {
+          activo?: boolean | null
+          categoria?: string | null
+          color?: string | null
+          costo?: number | null
+          created_at?: string | null
+          descripcion?: string | null
+          foto_url?: string | null
+          id?: string | null
+          largo_pulgadas?: number | null
+          nombre?: string | null
+          precio?: number | null
+          proveedor_id?: string | null
+          slug?: string | null
+          stock?: number | null
+          stock_minimo?: number | null
+          tipo_cabello?: Database["public"]["Enums"]["tipo_cabello"] | null
+        }
+        Update: {
+          activo?: boolean | null
+          categoria?: string | null
+          color?: string | null
+          costo?: number | null
+          created_at?: string | null
+          descripcion?: string | null
+          foto_url?: string | null
+          id?: string | null
+          largo_pulgadas?: number | null
+          nombre?: string | null
+          precio?: number | null
+          proveedor_id?: string | null
+          slug?: string | null
+          stock?: number | null
+          stock_minimo?: number | null
+          tipo_cabello?: Database["public"]["Enums"]["tipo_cabello"] | null
+        }
+        Relationships: []
+      }
       proveedores: {
         Row: {
           activo: boolean
@@ -1562,6 +1634,7 @@ export type Database = {
         Returns: undefined
       }
       cancelar_mi_cita: { Args: { p_cita_id: string }; Returns: undefined }
+      catalogo_web: { Args: never; Returns: Json }
       clienta_id_actual: { Args: never; Returns: string }
       cobrar_factura: {
         Args: { p_factura_id: string; p_metodo_pago: string }
