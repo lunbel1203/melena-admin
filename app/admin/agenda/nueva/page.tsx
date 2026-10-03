@@ -329,12 +329,8 @@ function NuevaCitaForm() {
         const path = `${cita.id}/comprobante-${Date.now()}.${ext}`;
         const { error: uploadError } = await supabase.storage.from("comprobantes-deposito").upload(path, comprobante);
         if (!uploadError) {
-          const { data: signed } = await supabase.storage
-            .from("comprobantes-deposito")
-            .createSignedUrl(path, 60 * 60 * 24 * 365);
-          if (signed?.signedUrl) {
-            await supabase.from("depositos").insert({ cita_id: cita.id, comprobante_url: signed.signedUrl });
-          }
+          // Se guarda la ruta: el bucket es privado y se firma el enlace al abrir la cita
+          await supabase.from("depositos").insert({ cita_id: cita.id, comprobante_url: path });
         }
       }
 

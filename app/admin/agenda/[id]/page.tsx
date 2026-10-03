@@ -169,6 +169,11 @@ export default function CitaDetailPage({ params }: { params: Promise<{ id: strin
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
+    // Los comprobantes nuevos guardan la ruta del bucket privado: se firma el enlace al abrir la cita
+    if (dep && dep.comprobante_url && !/^https?:/i.test(dep.comprobante_url)) {
+      const { data: firmada } = await supabase.storage.from("comprobantes-deposito").createSignedUrl(dep.comprobante_url, 60 * 60);
+      if (firmada?.signedUrl) dep.comprobante_url = firmada.signedUrl;
+    }
     setDeposito(dep);
 
     const { count } = await supabase
