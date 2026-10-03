@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { use, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { avisar } from "@/lib/alerts";
 
 function ChevronLeft() {
   return (
@@ -28,94 +31,65 @@ type SupplierBase = {
   nota: string;
 };
 
-const supplierBase: Record<string, SupplierBase> = {
-  "hair-import-rd": {
-    nombre: "Hair Import RD", categoria: "Cabello",
-    rnc: "1-01-84210-3", pais: "República Dominicana",
-    direccion: "Calle El Conde 48, Zona Colonial, Santo Domingo",
-    contacto: "Rafael Guzmán", telefono: "809 555 7712", correo: "ventas@hairimport.do",
-    moneda: "RD$", formaPago: "Transferencia", plazo: "7 a 10 días",
-    suministra: ["Cabello remy", "Cabello virgin"],
-    estado: "Activo",
-    nota: "Pedido mínimo de 6 unidades. Avisar con una semana de anticipación para colores personalizados.",
-  },
-  "virgin-hair-co": {
-    nombre: "Virgin Hair Co.", categoria: "Cabello",
-    rnc: "N/A", pais: "Estados Unidos",
-    direccion: "2850 NW 36th St, Miami, FL 33142",
-    contacto: "Marie Johnson", telefono: "+1 305 555 0134", correo: "orders@virginhairco.com",
-    moneda: "USD", formaPago: "Transferencia", plazo: "15 a 20 días",
-    suministra: ["Cabello virgin", "Cabello remy"],
-    estado: "Activo",
-    nota: "Pedidos en USD. Incluye costo de envío internacional.",
-  },
-  "adhesivos-pro": {
-    nombre: "Adhesivos Pro", categoria: "Insumos",
-    rnc: "1-31-05820-1", pais: "República Dominicana",
-    direccion: "Ave. Las Carreras 12, Los Jardines, Santiago",
-    contacto: "Carlos Méndez", telefono: "809 555 3390", correo: "ventas@adhesivosPro.do",
-    moneda: "RD$", formaPago: "Efectivo", plazo: "3 a 5 días",
-    suministra: ["Cintas tape-in", "Adhesivos"],
-    estado: "Activo",
-    nota: "Entrega directa al salón. Llamar antes de enviar.",
-  },
-  "beauty-supply-dr": {
-    nombre: "Beauty Supply DR", categoria: "Insumos",
-    rnc: "1-01-23456-7", pais: "República Dominicana",
-    direccion: "C/ Beller 34, Gazcue, Santo Domingo",
-    contacto: "Lidia Castillo", telefono: "809 555 8801", correo: "info@beautysupplydr.com",
-    moneda: "RD$", formaPago: "Transferencia", plazo: "1 a 3 días",
-    suministra: ["Microanillos", "Shampoo"],
-    estado: "Activo",
-    nota: "Proveedor de confianza para insumos de mantenimiento.",
-  },
-  "remy-trading": {
-    nombre: "Remy Trading", categoria: "Cabello",
-    rnc: "N/A", pais: "Panamá",
-    direccion: "Calle 50, Torre Global Bank, Panamá City",
-    contacto: "José Vargas", telefono: "+507 555 2210", correo: "jvargas@remytrading.pa",
-    moneda: "USD", formaPago: "Crédito 30 días", plazo: "+30 días",
-    suministra: ["Cabello remy"],
-    estado: "Inactivo",
-    nota: "Actualmente inactivo. Último pedido en marzo 2026.",
-  },
-};
-
 const suministroOptions = ["Cabello remy", "Cabello virgin", "Cintas tape-in", "Microanillos", "Shampoo", "Adhesivos", "Herramientas"];
 
-export default function EditarProveedorPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = use(params);
-  const base = supplierBase[slug];
+function EditarForm({ id, base }: { id: string; base: SupplierBase }) {
+  const slug = id;
+  const supabase = useMemo(() => createClient(), []);
+  const router = useRouter();
+  const [guardando, setGuardando] = useState(false);
 
-  const [nombre,      setNombre]      = useState(base?.nombre      ?? "");
-  const [categoria,   setCategoria]   = useState(base?.categoria   ?? "Cabello");
-  const [rnc,         setRnc]         = useState(base?.rnc         ?? "");
-  const [pais,        setPais]        = useState(base?.pais        ?? "República Dominicana");
-  const [direccion,   setDireccion]   = useState(base?.direccion   ?? "");
-  const [contacto,    setContacto]    = useState(base?.contacto    ?? "");
-  const [telefono,    setTelefono]    = useState(base?.telefono    ?? "");
-  const [correo,      setCorreo]      = useState(base?.correo      ?? "");
-  const [moneda,      setMoneda]      = useState(base?.moneda      ?? "RD$");
-  const [formaPago,   setFormaPago]   = useState(base?.formaPago   ?? "Transferencia");
-  const [plazo,       setPlazo]       = useState(base?.plazo       ?? "7 a 10 días");
-  const [suministra,  setSuministra]  = useState<string[]>(base?.suministra ?? []);
-  const [estado,      setEstado]      = useState<"Activo" | "Inactivo">(base?.estado ?? "Activo");
-  const [nota,        setNota]        = useState(base?.nota        ?? "");
+  const [nombre,      setNombre]      = useState(base.nombre);
+  const [categoria,   setCategoria]   = useState(base.categoria);
+  const [rnc,         setRnc]         = useState(base.rnc);
+  const [pais,        setPais]        = useState(base.pais);
+  const [direccion,   setDireccion]   = useState(base.direccion);
+  const [contacto,    setContacto]    = useState(base.contacto);
+  const [telefono,    setTelefono]    = useState(base.telefono);
+  const [correo,      setCorreo]      = useState(base.correo);
+  const [moneda,      setMoneda]      = useState(base.moneda);
+  const [formaPago,   setFormaPago]   = useState(base.formaPago);
+  const [plazo,       setPlazo]       = useState(base.plazo);
+  const [suministra,  setSuministra]  = useState<string[]>(base.suministra);
+  const [estado,      setEstado]      = useState<"Activo" | "Inactivo">(base.estado);
+  const [nota,        setNota]        = useState(base.nota);
+
+  async function guardar() {
+    if (!nombre.trim()) {
+      await avisar("Falta el nombre", "Escribe el nombre del proveedor.");
+      return;
+    }
+    setGuardando(true);
+    const { error } = await supabase
+      .from("proveedores")
+      .update({
+        nombre: nombre.trim(),
+        categoria,
+        rnc: rnc.trim() || null,
+        pais,
+        direccion: direccion.trim() || null,
+        contacto: contacto.trim() || null,
+        telefono: telefono.trim() || null,
+        email: correo.trim() || null,
+        moneda,
+        forma_pago: formaPago,
+        plazo_entrega: plazo,
+        suministra,
+        activo: estado === "Activo",
+        nota: nota.trim() || null,
+      })
+      .eq("id", id);
+    if (error) {
+      await avisar("No se pudo guardar", error.message);
+      setGuardando(false);
+      return;
+    }
+    router.push(`/admin/proveedores/${id}`);
+  }
 
   function toggleSuministro(item: string) {
     setSuministra((prev) =>
       prev.includes(item) ? prev.filter((x) => x !== item) : [...prev, item]
-    );
-  }
-
-  if (!base) {
-    return (
-      <div className="min-h-full bg-zinc-50 p-8">
-        <Link href="/admin/proveedores" className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-zinc-700 mb-4 transition-colors">
-          <ChevronLeft /> Proveedores
-        </Link>
-        <p className="text-sm text-zinc-500">Proveedor no encontrado.</p>
-      </div>
     );
   }
 
@@ -386,12 +360,64 @@ export default function EditarProveedorPage({ params }: { params: Promise<{ slug
             >
               Cancelar
             </Link>
-            <button className="py-2.5 text-sm font-semibold text-white bg-zinc-900 rounded-xl hover:bg-zinc-700 transition-colors">
-              Guardar cambios
+            <button
+              onClick={guardar}
+              disabled={guardando}
+              className="py-2.5 text-sm font-semibold text-white bg-zinc-900 rounded-xl hover:bg-zinc-700 disabled:opacity-50 transition-colors"
+            >
+              {guardando ? "Guardando…" : "Guardar cambios"}
             </button>
           </div>
         </div>
       </div>
     </div>
   );
+}
+
+export default function EditarProveedorPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug: id } = use(params);
+  const supabase = useMemo(() => createClient(), []);
+  const [base, setBase] = useState<SupplierBase | null>(null);
+  const [estado, setEstado] = useState<"cargando" | "ok" | "no-encontrado">("cargando");
+
+  useEffect(() => {
+    supabase
+      .from("proveedores")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return setEstado("no-encontrado");
+        setBase({
+          nombre: data.nombre,
+          categoria: data.categoria,
+          rnc: data.rnc ?? "",
+          pais: data.pais,
+          direccion: data.direccion ?? "",
+          contacto: data.contacto ?? "",
+          telefono: data.telefono ?? "",
+          correo: data.email ?? "",
+          moneda: data.moneda,
+          formaPago: data.forma_pago,
+          plazo: data.plazo_entrega,
+          suministra: data.suministra,
+          estado: data.activo ? "Activo" : "Inactivo",
+          nota: data.nota ?? "",
+        });
+        setEstado("ok");
+      });
+  }, [supabase, id]);
+
+  if (estado === "cargando") return <div className="min-h-full bg-zinc-50 p-8 text-sm text-zinc-400">Cargando…</div>;
+  if (estado === "no-encontrado" || !base) {
+    return (
+      <div className="min-h-full bg-zinc-50 p-8">
+        <Link href="/admin/proveedores" className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-zinc-700 mb-4 transition-colors">
+          <ChevronLeft /> Proveedores
+        </Link>
+        <p className="text-sm text-zinc-500">Proveedor no encontrado.</p>
+      </div>
+    );
+  }
+  return <EditarForm id={id} base={base} />;
 }

@@ -1,11 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-
-function slugify(name: string) {
-  return name.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-}
+import { useEffect, useMemo, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { parseISODate } from "@/lib/dates";
 
 function SearchIcon() {
   return (
@@ -24,59 +22,96 @@ function ChevronIcon() {
   );
 }
 
-type FilterTab = "Todos" | "Cabello" | "Insumos";
+type FilterTab = "Todos" | "Cabello" | "Insumos" | "Otros";
 
-const tabs: FilterTab[] = ["Todos", "Cabello", "Insumos"];
+const tabs: FilterTab[] = ["Todos", "Cabello", "Insumos", "Otros"];
 
-const suppliers = [
-  {
-    id: "s1", initial: "H",
-    name: "Hair Import RD",    location: "Santo Domingo",
-    categoria: "Cabello",  contacto: "809 555 7712",
-    ultimaOrden: "19 ago", comprasAno: "RD$842K",
-    estado: "Activo",     estadoClass: "bg-green-50 text-green-700",
-  },
-  {
-    id: "s2", initial: "V",
-    name: "Virgin Hair Co.",   location: "Miami, EE.UU.",
-    categoria: "Cabello",  contacto: "+1 305 555 0134",
-    ultimaOrden: "2 ago",  comprasAno: "RD$514K",
-    estado: "Activo",     estadoClass: "bg-green-50 text-green-700",
-  },
-  {
-    id: "s3", initial: "A",
-    name: "Adhesivos Pro",     location: "Santiago",
-    categoria: "Insumos",  contacto: "809 555 3390",
-    ultimaOrden: "28 ago", comprasAno: "RD$96K",
-    estado: "Por recibir", estadoClass: "bg-orange-50 text-orange-600",
-  },
-  {
-    id: "s4", initial: "B",
-    name: "Beauty Supply DR",  location: "Santo Domingo",
-    categoria: "Insumos",  contacto: "809 555 8801",
-    ultimaOrden: "14 ago", comprasAno: "RD$71K",
-    estado: "Activo",     estadoClass: "bg-green-50 text-green-700",
-  },
-  {
-    id: "s5", initial: "R",
-    name: "Remy Trading",      location: "Panamá",
-    categoria: "Cabello",  contacto: "+507 555 2210",
-    ultimaOrden: "mar 2026",comprasAno: "RD$38K",
-    estado: "Inactivo",   estadoClass: "bg-zinc-100 text-zinc-500",
-  },
-];
+type Supplier = {
+  id: string;
+  initial: string;
+  name: string;
+  location: string;
+  categoria: string;
+  contacto: string;
+  ultimaOrden: string;
+  comprasAno: number;
+  estado: "Activo" | "Por recibir" | "Inactivo";
+};
+
+type OrdenResumen = { proveedor_id: string; fecha: string; estado: string; total: number };
+
+const estadoClass: Record<Supplier["estado"], string> = {
+  Activo: "bg-green-50 text-green-700",
+  "Por recibir": "bg-orange-50 text-orange-600",
+  Inactivo: "bg-zinc-100 text-zinc-500",
+};
+
+const rd = (n: number) =>
+  n >= 10_000 ? `RD$${Math.round(n / 1000)}K` : `RD$${Math.round(n).toLocaleString("es-DO")}`;
+
+function fechaCorta(iso: string) {
+  const d = parseISODate(iso);
+  const mismoAnio = d.getFullYear() === new Date().getFullYear();
+  return d.toLocaleDateString("es-DO", mismoAnio ? { day: "numeric", month: "short" } : { month: "short", year: "numeric" });
+}
 
 export default function ProveedoresPage() {
+  const supabase = useMemo(() => createClient(), []);
   const [search,    setSearch]    = useState("");
   const [activeTab, setActiveTab] = useState<FilterTab>("Todos");
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [ordenesMes, setOrdenesMes] = useState(0);
+  const [comprasMes, setComprasMes] = useState(0);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const ahora = new Date();
+      const inicioAnio = `${ahora.getFullYear()}-01-01`;
+      const inicioMes = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, "0")}-01`;
+      const [p, o] = await Promise.all([
+        supabase.from("proveedores").select("id, nombre, pais, categoria, contacto, telefono, email, activo").order("nombre"),
+        supabase.from("ordenes_compra").select("proveedor_id, fecha, estado, total").neq("estado", "cancelada").order("fecha", { ascending: false }).limit(5000),
+      ]);
+      if (p.error || o.error) {
+        setError((p.error ?? o.error)!.message);
+        setCargando(false);
+        return;
+      }
+      const ordenes = (o.data ?? []) as OrdenResumen[];
+      setOrdenesMes(ordenes.filter((x) => x.fecha >= inicioMes).length);
+      setComprasMes(ordenes.filter((x) => x.fecha >= inicioMes).reduce((s, x) => s + Number(x.total), 0));
+
+      setSuppliers(
+        (p.data ?? []).map((x) => {
+          const suyas = ordenes.filter((r) => r.proveedor_id === x.id);
+          const abierta = suyas.some((r) => r.estado === "pendiente" || r.estado === "en_transito");
+          return {
+            id: x.id,
+            initial: x.nombre.charAt(0).toUpperCase(),
+            name: x.nombre,
+            location: x.pais,
+            categoria: x.categoria,
+            contacto: x.telefono ?? x.email ?? "—",
+            ultimaOrden: suyas[0] ? fechaCorta(suyas[0].fecha) : "—",
+            comprasAno: suyas.filter((r) => r.fecha >= inicioAnio).reduce((s, r) => s + Number(r.total), 0),
+            estado: !x.activo ? "Inactivo" : abierta ? "Por recibir" : "Activo",
+          } satisfies Supplier;
+        }),
+      );
+      setError(null);
+      setCargando(false);
+    })();
+  }, [supabase]);
 
   const filtered = suppliers.filter((s) => {
-    const matchTab    = activeTab === "Todos" || s.categoria === activeTab;
+    const matchTab    = activeTab === "Todos" || (activeTab === "Otros" ? s.categoria !== "Cabello" && s.categoria !== "Insumos" : s.categoria === activeTab);
     const matchSearch = s.name.toLowerCase().includes(search.toLowerCase());
     return matchTab && matchSearch;
   });
 
-  const activos    = suppliers.filter((s) => s.estado === "Activo").length;
+  const activos    = suppliers.filter((s) => s.estado !== "Inactivo").length;
   const porRecibir = suppliers.filter((s) => s.estado === "Por recibir").length;
 
   return (
@@ -105,7 +140,7 @@ export default function ProveedoresPage() {
           <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-2">
             Órdenes del mes
           </p>
-          <p className="text-3xl font-bold text-zinc-900">7</p>
+          <p className="text-3xl font-bold text-zinc-900">{ordenesMes}</p>
         </div>
         <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-4 sm:p-5">
           <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-2">
@@ -117,7 +152,7 @@ export default function ProveedoresPage() {
           <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest mb-2">
             Compras del mes
           </p>
-          <p className="text-2xl sm:text-3xl font-bold text-white">RD$186K</p>
+          <p className="text-2xl sm:text-3xl font-bold text-white">{rd(comprasMes)}</p>
         </div>
       </div>
 
@@ -168,13 +203,16 @@ export default function ProveedoresPage() {
         </div>
 
         {/* Filas */}
-        {filtered.length === 0 ? (
-          <p className="px-6 py-8 text-sm text-zinc-400">Sin resultados.</p>
+        {error && <p className="px-6 py-4 text-sm text-red-700">No se pudo cargar: {error}</p>}
+        {cargando ? (
+          <p className="px-6 py-8 text-sm text-zinc-400">Cargando…</p>
+        ) : filtered.length === 0 ? (
+          <p className="px-6 py-8 text-sm text-zinc-400">{suppliers.length === 0 ? "Aún no hay proveedores. Agrega el primero." : "Sin resultados."}</p>
         ) : (
           filtered.map((s) => (
             <Link
               key={s.id}
-              href={`/admin/proveedores/${slugify(s.name)}`}
+              href={`/admin/proveedores/${s.id}`}
               className="flex sm:grid sm:grid-cols-[2fr_1fr_1.2fr_1fr_1fr_1fr_28px] gap-x-4 items-center px-5 sm:px-6 py-4 border-b border-zinc-100 last:border-0 hover:bg-zinc-50/70 transition-colors"
             >
               {/* Proveedor */}
@@ -200,10 +238,10 @@ export default function ProveedoresPage() {
               <span className="hidden sm:block text-sm text-zinc-500">{s.ultimaOrden}</span>
 
               {/* Compras año */}
-              <span className="hidden sm:block text-sm font-semibold text-zinc-900">{s.comprasAno}</span>
+              <span className="hidden sm:block text-sm font-semibold text-zinc-900">{rd(s.comprasAno)}</span>
 
               {/* Estado */}
-              <span className={`hidden sm:inline-block text-xs font-semibold px-2.5 py-1 rounded-full w-fit ${s.estadoClass}`}>
+              <span className={`hidden sm:inline-block text-xs font-semibold px-2.5 py-1 rounded-full w-fit ${estadoClass[s.estado]}`}>
                 {s.estado}
               </span>
 

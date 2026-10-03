@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { use } from "react";
-
+import { use, useCallback, useEffect, useMemo, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { avisar, confirmar, enlaceWhatsApp } from "@/lib/alerts";
+import { parseISODate, toISODate } from "@/lib/dates";
 
 function ChevronLeft() {
   return (
@@ -12,160 +14,218 @@ function ChevronLeft() {
   );
 }
 
-type Order = {
+type EstadoOrden = "pendiente" | "en_transito" | "recibida" | "cancelada";
+
+type Orden = {
+  id: string;
   fecha: string;
-  contenido: string;
-  unidades: number;
-  total: string;
-  estado: "Recibida" | "En tránsito" | "Pendiente";
+  estado: EstadoOrden;
+  total: number;
+  notas: string | null;
+  ordenes_compra_lineas: { descripcion: string; cantidad: number; costo_unitario: number }[];
 };
 
-type Product = {
-  initial: string;
-  name: string;
-  costo: string;
-  stock: number;
-  stockLow?: boolean;
-};
+type Producto = { id: string; nombre: string; costo: number | null; stock: number; stock_minimo: number; foto_url: string | null };
 
-type Supplier = {
-  initial: string;
-  name: string;
-  estado: "Activo" | "Inactivo" | "Por recibir";
+type Proveedor = {
+  id: string;
+  nombre: string;
+  contacto: string | null;
+  telefono: string | null;
+  email: string | null;
+  direccion: string | null;
+  activo: boolean;
+  created_at: string;
   categoria: string;
-  location: string;
-  desde: string;
-  stats: { ordenesAno: number; unidadesRecibidas: number; costoPromedio: string; comprasAno: string };
-  contacto: { persona: string; telefono: string; correo: string };
-  condiciones: { moneda: string; formaPago: string; plazo: string; rnc: string };
-  direccion: string;
-  nota: string;
-  ordenes: Order[];
-  productos: Product[];
+  rnc: string | null;
+  pais: string;
+  moneda: string;
+  forma_pago: string;
+  plazo_entrega: string;
+  nota: string | null;
 };
 
-const supplierData: Record<string, Supplier> = {
-  "hair-import-rd": {
-    initial: "H", name: "Hair Import RD",
-    estado: "Activo", categoria: "Cabello", location: "Santo Domingo", desde: "feb 2021",
-    stats: { ordenesAno: 18, unidadesRecibidas: 312, costoPromedio: "RD$2,700", comprasAno: "RD$842K" },
-    contacto: { persona: "Rafael Guzmán", telefono: "809 555 7712", correo: "ventas@hairimport.do" },
-    condiciones: { moneda: "RD$", formaPago: "Transferencia", plazo: "7 a 10 días", rnc: "1-01-84210-3" },
-    direccion: "Calle El Conde 48, Zona Colonial\nSanto Domingo, Rep. Dominicana",
-    nota: "Pedido mínimo de 6 unidades. Avisar con una semana de anticipación para colores personalizados.",
-    ordenes: [
-      { fecha: "19 ago", contenido: 'Rubio balayage 18" y 20"', unidades: 10, total: "RD$24,000", estado: "Recibida" },
-      { fecha: "2 ago",  contenido: 'Castaño natural 20"',       unidades: 12, total: "RD$28,800", estado: "Recibida" },
-      { fecha: "28 jul", contenido: 'Negro natural 16"',          unidades: 8,  total: "RD$19,200", estado: "Recibida" },
-      { fecha: "1 sep",  contenido: 'Chocolate ombré 22"',        unidades: 6,  total: "RD$16,200", estado: "En tránsito" },
-    ],
-    productos: [
-      { initial: "R", name: "Rubio balayage", costo: "RD$2,400", stock: 14 },
-      { initial: "C", name: "Castaño natural", costo: "RD$1,700", stock: 11 },
-      { initial: "N", name: "Negro natural",   costo: "RD$2,100", stock: 3, stockLow: true },
-    ],
-  },
-  "virgin-hair-co": {
-    initial: "V", name: "Virgin Hair Co.",
-    estado: "Activo", categoria: "Cabello", location: "Miami, EE.UU.", desde: "ene 2023",
-    stats: { ordenesAno: 9, unidadesRecibidas: 178, costoPromedio: "RD$3,100", comprasAno: "RD$514K" },
-    contacto: { persona: "Marie Johnson", telefono: "+1 305 555 0134", correo: "orders@virginhairco.com" },
-    condiciones: { moneda: "USD", formaPago: "Transferencia", plazo: "15 a 20 días", rnc: "N/A" },
-    direccion: "2850 NW 36th St\nMiami, FL 33142, EE.UU.",
-    nota: "Pedidos en USD. Incluye costo de envío internacional.",
-    ordenes: [
-      { fecha: "2 ago",  contenido: 'Chocolate ombré 22" · 24"', unidades: 8, total: "RD$42,000", estado: "Recibida" },
-      { fecha: "15 jun", contenido: 'Rubio balayage 20"',          unidades: 6, total: "RD$31,800", estado: "Recibida" },
-    ],
-    productos: [
-      { initial: "C", name: "Chocolate ombré",  costo: "RD$2,900", stock: 9 },
-      { initial: "R", name: "Rubio balayage",   costo: "RD$3,400", stock: 14 },
-    ],
-  },
-  "adhesivos-pro": {
-    initial: "A", name: "Adhesivos Pro",
-    estado: "Por recibir", categoria: "Insumos", location: "Santiago", desde: "mar 2024",
-    stats: { ordenesAno: 6, unidadesRecibidas: 240, costoPromedio: "RD$420", comprasAno: "RD$96K" },
-    contacto: { persona: "Carlos Méndez", telefono: "809 555 3390", correo: "ventas@adhesivosPro.do" },
-    condiciones: { moneda: "RD$", formaPago: "Efectivo", plazo: "3 a 5 días", rnc: "1-31-05820-1" },
-    direccion: "Ave. Las Carreras 12, Los Jardines\nSantiago, Rep. Dominicana",
-    nota: "Entrega directa al salón. Llamar antes de enviar.",
-    ordenes: [
-      { fecha: "28 ago", contenido: "Cintas tape-in · Adhesivo keratin", unidades: 40, total: "RD$16,000", estado: "En tránsito" },
-      { fecha: "10 jul", contenido: "Cintas tape-in",                     unidades: 30, total: "RD$9,600",  estado: "Recibida" },
-    ],
-    productos: [
-      { initial: "C", name: "Cintas tape-in",     costo: "RD$320", stock: 40 },
-      { initial: "A", name: "Adhesivo keratina",  costo: "RD$580", stock: 12 },
-    ],
-  },
-  "beauty-supply-dr": {
-    initial: "B", name: "Beauty Supply DR",
-    estado: "Activo", categoria: "Insumos", location: "Santo Domingo", desde: "ago 2022",
-    stats: { ordenesAno: 11, unidadesRecibidas: 390, costoPromedio: "RD$310", comprasAno: "RD$71K" },
-    contacto: { persona: "Lidia Castillo", telefono: "809 555 8801", correo: "info@beautysupplydr.com" },
-    condiciones: { moneda: "RD$", formaPago: "Transferencia", plazo: "1 a 3 días", rnc: "1-01-23456-7" },
-    direccion: "C/ Beller 34, Gazcue\nSanto Domingo, Rep. Dominicana",
-    nota: "Proveedor de confianza para insumos de mantenimiento.",
-    ordenes: [
-      { fecha: "14 ago", contenido: "Microanillos · Herramientas", unidades: 60, total: "RD$9,200", estado: "Recibida" },
-      { fecha: "30 jul", contenido: "Shampoo profesional x12",      unidades: 12, total: "RD$6,800", estado: "Recibida" },
-    ],
-    productos: [
-      { initial: "M", name: "Microanillos",        costo: "RD$180", stock: 60 },
-      { initial: "S", name: "Shampoo profesional", costo: "RD$520", stock: 12 },
-    ],
-  },
-  "remy-trading": {
-    initial: "R", name: "Remy Trading",
-    estado: "Inactivo", categoria: "Cabello", location: "Panamá", desde: "oct 2022",
-    stats: { ordenesAno: 2, unidadesRecibidas: 24, costoPromedio: "RD$1,900", comprasAno: "RD$38K" },
-    contacto: { persona: "José Vargas", telefono: "+507 555 2210", correo: "jvargas@remytrading.pa" },
-    condiciones: { moneda: "USD", formaPago: "Crédito 30 días", plazo: "+30 días", rnc: "N/A" },
-    direccion: "Calle 50, Torre Global Bank\nPanamá City, Panamá",
-    nota: "Actualmente inactivo. Último pedido en marzo 2026.",
-    ordenes: [
-      { fecha: "mar 2026", contenido: 'Negro natural 14" · 16"', unidades: 10, total: "RD$21,000", estado: "Recibida" },
-      { fecha: "ene 2026", contenido: 'Castaño natural 16"',      unidades: 14, total: "RD$17,000", estado: "Recibida" },
-    ],
-    productos: [
-      { initial: "N", name: "Negro natural",   costo: "RD$1,800", stock: 3, stockLow: true },
-      { initial: "C", name: "Castaño natural", costo: "RD$1,950", stock: 11 },
-    ],
-  },
+type LineaForm = { productoId: string; descripcion: string; cantidad: number; costo: number };
+
+const ordenLabel: Record<EstadoOrden, string> = {
+  pendiente: "Pendiente",
+  en_transito: "En tránsito",
+  recibida: "Recibida",
+  cancelada: "Cancelada",
 };
 
-const estadoBadge: Record<string, string> = {
-  Activo:       "bg-green-50 text-green-700",
-  "Por recibir": "bg-orange-50 text-orange-600",
-  Inactivo:     "bg-zinc-100 text-zinc-500",
+const ordenEstadoBadge: Record<EstadoOrden, string> = {
+  recibida: "bg-green-50 text-green-700",
+  en_transito: "bg-orange-50 text-orange-600",
+  pendiente: "bg-zinc-100 text-zinc-500",
+  cancelada: "bg-red-50 text-red-600",
 };
 
-const ordenEstadoBadge: Record<string, string> = {
-  Recibida:    "bg-green-50 text-green-700",
-  "En tránsito": "bg-orange-50 text-orange-600",
-  Pendiente:   "bg-zinc-100 text-zinc-500",
-};
+const rd = (n: number) => `RD$${n.toLocaleString("es-DO", { maximumFractionDigits: 2 })}`;
+const rdCompacto = (n: number) => (n >= 10_000 ? `RD$${Math.round(n / 1000)}K` : rd(Math.round(n)));
+
+function fechaCorta(iso: string) {
+  const d = parseISODate(iso);
+  return d.toLocaleDateString("es-DO", d.getFullYear() === new Date().getFullYear() ? { day: "numeric", month: "short" } : { month: "short", year: "numeric" });
+}
+
+const inputCls = "w-full px-3 py-2 text-sm bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400";
 
 export default function ProveedorDetailPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = use(params);
-  const s = supplierData[slug];
+  const { slug: id } = use(params);
+  const supabase = useMemo(() => createClient(), []);
 
-  if (!s) {
+  const [prov, setProv] = useState<Proveedor | null>(null);
+  const [ordenes, setOrdenes] = useState<Orden[]>([]);
+  const [productos, setProductos] = useState<Producto[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [procesando, setProcesando] = useState(false);
+
+  // Registrar orden
+  const [abierto, setAbierto] = useState(false);
+  const [catalogo, setCatalogo] = useState<Producto[]>([]);
+  const [fecha, setFecha] = useState(() => toISODate(new Date()));
+  const [estadoInicial, setEstadoInicial] = useState<"pendiente" | "en_transito" | "recibida">("pendiente");
+  const [notas, setNotas] = useState("");
+  const [lineas, setLineas] = useState<LineaForm[]>([{ productoId: "", descripcion: "", cantidad: 1, costo: 0 }]);
+
+  const cargar = useCallback(async () => {
+    const [p, o, pr] = await Promise.all([
+      supabase.from("proveedores").select("*").eq("id", id).maybeSingle(),
+      supabase
+        .from("ordenes_compra")
+        .select("id, fecha, estado, total, notas, ordenes_compra_lineas ( descripcion, cantidad, costo_unitario )")
+        .eq("proveedor_id", id)
+        .order("fecha", { ascending: false })
+        .order("created_at", { ascending: false }),
+      supabase.from("productos").select("id, nombre, costo, stock, stock_minimo, foto_url").eq("proveedor_id", id).order("nombre"),
+    ]);
+    if (p.error || o.error || pr.error) {
+      setError((p.error ?? o.error ?? pr.error)!.message);
+      setCargando(false);
+      return;
+    }
+    setProv(p.data as Proveedor | null);
+    setOrdenes((o.data ?? []) as unknown as Orden[]);
+    setProductos((pr.data ?? []).map((x) => ({ ...x, costo: x.costo === null ? null : Number(x.costo) })));
+    setError(null);
+    setCargando(false);
+  }, [supabase, id]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    cargar();
+  }, [cargar]);
+
+  const stats = useMemo(() => {
+    const anio = `${new Date().getFullYear()}-01-01`;
+    const delAnio = ordenes.filter((o) => o.fecha >= anio && o.estado !== "cancelada");
+    const recibidas = delAnio.filter((o) => o.estado === "recibida");
+    const unidades = recibidas.reduce((s, o) => s + o.ordenes_compra_lineas.reduce((a, l) => a + l.cantidad, 0), 0);
+    const gastoRecibido = recibidas.reduce((s, o) => s + Number(o.total), 0);
+    return {
+      ordenes: delAnio.length,
+      unidades,
+      costoPromedio: unidades > 0 ? gastoRecibido / unidades : 0,
+      compras: delAnio.reduce((s, o) => s + Number(o.total), 0),
+    };
+  }, [ordenes]);
+
+  async function abrirRegistro() {
+    setAbierto(true);
+    if (catalogo.length > 0) return;
+    const { data } = await supabase.from("productos").select("id, nombre, costo, stock, stock_minimo, foto_url").eq("activo", true).order("nombre");
+    setCatalogo((data ?? []).map((x) => ({ ...x, costo: x.costo === null ? null : Number(x.costo) })));
+  }
+
+  function setLinea(i: number, cambios: Partial<LineaForm>) {
+    setLineas((prev) => prev.map((l, k) => (k === i ? { ...l, ...cambios } : l)));
+  }
+
+  function elegirProducto(i: number, productoId: string) {
+    const p = catalogo.find((x) => x.id === productoId);
+    setLinea(i, { productoId, descripcion: p?.nombre ?? "", costo: p?.costo ?? 0 });
+  }
+
+  const totalForm = lineas.reduce((s, l) => s + l.cantidad * l.costo, 0);
+
+  async function registrar() {
+    const validas = lineas.filter((l) => l.productoId || l.descripcion.trim());
+    if (validas.length === 0 || validas.some((l) => l.cantidad < 1 || l.costo < 0)) {
+      await avisar("Revisa las líneas", "Cada línea necesita un producto o descripción, cantidad y costo.");
+      return;
+    }
+    setProcesando(true);
+    const { error } = await supabase.rpc("crear_orden_compra", {
+      p_proveedor_id: id,
+      p_fecha: fecha,
+      p_estado: estadoInicial,
+      p_notas: notas,
+      p_lineas: validas.map((l) => ({
+        producto_id: l.productoId || null,
+        descripcion: l.descripcion.trim(),
+        cantidad: l.cantidad,
+        costo_unitario: l.costo,
+      })),
+    });
+    if (error) {
+      await avisar("No se pudo registrar la orden", error.message);
+    } else {
+      setAbierto(false);
+      setLineas([{ productoId: "", descripcion: "", cantidad: 1, costo: 0 }]);
+      setNotas("");
+      setEstadoInicial("pendiente");
+      await cargar();
+    }
+    setProcesando(false);
+  }
+
+  async function cambiarEstado(o: Orden, estado: "en_transito" | "recibida" | "cancelada") {
+    const textos = {
+      en_transito: ["¿Marcar como en tránsito?", "Confirmar"],
+      recibida: ["¿Marcar como recibida?", "Se suma lo recibido al inventario y se actualiza el costo de cada producto."],
+      cancelada: ["¿Cancelar esta orden?", "No se podrá revertir."],
+    } as const;
+    const ok = await confirmar({
+      titulo: textos[estado][0],
+      texto: estado === "en_transito" ? undefined : textos[estado][1],
+      confirmarTexto: estado === "cancelada" ? "Cancelar orden" : "Confirmar",
+      peligroso: estado === "cancelada",
+    });
+    if (!ok) return;
+    setProcesando(true);
+    const { error } = await supabase.rpc("cambiar_estado_orden_compra", { p_orden_id: o.id, p_estado: estado });
+    if (error) await avisar("No se pudo actualizar la orden", error.message);
+    await cargar();
+    setProcesando(false);
+  }
+
+  if (cargando) return <div className="min-h-full bg-zinc-50 p-8 text-sm text-zinc-400">Cargando…</div>;
+
+  if (!prov) {
     return (
       <div className="min-h-full bg-zinc-50 p-8">
         <Link href="/admin/proveedores" className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-zinc-700 mb-4 transition-colors">
           <ChevronLeft /> Proveedores
         </Link>
-        <p className="text-sm text-zinc-500">Proveedor no encontrado.</p>
+        <p className="text-sm text-zinc-500">{error ? `No se pudo cargar: ${error}` : "Proveedor no encontrado."}</p>
       </div>
     );
   }
 
+  const abiertas = ordenes.some((o) => o.estado === "pendiente" || o.estado === "en_transito");
+  const estado = !prov.activo ? "Inactivo" : abiertas ? "Por recibir" : "Activo";
+  const estadoBadge: Record<string, string> = {
+    Activo: "bg-green-50 text-green-700",
+    "Por recibir": "bg-orange-50 text-orange-600",
+    Inactivo: "bg-zinc-100 text-zinc-500",
+  };
+  const desde = new Date(prov.created_at).toLocaleDateString("es-DO", { month: "short", year: "numeric" });
+
   return (
     <div className="min-h-full bg-zinc-50 p-5 sm:p-7 lg:p-8">
 
-      {/* ── Back ── */}
       <Link href="/admin/proveedores" className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-zinc-700 transition-colors mb-4">
         <ChevronLeft />
         Proveedores
@@ -174,24 +234,22 @@ export default function ProveedorDetailPage({ params }: { params: Promise<{ slug
       {/* ── Hero ── */}
       <div className="flex items-center gap-4 mb-6 flex-wrap">
         <div className="w-12 h-12 rounded-full bg-zinc-200 flex items-center justify-center text-xl font-bold text-zinc-600 shrink-0">
-          {s.initial}
+          {prov.nombre.charAt(0).toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2.5 flex-wrap">
-            <h1 className="text-2xl font-bold text-zinc-900">{s.name}</h1>
-            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${estadoBadge[s.estado]}`}>
-              {s.estado}
-            </span>
+            <h1 className="text-2xl font-bold text-zinc-900">{prov.nombre}</h1>
+            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${estadoBadge[estado]}`}>{estado}</span>
           </div>
           <p className="text-sm text-zinc-400 mt-0.5">
-            {s.categoria} · {s.location} · desde {s.desde}
+            {prov.categoria} · {prov.pais} · desde {desde}
           </p>
         </div>
         <div className="flex items-center gap-2 ml-auto">
-          <Link href={`/admin/proveedores/${slug}/editar`} className="px-4 py-2 text-sm font-semibold text-zinc-700 bg-white border border-zinc-200 rounded-xl hover:bg-zinc-50 transition-colors">
+          <Link href={`/admin/proveedores/${prov.id}/editar`} className="px-4 py-2 text-sm font-semibold text-zinc-700 bg-white border border-zinc-200 rounded-xl hover:bg-zinc-50 transition-colors">
             Editar
           </Link>
-          <button className="px-4 py-2 text-sm font-semibold text-white bg-zinc-900 rounded-xl hover:bg-zinc-700 transition-colors">
+          <button onClick={abrirRegistro} className="px-4 py-2 text-sm font-semibold text-white bg-zinc-900 rounded-xl hover:bg-zinc-700 transition-colors">
             Registrar orden
           </button>
         </div>
@@ -201,26 +259,26 @@ export default function ProveedorDetailPage({ params }: { params: Promise<{ slug
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-4 sm:p-5">
           <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-2">Órdenes del año</p>
-          <p className="text-3xl font-bold text-zinc-900">{s.stats.ordenesAno}</p>
+          <p className="text-3xl font-bold text-zinc-900">{stats.ordenes}</p>
         </div>
         <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-4 sm:p-5">
           <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-2">Unidades recibidas</p>
-          <p className="text-3xl font-bold text-zinc-900">{s.stats.unidadesRecibidas}</p>
+          <p className="text-3xl font-bold text-zinc-900">{stats.unidades}</p>
         </div>
         <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-4 sm:p-5">
           <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-2">Costo promedio</p>
-          <p className="text-2xl sm:text-3xl font-bold text-zinc-900">{s.stats.costoPromedio}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-zinc-900">{stats.unidades > 0 ? rd(Math.round(stats.costoPromedio)) : "—"}</p>
         </div>
         <div className="bg-zinc-900 rounded-2xl p-4 sm:p-5">
           <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest mb-2">Compras del año</p>
-          <p className="text-2xl sm:text-3xl font-bold text-white">{s.stats.comprasAno}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-white">{rdCompacto(stats.compras)}</p>
         </div>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-5">
 
         {/* ── Left column ── */}
-        <div className="flex-1 flex flex-col gap-4">
+        <div className="flex-1 flex flex-col gap-4 min-w-0">
 
           {/* Órdenes de compra */}
           <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm overflow-hidden">
@@ -228,24 +286,47 @@ export default function ProveedorDetailPage({ params }: { params: Promise<{ slug
               <h2 className="text-sm font-semibold text-zinc-900">Órdenes de compra</h2>
             </div>
 
-            {/* Header */}
-            <div className="hidden sm:grid grid-cols-[1fr_2fr_1fr_1fr_1fr] gap-x-4 px-5 sm:px-6 py-2.5 border-b border-zinc-100">
+            <div className="hidden sm:grid grid-cols-[0.8fr_2fr_0.8fr_1fr_1.2fr] gap-x-4 px-5 sm:px-6 py-2.5 border-b border-zinc-100">
               {["Fecha", "Contenido", "Unidades", "Total", "Estado"].map((h) => (
                 <span key={h} className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">{h}</span>
               ))}
             </div>
 
-            {s.ordenes.map((o, i) => (
-              <div key={i} className="grid grid-cols-[1fr_2fr_1fr_1fr_1fr] gap-x-4 items-center px-5 sm:px-6 py-3.5 border-b border-zinc-100 last:border-0">
-                <span className="text-sm text-zinc-500">{o.fecha}</span>
-                <span className="text-sm text-zinc-700 truncate">{o.contenido}</span>
-                <span className="text-sm text-zinc-600">{o.unidades}</span>
-                <span className="text-sm font-semibold text-zinc-900">{o.total}</span>
-                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full w-fit ${ordenEstadoBadge[o.estado]}`}>
-                  {o.estado}
-                </span>
-              </div>
-            ))}
+            {ordenes.length === 0 && <p className="px-6 py-8 text-sm text-zinc-400">Aún no hay órdenes con este proveedor.</p>}
+
+            {ordenes.map((o) => {
+              const abierta = o.estado === "pendiente" || o.estado === "en_transito";
+              return (
+                <div key={o.id} className="px-5 sm:px-6 py-3.5 border-b border-zinc-100 last:border-0">
+                  <div className="grid grid-cols-1 sm:grid-cols-[0.8fr_2fr_0.8fr_1fr_1.2fr] gap-x-4 gap-y-1 items-center">
+                    <span className="text-sm text-zinc-500">{fechaCorta(o.fecha)}</span>
+                    <span className="text-sm text-zinc-700 truncate" title={o.notas ?? undefined}>
+                      {o.ordenes_compra_lineas.map((l) => l.descripcion).join(" · ")}
+                    </span>
+                    <span className="text-sm text-zinc-600">{o.ordenes_compra_lineas.reduce((s, l) => s + l.cantidad, 0)}</span>
+                    <span className="text-sm font-semibold text-zinc-900">{rd(Number(o.total))}</span>
+                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full w-fit ${ordenEstadoBadge[o.estado]}`}>
+                      {ordenLabel[o.estado]}
+                    </span>
+                  </div>
+                  {abierta && (
+                    <div className="flex gap-3 mt-2 text-xs font-semibold">
+                      {o.estado === "pendiente" && (
+                        <button onClick={() => cambiarEstado(o, "en_transito")} disabled={procesando} className="text-zinc-600 hover:text-zinc-900">
+                          Marcar en tránsito
+                        </button>
+                      )}
+                      <button onClick={() => cambiarEstado(o, "recibida")} disabled={procesando} className="text-green-700 hover:text-green-900">
+                        Marcar recibida
+                      </button>
+                      <button onClick={() => cambiarEstado(o, "cancelada")} disabled={procesando} className="text-red-500 hover:text-red-700">
+                        Cancelar
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           {/* Productos que suministra */}
@@ -254,87 +335,194 @@ export default function ProveedorDetailPage({ params }: { params: Promise<{ slug
               <h2 className="text-sm font-semibold text-zinc-900">Productos que suministra</h2>
             </div>
 
-            {s.productos.map((p, i) => (
-              <div key={i} className="flex items-center gap-3 px-5 sm:px-6 py-3.5 border-b border-zinc-100 last:border-0">
-                <div className="w-8 h-8 rounded-full bg-zinc-200 flex items-center justify-center text-sm font-bold text-zinc-600 shrink-0">
-                  {p.initial}
+            {productos.length === 0 && (
+              <p className="px-6 py-8 text-sm text-zinc-400">
+                Ningún producto del catálogo tiene a este proveedor asignado.
+              </p>
+            )}
+
+            {productos.map((p) => {
+              const bajo = p.stock <= p.stock_minimo;
+              return (
+                <div key={p.id} className="flex items-center gap-3 px-5 sm:px-6 py-3.5 border-b border-zinc-100 last:border-0">
+                  <div className="w-8 h-8 rounded-full bg-zinc-200 overflow-hidden flex items-center justify-center text-sm font-bold text-zinc-600 shrink-0">
+                    {p.foto_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.foto_url} alt={p.nombre} loading="lazy" className="w-full h-full object-cover" />
+                    ) : (
+                      p.nombre.charAt(0).toUpperCase()
+                    )}
+                  </div>
+                  <span className="text-sm font-semibold text-zinc-900 flex-1 min-w-0 truncate">{p.nombre}</span>
+                  <span className="text-sm text-zinc-400">Costo {p.costo === null ? "—" : rd(p.costo)}</span>
+                  <span className={`text-sm font-semibold ml-4 ${bajo ? "text-orange-500" : "text-zinc-500"}`}>
+                    {p.stock} en stock
+                  </span>
                 </div>
-                <span className="text-sm font-semibold text-zinc-900 flex-1">{p.name}</span>
-                <span className="text-sm text-zinc-400">Costo {p.costo}</span>
-                <span className={`text-sm font-semibold ml-4 ${p.stockLow ? "text-orange-500" : "text-zinc-500"}`}>
-                  {p.stock} en stock
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
         {/* ── Right panel ── */}
         <div className="lg:w-64 flex flex-col gap-4">
 
-          {/* Contacto */}
           <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-5">
             <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-3">Contacto</p>
             <div className="space-y-2.5 mb-4">
-              <div className="flex justify-between items-start">
+              <div className="flex justify-between items-start gap-3">
                 <span className="text-xs text-zinc-400">Persona</span>
-                <span className="text-sm text-zinc-800 font-medium text-right">{s.contacto.persona}</span>
+                <span className="text-sm text-zinc-800 font-medium text-right">{prov.contacto ?? "—"}</span>
               </div>
-              <div className="flex justify-between items-start">
+              <div className="flex justify-between items-start gap-3">
                 <span className="text-xs text-zinc-400">Teléfono</span>
-                <span className="text-sm text-zinc-800 font-medium text-right">{s.contacto.telefono}</span>
+                <span className="text-sm text-zinc-800 font-medium text-right">{prov.telefono ?? "—"}</span>
               </div>
-              <div className="flex justify-between items-start">
+              <div className="flex justify-between items-start gap-3">
                 <span className="text-xs text-zinc-400">Correo</span>
-                <span className="text-sm text-zinc-800 font-medium text-right break-all">{s.contacto.correo}</span>
+                <span className="text-sm text-zinc-800 font-medium text-right break-all">{prov.email ?? "—"}</span>
               </div>
             </div>
-            <a
-              href={`https://wa.me/${s.contacto.telefono.replace(/\D/g, "")}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block w-full py-2 text-sm font-semibold text-zinc-700 bg-zinc-50 border border-zinc-200 rounded-xl text-center hover:bg-zinc-100 transition-colors"
-            >
-              Escribir por WhatsApp
-            </a>
+            {prov.telefono && (
+              <a
+                href={enlaceWhatsApp(prov.telefono, "")}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full py-2 text-sm font-semibold text-zinc-700 bg-zinc-50 border border-zinc-200 rounded-xl text-center hover:bg-zinc-100 transition-colors"
+              >
+                Escribir por WhatsApp
+              </a>
+            )}
           </div>
 
-          {/* Condiciones */}
           <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-5">
             <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-3">Condiciones</p>
             <div className="space-y-2.5">
-              <div className="flex justify-between">
-                <span className="text-xs text-zinc-400">Moneda</span>
-                <span className="text-sm text-zinc-800 font-medium">{s.condiciones.moneda}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-xs text-zinc-400">Forma de pago</span>
-                <span className="text-sm text-zinc-800 font-medium">{s.condiciones.formaPago}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-xs text-zinc-400">Plazo de entrega</span>
-                <span className="text-sm text-zinc-800 font-medium">{s.condiciones.plazo}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-xs text-zinc-400">RNC</span>
-                <span className="text-sm text-zinc-800 font-medium">{s.condiciones.rnc}</span>
-              </div>
+              {[
+                ["Moneda", prov.moneda],
+                ["Forma de pago", prov.forma_pago],
+                ["Plazo de entrega", prov.plazo_entrega],
+                ["RNC", prov.rnc ?? "N/A"],
+              ].map(([k, v]) => (
+                <div key={k} className="flex justify-between gap-3">
+                  <span className="text-xs text-zinc-400">{k}</span>
+                  <span className="text-sm text-zinc-800 font-medium text-right">{v}</span>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Dirección */}
           <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-5">
             <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-2">Dirección</p>
-            <p className="text-sm text-zinc-700 whitespace-pre-line">{s.direccion}</p>
+            <p className="text-sm text-zinc-700 whitespace-pre-line">{prov.direccion ?? "—"}</p>
           </div>
 
-          {/* Nota interna */}
           <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-5">
             <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-2">Nota interna</p>
-            <p className="text-sm text-zinc-700">{s.nota}</p>
+            <p className="text-sm text-zinc-700">{prov.nota ?? "—"}</p>
           </div>
         </div>
       </div>
+
+      {/* ── Registrar orden ── */}
+      {abierto && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4" onClick={() => setAbierto(false)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="p-5 border-b border-zinc-100 flex items-center justify-between">
+              <p className="text-base font-bold text-zinc-900">Registrar orden · {prov.nombre}</p>
+              <button onClick={() => setAbierto(false)} className="text-zinc-400 hover:text-zinc-700 text-sm">Cerrar</button>
+            </div>
+
+            <div className="p-5 overflow-y-auto flex flex-col gap-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-1.5">Fecha</label>
+                  <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className={inputCls} />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-1.5">Estado</label>
+                  <select value={estadoInicial} onChange={(e) => setEstadoInicial(e.target.value as typeof estadoInicial)} className={inputCls}>
+                    <option value="pendiente">Pendiente</option>
+                    <option value="en_transito">En tránsito</option>
+                    <option value="recibida">Ya recibida</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-1.5">Líneas · montos en RD$</p>
+                <div className="flex flex-col gap-3">
+                  {lineas.map((l, i) => (
+                    <div key={i} className="grid grid-cols-[1fr_64px_96px_auto] gap-2 items-start">
+                      <div className="flex flex-col gap-1.5">
+                        <select value={l.productoId} onChange={(e) => elegirProducto(i, e.target.value)} className={inputCls}>
+                          <option value="">Otro (escribir descripción)</option>
+                          {catalogo.map((p) => (
+                            <option key={p.id} value={p.id}>{p.nombre}</option>
+                          ))}
+                        </select>
+                        {!l.productoId && (
+                          <input
+                            value={l.descripcion}
+                            onChange={(e) => setLinea(i, { descripcion: e.target.value })}
+                            placeholder="Descripción"
+                            className={inputCls}
+                          />
+                        )}
+                      </div>
+                      <input
+                        type="number" min={1} value={l.cantidad} aria-label="Cantidad"
+                        onChange={(e) => setLinea(i, { cantidad: Math.max(1, Math.floor(Number(e.target.value) || 1)) })}
+                        className={inputCls}
+                      />
+                      <input
+                        type="number" min={0} step="0.01" value={l.costo} aria-label="Costo unitario"
+                        onChange={(e) => setLinea(i, { costo: Math.max(0, Number(e.target.value) || 0) })}
+                        className={inputCls}
+                      />
+                      <button
+                        onClick={() => setLineas((prev) => (prev.length > 1 ? prev.filter((_, k) => k !== i) : prev))}
+                        className="px-2 py-2 text-sm text-zinc-400 hover:text-red-600"
+                        aria-label="Quitar línea"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => setLineas((prev) => [...prev, { productoId: "", descripcion: "", cantidad: 1, costo: 0 }])}
+                  className="mt-3 text-sm font-semibold text-zinc-600 hover:text-zinc-900"
+                >
+                  + Agregar línea
+                </button>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-1.5">Nota</label>
+                <textarea value={notas} onChange={(e) => setNotas(e.target.value)} rows={2} className={`${inputCls} resize-none`} />
+              </div>
+
+              {estadoInicial === "recibida" && (
+                <p className="text-xs text-zinc-500 bg-zinc-50 rounded-xl px-3 py-2">
+                  Al registrarla como recibida se suma al inventario y se actualiza el costo de los productos.
+                </p>
+              )}
+            </div>
+
+            <div className="p-5 border-t border-zinc-100 flex items-center justify-between gap-3">
+              <span className="text-sm text-zinc-500">Total <strong className="text-zinc-900">{rd(totalForm)}</strong></span>
+              <button
+                onClick={registrar}
+                disabled={procesando}
+                className="px-5 py-2.5 text-sm font-semibold text-white bg-zinc-900 rounded-xl hover:bg-zinc-700 disabled:opacity-50 transition-colors"
+              >
+                {procesando ? "Guardando…" : "Registrar orden"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { avisar } from "@/lib/alerts";
 
 function ChevronLeft() {
   return (
@@ -28,6 +31,44 @@ export default function NuevoProveedorPage() {
   const [suministra,  setSuministra]  = useState<string[]>([]);
   const [estado,      setEstado]      = useState<"Activo" | "Inactivo">("Activo");
   const [nota,        setNota]        = useState("");
+
+  const supabase = useMemo(() => createClient(), []);
+  const router = useRouter();
+  const [guardando, setGuardando] = useState(false);
+
+  async function guardar() {
+    if (!nombre.trim()) {
+      await avisar("Falta el nombre", "Escribe el nombre del proveedor.");
+      return;
+    }
+    setGuardando(true);
+    const { data, error } = await supabase
+      .from("proveedores")
+      .insert({
+        nombre: nombre.trim(),
+        categoria,
+        rnc: rnc.trim() || null,
+        pais,
+        direccion: direccion.trim() || null,
+        contacto: contacto.trim() || null,
+        telefono: telefono.trim() || null,
+        email: correo.trim() || null,
+        moneda,
+        forma_pago: formaPago,
+        plazo_entrega: plazo,
+        suministra,
+        activo: estado === "Activo",
+        nota: nota.trim() || null,
+      })
+      .select("id")
+      .single();
+    if (error) {
+      await avisar("No se pudo guardar", error.message);
+      setGuardando(false);
+      return;
+    }
+    router.push(`/admin/proveedores/${data.id}`);
+  }
 
   function toggleSuministro(item: string) {
     setSuministra((prev) =>
@@ -309,8 +350,12 @@ export default function NuevoProveedorPage() {
             >
               Cancelar
             </Link>
-            <button className="py-2.5 text-sm font-semibold text-white bg-zinc-900 rounded-xl hover:bg-zinc-700 transition-colors">
-              Guardar proveedor
+            <button
+              onClick={guardar}
+              disabled={guardando}
+              className="py-2.5 text-sm font-semibold text-white bg-zinc-900 rounded-xl hover:bg-zinc-700 disabled:opacity-50 transition-colors"
+            >
+              {guardando ? "Guardando…" : "Guardar proveedor"}
             </button>
           </div>
         </div>
