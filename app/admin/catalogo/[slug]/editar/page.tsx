@@ -45,6 +45,7 @@ interface ServicioRow {
   duracion_minutos: number;
   precio: number;
   deposito_requerido: boolean;
+  pide_gramos?: boolean;
   deposito_monto: number | null;
   dias_seguimiento: number[];
   activo: boolean;
@@ -128,6 +129,7 @@ function EditarServicio({ servicio, slug }: { servicio: ServicioRow; slug: strin
   const [precio, setPrecio] = useState(String(servicio.precio));
   const [deposito, setDeposito] = useState(servicio.deposito_monto != null ? String(servicio.deposito_monto) : "");
   const [sinDeposito, setSinDeposito] = useState(!servicio.deposito_requerido);
+  const [pideGramos, setPideGramos] = useState(!!servicio.pide_gramos);
   const [diasSeguimiento, setDiasSeguimiento] = useState(servicio.dias_seguimiento.join(", "));
   const [activo, setActivo] = useState(servicio.activo);
   const [mostrarEnWeb, setMostrarEnWeb] = useState(servicio.mostrar_en_web);
@@ -187,6 +189,7 @@ function EditarServicio({ servicio, slug }: { servicio: ServicioRow; slug: strin
         duracion_minutos: Math.round(Number(duracion)) || servicio.duracion_minutos,
         precio: Number(precio) || 0,
         deposito_requerido: !sinDeposito,
+        pide_gramos: pideGramos,
         deposito_monto: sinDeposito ? null : deposito ? Number(deposito) : null,
         dias_seguimiento: parseDias(diasSeguimiento),
         activo,
@@ -301,6 +304,14 @@ function EditarServicio({ servicio, slug }: { servicio: ServicioRow; slug: strin
                 <span className="text-sm text-zinc-600">Sin depósito requerido</span>
               </label>
             </div>
+
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input type="checkbox" checked={pideGramos} onChange={(e) => setPideGramos(e.target.checked)} className="w-4 h-4 mt-0.5 accent-zinc-900" />
+              <span className="text-sm text-zinc-600">
+                Pedir gramos al agendar
+                <span className="block text-xs text-zinc-400">La clienta escribe cuántos gramos se va a poner (máx. 800; cada paquete son 100 g). Úsalo en método suizo, postura y mantenimiento de tape.</span>
+              </span>
+            </label>
           </div>
 
           {/* Ficha en la web */}
@@ -396,8 +407,13 @@ function EditarServicio({ servicio, slug }: { servicio: ServicioRow; slug: strin
               <span className="text-sm text-zinc-700">Activo (visible para agendar)</span>
               <Toggle value={activo} onChange={() => setActivo((v) => !v)} />
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-zinc-700">Visible en la web (melena-page)</span>
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-sm text-zinc-700">
+                Mostrar en la web y en la app
+                <span className="block text-xs text-zinc-400">
+                  Si lo apagas, las clientas no lo ven ni lo pueden reservar. El equipo sí lo puede agregar a la factura (para servicios que se hacen en el salón, sin cita).
+                </span>
+              </span>
               <Toggle value={mostrarEnWeb} onChange={() => setMostrarEnWeb((v) => !v)} />
             </div>
           </div>

@@ -152,7 +152,7 @@ export default function AgendaPage() {
         supabase
           .from("citas")
           .select(
-            "id, fecha, hora_inicio, hora_fin, estado, empleado_id, servicio_id, clientas(nombre), servicios(nombre), empleados(nombre)",
+            "id, fecha, hora_inicio, hora_fin, estado, gramos, empleado_id, servicio_id, clientas(nombre), servicios(nombre), empleados(nombre)",
           )
           .gte("fecha", desdeISO)
           .lte("fecha", hastaISO)
@@ -177,7 +177,7 @@ export default function AgendaPage() {
           empleado_id: c.empleado_id,
           servicio_id: c.servicio_id,
           clienta_nombre: c.clientas?.nombre ?? "Clienta",
-          servicio_nombre: c.servicios?.nombre ?? "Servicio",
+          servicio_nombre: `${c.servicios?.nombre ?? "Servicio"}${c.gramos ? ` · ${c.gramos} g` : ""}`,
           empleado_nombre: c.empleados?.nombre ?? null,
         })),
       );

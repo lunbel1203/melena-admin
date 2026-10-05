@@ -98,6 +98,9 @@ export default function PerfilEmpleadaPage({ params }: { params: Promise<{ id: s
   // A qué plataformas da acceso el rol de la empleada (lo define Seguridad)
   const [acceso, setAcceso] = useState<{ app: boolean; panel: boolean }>({ app: false, panel: false });
 
+  // Comisión total acumulada hasta hoy (en la app de la empleada solo ve la del día)
+  const [comisionAcumulada, setComisionAcumulada] = useState<{ total: number; porPagar: number } | null>(null);
+
   async function cargar() {
     const { data: empRaw } = await supabase
       .from("empleados")
@@ -153,6 +156,18 @@ export default function PerfilEmpleadaPage({ params }: { params: Promise<{ id: s
         comision: Array.isArray(l.comisiones) ? l.comisiones[0]?.monto ?? null : null,
       }))
     );
+    // todas las comisiones de la empleada, en páginas de 1000 (el tope de la API)
+    let total = 0;
+    let porPagar = 0;
+    for (let desde = 0; ; desde += 1000) {
+      const { data: pagina } = await supabase.from("comisiones").select("monto, pagada").eq("empleado_id", id).order("created_at").range(desde, desde + 999);
+      for (const c of pagina ?? []) {
+        total += Number(c.monto);
+        if (!c.pagada) porPagar += Number(c.monto);
+      }
+      if ((pagina?.length ?? 0) < 1000) break;
+    }
+    setComisionAcumulada({ total, porPagar });
     setServiciosAsignados((serviciosEmp ?? []).map((s: { servicios: { nombre: string } | null }) => s.servicios?.nombre).filter((n): n is string => !!n));
     setPuedeReportes((permisos ?? []).includes("reportes.ver"));
     setPuedeValidarDepositos((permisos ?? []).includes("depositos.verificar"));
@@ -260,7 +275,6 @@ export default function PerfilEmpleadaPage({ params }: { params: Promise<{ id: s
 
   const servicios = lineas.filter((l) => l.subtotal !== null);
   const facturado = servicios.reduce((acc, l) => acc + Number(l.subtotal ?? 0), 0);
-  const comisionTotal = lineas.reduce((acc, l) => acc + Number(l.comision ?? 0), 0);
   const ticketPromedio = servicios.length > 0 ? facturado / servicios.length : 0;
 
   const days = Array.from({ length: diasEnMes }, (_, i) => i + 1);
@@ -332,9 +346,12 @@ export default function PerfilEmpleadaPage({ params }: { params: Promise<{ id: s
         </div>
         <div className="bg-zinc-900 rounded-2xl p-4 sm:p-5">
           <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest mb-2">
-            Comisión {empleado.porcentaje_comision ? `(${empleado.porcentaje_comision}%)` : ""}
+            Comisión total {empleado.porcentaje_comision ? `(${empleado.porcentaje_comision}%)` : ""}
           </p>
-          <p className="text-2xl font-bold text-white">{comisionTotal > 0 ? formatoRD.format(comisionTotal) : "—"}</p>
+          <p className="text-2xl font-bold text-white">{comisionAcumulada && comisionAcumulada.total > 0 ? formatoRD.format(comisionAcumulada.total) : "—"}</p>
+          <p className="text-[11px] text-zinc-400 mt-1">
+            Acumulada hasta hoy{comisionAcumulada && comisionAcumulada.porPagar > 0 ? ` · por pagar ${formatoRD.format(comisionAcumulada.porPagar)}` : ""}
+          </p>
         </div>
       </div>
 

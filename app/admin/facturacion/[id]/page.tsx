@@ -61,7 +61,7 @@ type Factura = {
     servicio_fin_at: string | null;
     notas: string | null;
     recepcion: { nombre: string } | null;
-    estilista: { nombre: string } | null;
+    estilista: { id: string; nombre: string } | null;
     citas: { hora_inicio: string; servicios: { nombre: string; duracion_minutos: number } | null } | null;
   } | null;
 };
@@ -76,7 +76,7 @@ const FACTURA_SELECT = `
     empleados ( nombre, roles ( nombre ) ) ),
   visitas ( id, estado, created_at, atencion_inicio_at, servicio_fin_at, notas,
     recepcion:empleados!visitas_empleado_recepcion_id_fkey ( nombre ),
-    estilista:empleados!visitas_estilista_id_fkey ( nombre ),
+    estilista:empleados!visitas_estilista_id_fkey ( id, nombre ),
     citas ( hora_inicio, servicios ( nombre, duracion_minutos ) ) )
 `;
 
@@ -145,6 +145,13 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
   const [catalogo, setCatalogo] = useState<{ servicio: Catalogo[]; producto: Catalogo[] } | null>(null);
   const [busqueda, setBusqueda] = useState("");
   const [cantidad, setCantidad] = useState(1);
+  const [empleadosActivos, setEmpleadosActivos] = useState<{ id: string; nombre: string }[]>([]);
+  // quién hizo el servicio ("" = la estilista asignada a la visita, o quien cobra si no hay)
+  const [quienHizo, setQuienHizo] = useState("");
+  // permiso de Seguridad: ver todos los servicios y registrarlos a nombre de otra persona
+  const [puedeAgregarAOtros, setPuedeAgregarAOtros] = useState(false);
+
+  const estilistaVisitaId = factura?.visitas?.estilista?.id ?? null;
 
   const cargar = useCallback(async () => {
     const [f, cfg] = await Promise.all([
@@ -182,12 +189,24 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
   async function abrirAgregar() {
     setAgregando(true);
     if (catalogo) return;
-    const [s, p] = await Promise.all([
+    const [s, p, e, asignados, yo, permiso] = await Promise.all([
       supabase.from("servicios").select("id, nombre, precio, foto_url").eq("activo", true).order("nombre"),
       supabase.from("productos").select("id, nombre, precio, stock, foto_url").eq("activo", true).order("nombre"),
+      supabase.from("empleados").select("id, nombre").eq("activo", true).order("nombre"),
+      supabase.from("servicios_empleados").select("servicio_id, empleado_id"),
+      supabase.rpc("empleado_id_actual"),
+      supabase.rpc("tiene_permiso", { p_clave: "facturacion.agregar_a_otros" }),
     ]);
+    // Con el permiso (caja, administración) se ven todos los servicios y se elige quién los hizo;
+    // sin él, cada quien ve solo los que ofrece (sin asignaciones = cualquiera)
+    const todos = permiso.data === true;
+    setPuedeAgregarAOtros(todos);
+    setEmpleadosActivos(e.data ?? []);
+    const conAsignadas = new Set((asignados.data ?? []).map((a) => a.servicio_id));
+    const mios = new Set((asignados.data ?? []).filter((a) => a.empleado_id === yo.data).map((a) => a.servicio_id));
+    const ofrece = (sid: string) => todos || !conAsignadas.has(sid) || mios.has(sid);
     setCatalogo({
-      servicio: (s.data ?? []).map((x) => ({ id: x.id, nombre: x.nombre, precio: Number(x.precio), foto: x.foto_url })),
+      servicio: (s.data ?? []).filter((x) => ofrece(x.id)).map((x) => ({ id: x.id, nombre: x.nombre, precio: Number(x.precio), foto: x.foto_url })),
       producto: (p.data ?? []).map((x) => ({ id: x.id, nombre: x.nombre, precio: Number(x.precio), detalle: `${x.stock} en stock`, foto: x.foto_url })),
     });
   }
@@ -199,6 +218,7 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
       p_tipo: tipoAgregar,
       p_item_id: item.id,
       p_cantidad: cantidad,
+      ...(tipoAgregar === "servicio" && puedeAgregarAOtros && (quienHizo || estilistaVisitaId) ? { p_empleado_id: quienHizo || estilistaVisitaId! } : {}),
     });
     if (error) await avisar("No se pudo agregar", error.message);
     else {
@@ -736,6 +756,21 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
                   </button>
                 ))}
               </div>
+              {tipoAgregar === "servicio" && puedeAgregarAOtros && (
+                <div className="mb-3">
+                  <label className="text-xs font-semibold text-zinc-500 mb-1 block">¿Quién hizo el servicio? (recibe la comisión)</label>
+                  <select
+                    value={quienHizo || estilistaVisitaId || ""}
+                    onChange={(e) => setQuienHizo(e.target.value)}
+                    className="w-full px-3 py-2 text-sm bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:border-zinc-400"
+                  >
+                    {!estilistaVisitaId && <option value="">Yo (quien cobra)</option>}
+                    {empleadosActivos.map((e) => (
+                      <option key={e.id} value={e.id}>{e.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="flex gap-2">
                 <input
                   value={busqueda}

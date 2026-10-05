@@ -49,6 +49,8 @@ export default function NuevoServicioPage() {
   const [precio, setPrecio] = useState("");
   const [deposito, setDeposito] = useState("");
   const [sinDeposito, setSinDeposito] = useState(false);
+  const [pideGramos, setPideGramos] = useState(false);
+  const [mostrarEnWeb, setMostrarEnWeb] = useState(true);
 
   const [estilistas, setEstilistas] = useState<Estilista[]>([]);
   const [selectedStaff, setSelectedStaff] = useState<string[]>([]);
@@ -92,6 +94,8 @@ export default function NuevoServicioPage() {
         duracion_minutos: Math.round(Number(duracion)),
         precio: Number(precio),
         deposito_requerido: !sinDeposito,
+        pide_gramos: pideGramos,
+        mostrar_en_web: mostrarEnWeb,
         deposito_monto: sinDeposito ? null : deposito ? Number(deposito) : null,
       })
       .select("id")
@@ -184,6 +188,33 @@ export default function NuevoServicioPage() {
                 <input type="checkbox" checked={sinDeposito} onChange={(e) => setSinDeposito(e.target.checked)} className="w-4 h-4 accent-zinc-900" />
                 <span className="text-sm text-zinc-600">Sin depósito requerido</span>
               </label>
+            </div>
+
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input type="checkbox" checked={pideGramos} onChange={(e) => setPideGramos(e.target.checked)} className="w-4 h-4 mt-0.5 accent-zinc-900" />
+              <span className="text-sm text-zinc-600">
+                Pedir gramos al agendar
+                <span className="block text-xs text-zinc-400">La clienta escribe cuántos gramos se va a poner (máx. 800; cada paquete son 100 g). Úsalo en método suizo, postura y mantenimiento de tape.</span>
+              </span>
+            </label>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-zinc-200 p-5">
+            <SectionLabel>Publicación</SectionLabel>
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-sm text-zinc-700">
+                Mostrar en la web y en la app
+                <span className="block text-xs text-zinc-400">
+                  Si lo apagas, las clientas no lo ven ni lo pueden reservar. El equipo sí lo puede agregar a la factura (para servicios que se hacen en el salón, sin cita).
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setMostrarEnWeb((v) => !v)}
+                className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${mostrarEnWeb ? "bg-zinc-900" : "bg-zinc-200"}`}
+              >
+                <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${mostrarEnWeb ? "left-5" : "left-1"}`} />
+              </button>
             </div>
           </div>
 

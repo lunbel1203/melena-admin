@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { GRAMOS_MAX, gramosValidos, textoPaquetes } from "@/lib/gramos";
 import { addDays, diaAbbr, minutosAHora, horaAMinutos, toISODate } from "@/lib/dates";
 
 /* ── Icons ── */
@@ -50,6 +51,7 @@ interface Servicio {
   nombre: string;
   duracion_minutos: number;
   precio: number;
+  pide_gramos: boolean;
 }
 interface Estilista {
   id: string;
@@ -174,7 +176,7 @@ function NuevaCitaForm() {
   useEffect(() => {
     (async () => {
       const [{ data: srv }, { data: emp }] = await Promise.all([
-        supabase.from("servicios").select("id, nombre, duracion_minutos, precio").eq("activo", true).order("nombre"),
+        supabase.from("servicios").select("id, nombre, duracion_minutos, precio, pide_gramos").eq("activo", true).order("nombre"),
         supabase
           .from("empleados")
           .select("id, nombre, puesto, roles!inner(nombre)")
@@ -266,6 +268,7 @@ function NuevaCitaForm() {
   const [comprobante, setComprobante] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [note, setNote] = useState("");
+  const [gramosTxt, setGramosTxt] = useState("");
 
   const [enviando, setEnviando] = useState(false);
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
@@ -276,6 +279,7 @@ function NuevaCitaForm() {
     selectedServicio &&
     selectedEstilistaId &&
     selectedHora &&
+    (!selectedServicio.pide_gramos || gramosValidos(gramosTxt) !== null) &&
     (payInSalon || comprobante) &&
     !enviando;
 
@@ -314,6 +318,7 @@ function NuevaCitaForm() {
           hora_fin: horaFin,
           estado: payInSalon ? "confirmada" : "pendiente_confirmacion",
           notas: note.trim() || null,
+          gramos: selectedServicio.pide_gramos ? gramosValidos(gramosTxt) : null,
           origen: "panel",
         })
         .select("id")
@@ -470,6 +475,26 @@ function NuevaCitaForm() {
                     </button>
                   );
                 })}
+              </div>
+            )}
+            {selectedServicio?.pide_gramos && (
+              <div className="mt-4">
+                <label className="text-xs font-semibold text-zinc-500 mb-1.5 block">Gramos (máx. {GRAMOS_MAX}; cada paquete son 100 g)</label>
+                <div className="flex items-center gap-3">
+                  <div className="relative w-36">
+                    <input
+                      inputMode="numeric"
+                      value={gramosTxt}
+                      onChange={(e) => setGramosTxt(e.target.value.replace(/\D/g, "").slice(0, 3))}
+                      placeholder="Ej. 150"
+                      className="w-full px-4 py-2.5 pr-8 border border-zinc-200 rounded-xl text-sm text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-zinc-400 transition-colors"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-zinc-400">g</span>
+                  </div>
+                  {gramosValidos(gramosTxt) !== null && (
+                    <span className="text-sm font-semibold text-zinc-900">= {textoPaquetes(gramosValidos(gramosTxt)!)}</span>
+                  )}
+                </div>
               </div>
             )}
           </div>

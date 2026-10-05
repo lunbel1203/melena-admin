@@ -147,6 +147,7 @@ export type Database = {
           id: string
           notas: string | null
           origen: string | null
+          gramos: number | null
           rango: unknown
           recordatorio_24h_enviado: boolean
           recordatorio_2h_enviado: boolean
@@ -164,6 +165,7 @@ export type Database = {
           id?: string
           notas?: string | null
           origen?: string | null
+          gramos?: number | null
           rango?: unknown
           recordatorio_24h_enviado?: boolean
           recordatorio_2h_enviado?: boolean
@@ -181,6 +183,7 @@ export type Database = {
           id?: string
           notas?: string | null
           origen?: string | null
+          gramos?: number | null
           rango?: unknown
           recordatorio_24h_enviado?: boolean
           recordatorio_2h_enviado?: boolean
@@ -1329,6 +1332,7 @@ export type Database = {
           web_incluye: string[]
           web_orden: number
           web_precio_desde: boolean
+          pide_gramos: boolean
           web_retoque: string | null
         }
         Insert: {
@@ -1353,6 +1357,7 @@ export type Database = {
           web_incluye?: string[]
           web_orden?: number
           web_precio_desde?: boolean
+          pide_gramos?: boolean
           web_retoque?: string | null
         }
         Update: {
@@ -1377,6 +1382,7 @@ export type Database = {
           web_incluye?: string[]
           web_orden?: number
           web_precio_desde?: boolean
+          pide_gramos?: boolean
           web_retoque?: string | null
         }
         Relationships: []
@@ -1637,6 +1643,7 @@ export type Database = {
       agregar_linea_factura: {
         Args: {
           p_cantidad?: number
+          p_empleado_id?: string
           p_factura_id: string
           p_item_id: string
           p_tipo: Database["public"]["Enums"]["tipo_linea_factura"]
@@ -1662,6 +1669,7 @@ export type Database = {
       crear_cita_clienta: {
         Args: {
           p_comprobante_path?: string
+          p_gramos?: number
           p_empleado_id: string
           p_fecha: string
           p_hora_inicio: string
@@ -1674,6 +1682,7 @@ export type Database = {
         Args: {
           p_comprobante_url: string
           p_email: string
+          p_gramos?: number
           p_empleado_id: string
           p_fecha: string
           p_hora_fin: string

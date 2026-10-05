@@ -1,5 +1,6 @@
 "use client";
 
+import { resumenGramos } from "@/lib/gramos";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { use } from "react";
@@ -49,6 +50,7 @@ interface CitaDetalle {
   hora_fin: string;
   estado: string;
   notas: string | null;
+  gramos: number | null;
   created_at: string;
   empleado_id: string | null;
   clienta: { id: string; nombre: string; telefono: string; email: string | null };
@@ -143,7 +145,7 @@ export default function CitaDetailPage({ params }: { params: Promise<{ id: strin
     const { data, error } = await supabase
       .from("citas")
       .select(
-        "id, fecha, hora_inicio, hora_fin, estado, notas, created_at, empleado_id, clientas(id, nombre, telefono, email), servicios(id, nombre, duracion_minutos, precio), empleados(id, nombre)",
+        "id, fecha, hora_inicio, hora_fin, estado, notas, gramos, created_at, empleado_id, clientas(id, nombre, telefono, email), servicios(id, nombre, duracion_minutos, precio), empleados(id, nombre)",
       )
       .eq("id", id)
       .single();
@@ -161,6 +163,7 @@ export default function CitaDetailPage({ params }: { params: Promise<{ id: strin
       hora_fin: data.hora_fin,
       estado: data.estado,
       notas: data.notas,
+      gramos: data.gramos,
       created_at: data.created_at,
       empleado_id: data.empleado_id,
       clienta: data.clientas!,
@@ -551,6 +554,11 @@ export default function CitaDetailPage({ params }: { params: Promise<{ id: strin
                 <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400 mb-1">Servicio</p>
                 <p className="text-sm font-semibold text-zinc-900">{cita.servicio.nombre}</p>
                 <p className="text-xs text-zinc-400 mt-0.5">{formatDiaLargo(parseISODate(cita.fecha))}</p>
+                {cita.gramos ? (
+                  <p className="inline-block mt-2 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+                    {resumenGramos(cita.gramos)}
+                  </p>
+                ) : null}
               </div>
 
               <div>
