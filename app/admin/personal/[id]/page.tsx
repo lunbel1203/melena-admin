@@ -104,7 +104,7 @@ export default function PerfilEmpleadaPage({ params }: { params: Promise<{ id: s
   async function cargar() {
     const { data: empRaw } = await supabase
       .from("empleados")
-      .select("*, roles(nombre, es_admin_total), empleados_roles(rol_id, roles(nombre, es_admin_total))")
+      .select("*, roles!empleados_rol_id_fkey(nombre, es_admin_total), empleados_roles(rol_id, roles(nombre, es_admin_total))")
       .eq("id", id)
       .single();
     if (!empRaw) return setCargando(false);

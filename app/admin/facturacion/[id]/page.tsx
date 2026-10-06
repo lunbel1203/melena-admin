@@ -73,7 +73,7 @@ const FACTURA_SELECT = `
   clientas ( id, nombre, telefono, email, notas, created_at ),
   cobrador:empleados!facturas_cobrada_por_fkey ( nombre ),
   lineas_factura ( id, tipo, descripcion, cantidad, precio_unitario, subtotal, porcentaje_comision, created_at, empleado_id,
-    empleados ( nombre, roles ( nombre ) ) ),
+    empleados ( nombre, roles!empleados_rol_id_fkey ( nombre ) ) ),
   visitas ( id, estado, created_at, atencion_inicio_at, servicio_fin_at, notas,
     recepcion:empleados!visitas_empleado_recepcion_id_fkey ( nombre ),
     estilista:empleados!visitas_estilista_id_fkey ( id, nombre ),

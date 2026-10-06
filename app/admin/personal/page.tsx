@@ -69,7 +69,7 @@ export default function PersonalPage() {
       const inicioMesISO = inicioMes.toISOString();
 
       const [{ data: emps }, { data: lineas }, { data: comisiones }, { data: permisosRol }, { data: rolesData }] = await Promise.all([
-        supabase.from("empleados").select("id, nombre, puesto, activo, foto_url, user_id, rol_id, roles(nombre, es_admin_total), empleados_roles(rol_id, roles(nombre, es_admin_total))").order("nombre"),
+        supabase.from("empleados").select("id, nombre, puesto, activo, foto_url, user_id, rol_id, roles!empleados_rol_id_fkey(nombre, es_admin_total), empleados_roles(rol_id, roles(nombre, es_admin_total))").order("nombre"),
         supabase
           .from("lineas_factura")
           .select("empleado_id, subtotal, tipo, facturas!inner(estado, cobrada_at)")

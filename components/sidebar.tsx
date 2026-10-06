@@ -151,7 +151,7 @@ export default function Sidebar() {
       if (!user) return;
       const { data } = await supabase
         .from("empleados")
-        .select("nombre, roles(nombre), empleados_roles(roles(nombre))")
+        .select("nombre, roles!empleados_rol_id_fkey(nombre), empleados_roles(roles(nombre))")
         .eq("user_id", user.id)
         .single();
       if (!data) return;

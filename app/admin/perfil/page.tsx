@@ -166,7 +166,7 @@ export default function PerfilPage() {
       if (!user) return;
 
       const [{ data: empleado }, { data: negocioConfig }] = await Promise.all([
-        supabase.from("empleados").select("id, nombre, telefono, foto_url, roles(nombre), empleados_roles(roles(nombre))").eq("user_id", user.id).single(),
+        supabase.from("empleados").select("id, nombre, telefono, foto_url, roles!empleados_rol_id_fkey(nombre), empleados_roles(roles(nombre))").eq("user_id", user.id).single(),
         supabase.from("negocio_config").select("nombre_comercial").eq("id", true).single(),
       ]);
 
