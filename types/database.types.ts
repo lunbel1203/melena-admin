@@ -1670,6 +1670,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      app_imagen_bienvenida: { Args: never; Returns: string }
       agregar_linea_factura: {
         Args: {
           p_cantidad?: number
