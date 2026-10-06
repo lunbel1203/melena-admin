@@ -35,9 +35,12 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 const DESCRIPCION_ROL: Record<string, string> = {
-  Estilista: "Realiza servicios de extensiones",
-  Recepción: "Gestiona citas y atención al cliente",
-  Caja: "Manejo de pagos y depósitos",
+  Cajera: "Cobra, valida depósitos y maneja la agenda",
+  "Asesora Capilar": "Asesora y vende a las clientas",
+  "Gestora de citas": "Gestiona la agenda y las clientas",
+  "Taller de costura": "Costura profesional de extensiones",
+  Shamponier: "Lava la cabeza y las extensiones",
+  "Sala de postura": "Instala y mantiene extensiones",
   Admin: "Acceso total al panel, sin restricciones",
 };
 
@@ -61,7 +64,7 @@ export default function EditarEmpleadaPage({ params }: { params: Promise<{ id: s
   const [telefono, setTelefono] = useState("");
   const [correo, setCorreo] = useState("");
   const [puesto, setPuesto] = useState("");
-  const [rolId, setRolId] = useState("");
+  const [rolIds, setRolIds] = useState<string[]>([]);
   const [roles, setRoles] = useState<Rol[]>([]);
   const [comision, setComision] = useState("");
   const [servicios, setServicios] = useState<Servicio[]>([]);
@@ -75,18 +78,20 @@ export default function EditarEmpleadaPage({ params }: { params: Promise<{ id: s
 
   useEffect(() => {
     (async () => {
-      const [{ data: emp }, { data: todosServicios }, { data: asignadosData }, { data: todosRoles }] = await Promise.all([
+      const [{ data: emp }, { data: todosServicios }, { data: asignadosData }, { data: todosRoles }, { data: misRoles }] = await Promise.all([
         supabase.from("empleados").select("*").eq("id", id).single(),
         supabase.from("servicios").select("id, nombre").eq("activo", true).order("nombre"),
         supabase.from("servicios_empleados").select("servicio_id").eq("empleado_id", id),
         supabase.from("roles").select("id, nombre").order("nombre"),
+        supabase.from("empleados_roles").select("rol_id").eq("empleado_id", id),
       ]);
       if (emp) {
         setNombre(emp.nombre);
         setTelefono(emp.telefono ?? "");
         setCorreo(emp.email ?? "");
         setPuesto(emp.puesto ?? "");
-        setRolId(emp.rol_id);
+        // el rol principal primero, luego los adicionales
+        setRolIds([emp.rol_id, ...(misRoles ?? []).map((r) => r.rol_id).filter((r) => r !== emp.rol_id)]);
         setComision(emp.porcentaje_comision !== null ? String(emp.porcentaje_comision) : "");
         setFotoUrl(emp.foto_url);
       }
@@ -129,6 +134,11 @@ export default function EditarEmpleadaPage({ params }: { params: Promise<{ id: s
     });
   }
 
+  // Puede tener varios roles; el primero que marca es el principal (el que se muestra y define la comisión base)
+  function alternarRol(id: string) {
+    setRolIds((prev) => (prev.includes(id) ? (prev.length > 1 ? prev.filter((r) => r !== id) : prev) : [...prev, id]));
+  }
+
   async function guardar() {
     setGuardando(true);
     setError(null);
@@ -140,7 +150,7 @@ export default function EditarEmpleadaPage({ params }: { params: Promise<{ id: s
         telefono: telefono.trim() || null,
         email: correo.trim() || null,
         puesto: puesto.trim() || null,
-        rol_id: rolId,
+        rol_id: rolIds[0],
         porcentaje_comision: comision.trim() ? Number(comision) : null,
       })
       .eq("id", id);
@@ -148,6 +158,20 @@ export default function EditarEmpleadaPage({ params }: { params: Promise<{ id: s
     if (empError) {
       setGuardando(false);
       return setError(empError.message);
+    }
+
+    // roles: se reemplazan por los elegidos (el principal es el primero)
+    const { error: quitarRolesError } = await supabase.from("empleados_roles").delete().eq("empleado_id", id);
+    if (quitarRolesError) {
+      setGuardando(false);
+      return setError(quitarRolesError.message);
+    }
+    const { error: rolesError } = await supabase
+      .from("empleados_roles")
+      .insert(rolIds.map((rol_id) => ({ empleado_id: id, rol_id })));
+    if (rolesError) {
+      setGuardando(false);
+      return setError(rolesError.message);
     }
 
     const { data: actuales } = await supabase.from("servicios_empleados").select("servicio_id").eq("empleado_id", id);
@@ -246,20 +270,29 @@ export default function EditarEmpleadaPage({ params }: { params: Promise<{ id: s
           </div>
 
           <div className="bg-white rounded-2xl border border-zinc-200 p-5">
-            <SectionLabel>Rol</SectionLabel>
+            <SectionLabel>Roles (puede tener varios)</SectionLabel>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-              {roles.map((r) => (
-                <button
-                  key={r.id}
-                  onClick={() => setRolId(r.id)}
-                  className={`text-left px-4 py-3.5 rounded-xl border-2 transition-all ${
-                    rolId === r.id ? "border-zinc-900" : "border-zinc-100 hover:border-zinc-200"
-                  }`}
-                >
-                  <p className="text-sm font-semibold text-zinc-900">{r.nombre}</p>
-                  <p className="text-xs text-zinc-400 mt-0.5">{DESCRIPCION_ROL[r.nombre] ?? "Rol personalizado"}</p>
-                </button>
-              ))}
+              {roles.map((r) => {
+                const on = rolIds.includes(r.id);
+                return (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => alternarRol(r.id)}
+                    className={`text-left px-4 py-3.5 rounded-xl border-2 transition-all ${
+                      on ? "border-zinc-900 bg-white" : "border-zinc-100 hover:border-zinc-200"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-zinc-900">{r.nombre}</p>
+                      {on && rolIds[0] === r.id && rolIds.length > 1 && (
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Principal</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-zinc-400 mt-0.5">{DESCRIPCION_ROL[r.nombre] ?? "Rol personalizado"}</p>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -358,7 +391,7 @@ export default function EditarEmpleadaPage({ params }: { params: Promise<{ id: s
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-zinc-500">Rol</span>
-                  <span className="font-semibold text-zinc-900">{roles.find((r) => r.id === rolId)?.nombre ?? "—"}</span>
+                  <span className="font-semibold text-zinc-900">{rolIds.map((rid) => roles.find((r) => r.id === rid)?.nombre).filter(Boolean).join(" · ") || "—"}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-zinc-500">Comisión</span>

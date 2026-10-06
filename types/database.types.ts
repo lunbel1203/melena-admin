@@ -623,6 +623,36 @@ export type Database = {
           },
         ]
       }
+      empleados_roles: {
+        Row: {
+          empleado_id: string
+          rol_id: string
+        }
+        Insert: {
+          empleado_id: string
+          rol_id: string
+        }
+        Update: {
+          empleado_id?: string
+          rol_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "empleados_roles_empleado_id_fkey"
+            columns: ["empleado_id"]
+            isOneToOne: false
+            referencedRelation: "empleados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "empleados_roles_rol_id_fkey"
+            columns: ["rol_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       facturacion_config: {
         Row: {
           id: boolean
@@ -1845,6 +1875,7 @@ export type Database = {
       }
       mis_notificaciones_sin_leer: { Args: never; Returns: number }
       mis_permisos: { Args: never; Returns: string[] }
+      mis_roles: { Args: never; Returns: string[] }
       mis_reportes_molestia: {
         Args: never
         Returns: {

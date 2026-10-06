@@ -166,7 +166,7 @@ export default function PerfilPage() {
       if (!user) return;
 
       const [{ data: empleado }, { data: negocioConfig }] = await Promise.all([
-        supabase.from("empleados").select("id, nombre, telefono, foto_url, roles(nombre)").eq("user_id", user.id).single(),
+        supabase.from("empleados").select("id, nombre, telefono, foto_url, roles(nombre), empleados_roles(roles(nombre))").eq("user_id", user.id).single(),
         supabase.from("negocio_config").select("nombre_comercial").eq("id", true).single(),
       ]);
 
@@ -181,7 +181,11 @@ export default function PerfilPage() {
         setTelefono(empleado.telefono ?? "");
         setFotoUrl(empleado.foto_url);
         const rolRow = Array.isArray(empleado.roles) ? empleado.roles[0] : empleado.roles;
-        setRol(rolRow?.nombre ?? null);
+        const extras = (empleado.empleados_roles ?? [])
+          .map((r) => (Array.isArray(r.roles) ? r.roles[0] : r.roles)?.nombre)
+          .filter((n): n is string => !!n && n !== rolRow?.nombre)
+          .sort();
+        setRol([rolRow?.nombre, ...extras].filter(Boolean).join(" · ") || null);
       }
       setCargando(false);
     })();

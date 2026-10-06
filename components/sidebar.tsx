@@ -151,24 +151,25 @@ export default function Sidebar() {
       if (!user) return;
       const { data } = await supabase
         .from("empleados")
-        .select("nombre, rol_id, roles(nombre, es_admin_total)")
+        .select("nombre, roles(nombre), empleados_roles(roles(nombre))")
         .eq("user_id", user.id)
         .single();
       if (!data) return;
-      const rol = Array.isArray(data.roles) ? data.roles[0] : data.roles;
-      setUsuario({ nombre: data.nombre, rolNombre: rol?.nombre ?? "" });
+      const principal = (Array.isArray(data.roles) ? data.roles[0] : data.roles)?.nombre;
+      const extras = (data.empleados_roles ?? [])
+        .map((r) => (Array.isArray(r.roles) ? r.roles[0] : r.roles)?.nombre)
+        .filter((n): n is string => !!n && n !== principal)
+        .sort();
+      setUsuario({ nombre: data.nombre, rolNombre: [principal, ...extras].filter(Boolean).join(" · ") });
 
-      if (rol?.es_admin_total) {
+      // es_admin y mis_permisos reúnen todos los roles de la empleada
+      const [{ data: admin }, { data: permisos }] = await Promise.all([supabase.rpc("es_admin"), supabase.rpc("mis_permisos")]);
+      if (admin) {
         setEsAdmin(true);
         setModulosVisibles(null);
       } else {
         setEsAdmin(false);
-        const { data: permisos } = await supabase
-          .from("rol_permisos")
-          .select("permiso_clave")
-          .eq("rol_id", data.rol_id)
-          .like("permiso_clave", "%.ver");
-        setModulosVisibles(new Set((permisos ?? []).map((p) => p.permiso_clave.replace(/\.ver$/, ""))));
+        setModulosVisibles(new Set(((permisos ?? []) as string[]).filter((c) => c.endsWith(".ver")).map((c) => c.replace(/\.ver$/, ""))));
       }
     })();
   }, [supabase]);

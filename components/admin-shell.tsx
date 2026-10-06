@@ -36,24 +36,17 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       } = await supabase.auth.getUser();
       if (!user) return setCargandoAcceso(false);
 
-      const { data: empleado } = await supabase
-        .from("empleados")
-        .select("rol_id, roles(es_admin_total)")
-        .eq("user_id", user.id)
-        .single();
-      const rol = empleado && (Array.isArray(empleado.roles) ? empleado.roles[0] : empleado.roles);
-      if (!empleado || rol?.es_admin_total) {
+      const { data: empleado } = await supabase.from("empleados").select("id").eq("user_id", user.id).single();
+      // es_admin y mis_permisos ya reúnen todos los roles de la empleada (principal + adicionales)
+      const [{ data: admin }, { data: permisos }] = await Promise.all([supabase.rpc("es_admin"), supabase.rpc("mis_permisos")]);
+      if (!empleado || admin) {
         setEsAdmin(true);
         setCargandoAcceso(false);
         return;
       }
       setEsAdmin(false);
 
-      const { data: permisos } = await supabase
-        .from("rol_permisos")
-        .select("permiso_clave")
-        .eq("rol_id", empleado.rol_id);
-      const claves = new Set((permisos ?? []).map((p) => p.permiso_clave));
+      const claves = new Set((permisos ?? []) as string[]);
 
       if (!claves.has("acceso.panel_admin")) {
         await supabase.auth.signOut();

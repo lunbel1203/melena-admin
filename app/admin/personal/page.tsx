@@ -21,19 +21,15 @@ function ChevronIcon() {
   );
 }
 
-type FilterTab = "Todas" | "Estilistas" | "Recepción" | "Caja";
-const tabs: FilterTab[] = ["Todas", "Estilistas", "Recepción", "Caja"];
-const rolFilter: Record<FilterTab, string | null> = {
-  Todas: null,
-  Estilistas: "Estilista",
-  Recepción: "Recepción",
-  Caja: "Caja",
-};
+// Pestañas: "Todas" y un filtro por cada rol (una empleada puede tener varios)
+const TODAS = "Todas";
 
 interface Empleado {
   id: string;
   nombre: string;
   rolNombre: string;
+  /** Todos sus roles (principal y adicionales) */
+  rolesNombres: string[];
   puesto: string | null;
   activo: boolean;
   foto_url: string | null;
@@ -57,7 +53,8 @@ const formatoRD = new Intl.NumberFormat("es-DO", { style: "currency", currency: 
 
 export default function PersonalPage() {
   const supabase = useMemo(() => createClient(), []);
-  const [activeTab, setActiveTab] = useState<FilterTab>("Todas");
+  const [activeTab, setActiveTab] = useState<string>(TODAS);
+  const [rolesLista, setRolesLista] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [filtroCuenta, setFiltroCuenta] = useState<FiltroCuenta>("Todas");
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
@@ -71,8 +68,8 @@ export default function PersonalPage() {
       inicioMes.setHours(0, 0, 0, 0);
       const inicioMesISO = inicioMes.toISOString();
 
-      const [{ data: emps }, { data: lineas }, { data: comisiones }, { data: permisosRol }] = await Promise.all([
-        supabase.from("empleados").select("id, nombre, puesto, activo, foto_url, user_id, rol_id, roles(nombre, es_admin_total)").order("nombre"),
+      const [{ data: emps }, { data: lineas }, { data: comisiones }, { data: permisosRol }, { data: rolesData }] = await Promise.all([
+        supabase.from("empleados").select("id, nombre, puesto, activo, foto_url, user_id, rol_id, roles(nombre, es_admin_total), empleados_roles(rol_id, roles(nombre, es_admin_total))").order("nombre"),
         supabase
           .from("lineas_factura")
           .select("empleado_id, subtotal, tipo, facturas!inner(estado, cobrada_at)")
@@ -80,7 +77,9 @@ export default function PersonalPage() {
           .gte("facturas.cobrada_at", inicioMesISO),
         supabase.from("comisiones").select("empleado_id, monto").gte("created_at", inicioMesISO),
         supabase.from("rol_permisos").select("rol_id, permiso_clave").in("permiso_clave", ["acceso.app_movil", "acceso.panel_admin"]),
+        supabase.from("roles").select("nombre").order("nombre"),
       ]);
+      setRolesLista((rolesData ?? []).map((r) => r.nombre));
 
       // plataformas que permite cada rol (el admin total entra a todo)
       const accesoPorRol = new Map<string, Set<string>>();
@@ -105,18 +104,25 @@ export default function PersonalPage() {
 
       setEmpleados(
         (emps ?? []).map((e) => {
-          const rol = Array.isArray(e.roles) ? e.roles[0] : e.roles;
-          const acceso = accesoPorRol.get(e.rol_id);
+          const uno = <T,>(x: T | T[] | null) => (Array.isArray(x) ? x[0] : x);
+          const principal = uno(e.roles);
+          const extras = (e.empleados_roles ?? []).map((r) => ({ rol_id: r.rol_id, rol: uno(r.roles) }));
+          // todos sus roles: el principal primero y luego los adicionales
+          const todos = [{ rol_id: e.rol_id, rol: principal }, ...extras.filter((x) => x.rol_id !== e.rol_id)];
+          const permisos = new Set<string>();
+          todos.forEach((x) => accesoPorRol.get(x.rol_id)?.forEach((c) => permisos.add(c)));
+          const admin = todos.some((x) => x.rol?.es_admin_total);
           return {
             id: e.id,
             nombre: e.nombre,
             puesto: e.puesto,
             activo: e.activo,
             foto_url: e.foto_url,
-            rolNombre: rol?.nombre ?? "",
+            rolNombre: todos.map((x) => x.rol?.nombre).filter(Boolean).join(" · "),
+            rolesNombres: todos.map((x) => x.rol?.nombre).filter((n): n is string => !!n),
             tieneCuenta: !!e.user_id,
-            accesoApp: !!rol?.es_admin_total || !!acceso?.has("acceso.app_movil"),
-            accesoPanel: !!rol?.es_admin_total || !!acceso?.has("acceso.panel_admin"),
+            accesoApp: admin || permisos.has("acceso.app_movil"),
+            accesoPanel: admin || permisos.has("acceso.panel_admin"),
           };
         })
       );
@@ -126,7 +132,7 @@ export default function PersonalPage() {
   }, [supabase]);
 
   const filtered = empleados.filter((e) => {
-    const matchTab = rolFilter[activeTab] === null || e.rolNombre === rolFilter[activeTab];
+    const matchTab = activeTab === TODAS || e.rolesNombres.includes(activeTab);
     const matchSearch = e.nombre.toLowerCase().includes(search.toLowerCase());
     const matchCuenta = filtroCuenta === "Todas" || (filtroCuenta === "Con cuenta" ? e.tieneCuenta : !e.tieneCuenta);
     return matchTab && matchSearch && matchCuenta;
@@ -148,7 +154,7 @@ export default function PersonalPage() {
         <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 mr-auto">Personal</h1>
 
         <div className="flex items-center bg-zinc-100 rounded-xl p-1">
-          {tabs.map((t) => (
+          {[TODAS, ...rolesLista].map((t) => (
             <button
               key={t}
               onClick={() => setActiveTab(t)}
@@ -224,8 +230,7 @@ export default function PersonalPage() {
         ) : (
           filtered.map((e) => {
             const s = stats.get(e.id);
-            const esEstilista = e.rolNombre === "Estilista";
-            return (
+                        return (
               <Link
                 key={e.id}
                 href={`/admin/personal/${e.id}`}
@@ -251,7 +256,7 @@ export default function PersonalPage() {
                 </span>
 
                 <span className="hidden sm:block text-sm text-zinc-700">
-                  {esEstilista ? s?.servicios ?? 0 : "—"}
+                  {s && s.servicios > 0 ? s.servicios : "—"}
                 </span>
 
                 <span className="hidden sm:block text-sm text-zinc-700">

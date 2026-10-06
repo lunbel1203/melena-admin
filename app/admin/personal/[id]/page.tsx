@@ -104,18 +104,29 @@ export default function PerfilEmpleadaPage({ params }: { params: Promise<{ id: s
   async function cargar() {
     const { data: empRaw } = await supabase
       .from("empleados")
-      .select("*, roles(nombre, es_admin_total)")
+      .select("*, roles(nombre, es_admin_total), empleados_roles(rol_id, roles(nombre, es_admin_total))")
       .eq("id", id)
       .single();
     if (!empRaw) return setCargando(false);
-    const rol = Array.isArray(empRaw.roles) ? empRaw.roles[0] : empRaw.roles;
-    const emp: Empleado = { ...empRaw, rolNombre: rol?.nombre ?? "", esAdminTotal: rol?.es_admin_total ?? false };
+    // todos sus roles: el principal primero y luego los adicionales
+    const uno = <T,>(x: T | T[] | null) => (Array.isArray(x) ? x[0] : x);
+    const principal = uno(empRaw.roles);
+    const roles = [
+      { rol_id: empRaw.rol_id, rol: principal },
+      ...(empRaw.empleados_roles ?? []).filter((x) => x.rol_id !== empRaw.rol_id).map((x) => ({ rol_id: x.rol_id, rol: uno(x.roles) })),
+    ];
+    const rolIds = roles.map((x) => x.rol_id);
+    const emp: Empleado = {
+      ...empRaw,
+      rolNombre: roles.map((x) => x.rol?.nombre).filter(Boolean).join(" · "),
+      esAdminTotal: roles.some((x) => x.rol?.es_admin_total),
+    };
     setEmpleado(emp);
 
     if (emp.esAdminTotal) {
       setAcceso({ app: true, panel: true });
     } else {
-      const { data: plat } = await supabase.from("rol_permisos").select("permiso_clave").eq("rol_id", emp.rol_id).in("permiso_clave", ["acceso.app_movil", "acceso.panel_admin"]);
+      const { data: plat } = await supabase.from("rol_permisos").select("permiso_clave").in("rol_id", rolIds).in("permiso_clave", ["acceso.app_movil", "acceso.panel_admin"]);
       const claves = new Set((plat ?? []).map((p) => p.permiso_clave));
       setAcceso({ app: claves.has("acceso.app_movil"), panel: claves.has("acceso.panel_admin") });
     }
@@ -135,7 +146,7 @@ export default function PerfilEmpleadaPage({ params }: { params: Promise<{ id: s
         : supabase
             .from("rol_permisos")
             .select("permiso_clave")
-            .eq("rol_id", emp.rol_id)
+            .in("rol_id", rolIds)
             .in("permiso_clave", ["reportes.ver", "depositos.verificar"])
             .then((res) => ({ data: (res.data ?? []).map((p) => p.permiso_clave) })),
       supabase

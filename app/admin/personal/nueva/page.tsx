@@ -35,9 +35,12 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 const DESCRIPCION_ROL: Record<string, string> = {
-  Estilista: "Realiza servicios de extensiones",
-  Recepción: "Gestiona citas y atención al cliente",
-  Caja: "Manejo de pagos y depósitos",
+  Cajera: "Cobra, valida depósitos y maneja la agenda",
+  "Asesora Capilar": "Asesora y vende a las clientas",
+  "Gestora de citas": "Gestiona la agenda y las clientas",
+  "Taller de costura": "Costura profesional de extensiones",
+  Shamponier: "Lava la cabeza y las extensiones",
+  "Sala de postura": "Instala y mantiene extensiones",
   Admin: "Acceso total al panel, sin restricciones",
 };
 
@@ -62,7 +65,7 @@ export default function NuevaEmpleadaPage() {
   const [telefono, setTelefono] = useState("");
   const [correo, setCorreo] = useState("");
   const [puesto, setPuesto] = useState("");
-  const [rolId, setRolId] = useState<string | null>(null);
+  const [rolIds, setRolIds] = useState<string[]>([]);
   const [roles, setRoles] = useState<Rol[]>([]);
   const [servicios, setServicios] = useState<Servicio[]>([]);
   const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
@@ -102,8 +105,13 @@ export default function NuevaEmpleadaPage() {
     });
   }
 
+  // Puede tener varios roles; el primero que marca es el principal (el que se muestra y define la comisión base)
+  function alternarRol(id: string) {
+    setRolIds((prev) => (prev.includes(id) ? (prev.length > 1 ? prev.filter((r) => r !== id) : prev) : [...prev, id]));
+  }
+
   async function crear() {
-    if (!nombre.trim() || !rolId) {
+    if (!nombre.trim() || rolIds.length === 0) {
       return setError("Falta el nombre o el rol.");
     }
     setGuardando(true);
@@ -116,7 +124,7 @@ export default function NuevaEmpleadaPage() {
         telefono: telefono.trim() || null,
         email: correo.trim() || null,
         puesto: puesto.trim() || null,
-        rol_id: rolId,
+        rol_id: rolIds[0],
         porcentaje_comision: comision.trim() ? Number(comision) : null,
       })
       .select("id")
@@ -125,6 +133,14 @@ export default function NuevaEmpleadaPage() {
     if (insError || !nuevo) {
       setGuardando(false);
       return setError(insError?.message ?? "No se pudo crear la empleada.");
+    }
+
+    const { error: rolesError } = await supabase
+      .from("empleados_roles")
+      .insert(rolIds.map((rol_id) => ({ empleado_id: nuevo.id, rol_id })));
+    if (rolesError) {
+      setGuardando(false);
+      return setError(rolesError.message);
     }
 
     if (seleccionados.size > 0) {
@@ -220,20 +236,29 @@ export default function NuevaEmpleadaPage() {
           </div>
 
           <div className="bg-white rounded-2xl border border-zinc-200 p-5">
-            <SectionLabel>2 · Rol</SectionLabel>
+            <SectionLabel>2 · Roles (puede tener varios)</SectionLabel>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-              {roles.map((r) => (
-                <button
-                  key={r.id}
-                  onClick={() => setRolId(r.id)}
-                  className={`text-left px-4 py-3.5 rounded-xl border-2 transition-all ${
-                    rolId === r.id ? "border-zinc-900 bg-white" : "border-zinc-100 hover:border-zinc-200"
-                  }`}
-                >
-                  <p className="text-sm font-semibold text-zinc-900">{r.nombre}</p>
-                  <p className="text-xs text-zinc-400 mt-0.5">{DESCRIPCION_ROL[r.nombre] ?? "Rol personalizado"}</p>
-                </button>
-              ))}
+              {roles.map((r) => {
+                const on = rolIds.includes(r.id);
+                return (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => alternarRol(r.id)}
+                    className={`text-left px-4 py-3.5 rounded-xl border-2 transition-all ${
+                      on ? "border-zinc-900 bg-white" : "border-zinc-100 hover:border-zinc-200"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-zinc-900">{r.nombre}</p>
+                      {on && rolIds[0] === r.id && rolIds.length > 1 && (
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Principal</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-zinc-400 mt-0.5">{DESCRIPCION_ROL[r.nombre] ?? "Rol personalizado"}</p>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -333,7 +358,7 @@ export default function NuevaEmpleadaPage() {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-zinc-500">Rol</span>
-                  <span className="font-semibold text-zinc-900">{roles.find((r) => r.id === rolId)?.nombre ?? "—"}</span>
+                  <span className="font-semibold text-zinc-900">{rolIds.map((id) => roles.find((r) => r.id === id)?.nombre).filter(Boolean).join(" · ") || "—"}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-zinc-500">Comisión</span>
