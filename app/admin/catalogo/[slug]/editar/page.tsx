@@ -35,7 +35,7 @@ function Toggle({ value, onChange }: { value: boolean; onChange: () => void }) {
   );
 }
 
-const categoriasServicio = ["Instalación", "Express", "Mantenimiento"];
+const categoriasServicio = ["Instalación", "Express", "Mantenimiento", "Taller de costura"];
 
 interface ServicioRow {
   id: string;

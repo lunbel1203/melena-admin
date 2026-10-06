@@ -20,6 +20,7 @@ const categorias = [
   { id: "Instalación",   desc: "Servicio de extensiones completo" },
   { id: "Express",       desc: "Servicio rápido, menos de 1 hora" },
   { id: "Mantenimiento", desc: "Retoque, retiro o cuidado" },
+  { id: "Taller de costura", desc: "Trabajo de máquina o a mano en el taller" },
 ];
 
 interface Estilista {
@@ -154,7 +155,7 @@ export default function NuevoServicioPage() {
 
           <div className="bg-white rounded-2xl border border-zinc-200 p-5">
             <SectionLabel>2 · Categoría</SectionLabel>
-            <div className="grid grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
               {categorias.map((c) => (
                 <button key={c.id} onClick={() => setCategoria(c.id)}
                   className={`text-left px-4 py-3.5 rounded-xl border-2 transition-all ${categoria === c.id ? "border-zinc-900" : "border-zinc-100 hover:border-zinc-200"}`}>
