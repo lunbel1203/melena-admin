@@ -10,7 +10,6 @@ const secciones = [
   { href: "/admin/pagina-web/secciones", label: "Servicios y catálogo" },
   { href: "/admin/pagina-web/contacto", label: "Contacto y horarios" },
   { href: "/admin/pagina-web/marca-menu", label: "Marca y menú" },
-  { href: "/admin/pagina-web/app", label: "Imagen de la app" },
   { href: "/admin/pagina-web/footer-seo", label: "Footer y buscadores" },
 ];
 
@@ -22,7 +21,7 @@ export default function PaginaWebLayout({ children }: { children: React.ReactNod
       <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900">Página web</h1>
         <p className="text-sm text-zinc-400 mt-1">
-          Contenido del sitio público y de la app · los productos y servicios se editan en Catálogo e Inventario
+          Contenido del sitio público · los productos y servicios se editan en Catálogo e Inventario
         </p>
       </div>
 

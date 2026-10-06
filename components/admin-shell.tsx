@@ -17,7 +17,7 @@ function MenuIcon() {
 // "seguridad" no está acá a propósito: se controla aparte, solo por esAdmin (no delegable).
 const MODULOS_CONTROLADOS = new Set([
   "resumen", "agenda", "clientas", "depositos", "personal",
-  "catalogo", "proveedores", "facturacion", "reportes", "configuracion", "pagina_web",
+  "catalogo", "proveedores", "facturacion", "reportes", "configuracion", "pagina_web", "app_movil",
 ]);
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {

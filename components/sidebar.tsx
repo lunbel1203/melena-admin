@@ -113,6 +113,15 @@ function ShieldIcon() {
   );
 }
 
+function PhoneIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="1.5" width="8" height="13" rx="1.8" />
+      <path d="M7 12.2h2" />
+    </svg>
+  );
+}
+
 function GlobeIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -133,6 +142,7 @@ const navItems = [
   { name: "Facturación", href: "/admin/facturacion", icon: ReceiptIcon,  modulo: "facturacion" },
   { name: "Reportes",    href: "/admin/reportes",    icon: ChartIcon,    modulo: "reportes" },
   { name: "Página web", href: "/admin/pagina-web", icon: GlobeIcon, modulo: "pagina_web" },
+  { name: "App móvil", href: "/admin/app-movil", icon: PhoneIcon, modulo: "app_movil" },
   { name: "Configuración", href: "/admin/configuracion", icon: GearIcon, modulo: "configuracion" },
 ];
 

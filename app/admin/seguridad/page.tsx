@@ -34,6 +34,7 @@ const MODULOS: { modulo: string; etiqueta: string }[] = [
   { modulo: "reportes", etiqueta: "Reportes" },
   { modulo: "configuracion", etiqueta: "Configuración" },
   { modulo: "pagina_web", etiqueta: "Página web" },
+  { modulo: "app_movil", etiqueta: "App móvil" },
 ];
 
 function clave(rolId: string, permisoClave: string) {
