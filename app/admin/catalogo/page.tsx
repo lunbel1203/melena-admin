@@ -54,7 +54,9 @@ interface Servicio {
   deposito_requerido: boolean;
   deposito_monto: number | null;
   activo: boolean;
+  mostrar_en_web: boolean;
   quienLoOfrece: string;
+  quienes: string[];
 }
 
 function formatPrecio(n: number) {
@@ -71,12 +73,46 @@ const categoryBadge = "bg-zinc-100 text-zinc-600 border border-zinc-200";
 
 type Tab = "productos" | "servicios";
 
+/** Lista desplegable de filtro con su etiqueta; resaltada cuando está activa */
+function Filtro({ label, value, onChange, opciones }: { label: string; value: string; onChange: (v: string) => void; opciones: { valor: string; texto: string }[] }) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      aria-label={label}
+      className={`py-2 pl-3 pr-8 text-sm border rounded-xl bg-white focus:outline-none focus:border-zinc-400 ${value ? "border-zinc-900 text-zinc-900 font-medium" : "border-zinc-200 text-zinc-500"}`}
+    >
+      <option value="">{label}</option>
+      {opciones.map((o) => (
+        <option key={o.valor} value={o.valor}>{o.texto}</option>
+      ))}
+    </select>
+  );
+}
+
+const unicos = (xs: (string | null | undefined)[]) =>
+  [...new Set(xs.filter((x): x is string => !!x))].sort((a, b) => a.localeCompare(b, "es")).map((x) => ({ valor: x, texto: x }));
+
 export default function CatalogoPage() {
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("productos");
   const [searchP, setSearchP] = useState("");
   const [searchS, setSearchS] = useState("");
+  // filtros de productos
+  const [fpCategoria, setFpCategoria] = useState("");
+  const [fpTipo, setFpTipo] = useState("");
+  const [fpColor, setFpColor] = useState("");
+  const [fpLargo, setFpLargo] = useState("");
+  const [fpStock, setFpStock] = useState("");
+  const [fpEstado, setFpEstado] = useState("");
+  // filtros de servicios
+  const [fsCategoria, setFsCategoria] = useState("");
+  const [fsDuracion, setFsDuracion] = useState("");
+  const [fsDeposito, setFsDeposito] = useState("");
+  const [fsVisible, setFsVisible] = useState("");
+  const [fsEstado, setFsEstado] = useState("");
+  const [fsQuien, setFsQuien] = useState("");
   const [productos, setProductos] = useState<Producto[]>([]);
   const [servicios, setServicios] = useState<Servicio[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -92,7 +128,7 @@ export default function CatalogoPage() {
         .order("nombre"),
       supabase
         .from("servicios")
-        .select("id, slug, nombre, categoria, duracion_minutos, precio, deposito_requerido, deposito_monto, activo")
+        .select("id, slug, nombre, categoria, duracion_minutos, precio, deposito_requerido, deposito_monto, activo, mostrar_en_web")
         .order("nombre"),
       supabase.from("servicios_empleados").select("servicio_id, empleados(nombre)"),
     ]);
@@ -111,6 +147,7 @@ export default function CatalogoPage() {
       (serv ?? []).map((s) => ({
         ...s,
         quienLoOfrece: staffPorServicio.get(s.id)?.join(" · ") || "Todas",
+        quienes: staffPorServicio.get(s.id) ?? [],
       })),
     );
 
@@ -164,8 +201,30 @@ export default function CatalogoPage() {
     cargar();
   }
 
-  const filteredProducts = productos.filter((p) => p.nombre.toLowerCase().includes(searchP.toLowerCase()));
-  const filteredServices = servicios.filter((s) => s.nombre.toLowerCase().includes(searchS.toLowerCase()));
+  const filteredProducts = productos.filter(
+    (p) =>
+      p.nombre.toLowerCase().includes(searchP.toLowerCase()) &&
+      (!fpCategoria || p.categoria === fpCategoria) &&
+      (!fpTipo || p.tipo_cabello === fpTipo) &&
+      (!fpColor || p.color === fpColor) &&
+      (!fpLargo || String(p.largo_pulgadas) === fpLargo) &&
+      (!fpEstado || (fpEstado === "activo" ? p.activo : !p.activo)) &&
+      (!fpStock ||
+        (fpStock === "agotado" ? p.stock <= 0 : fpStock === "bajo" ? p.stock > 0 && p.stock <= p.stock_minimo : p.stock > p.stock_minimo)),
+  );
+  const duracionDe = (m: number) => (m <= 30 ? "corto" : m <= 60 ? "medio" : m <= 120 ? "largo" : "muylargo");
+  const filteredServices = servicios.filter(
+    (s) =>
+      s.nombre.toLowerCase().includes(searchS.toLowerCase()) &&
+      (!fsCategoria || (fsCategoria === "_sin" ? !s.categoria : s.categoria === fsCategoria)) &&
+      (!fsDuracion || duracionDe(s.duracion_minutos) === fsDuracion) &&
+      (!fsDeposito || (fsDeposito === "con" ? s.deposito_requerido : !s.deposito_requerido)) &&
+      (!fsVisible || (fsVisible === "web" ? s.mostrar_en_web : !s.mostrar_en_web)) &&
+      (!fsEstado || (fsEstado === "activo" ? s.activo : !s.activo)) &&
+      (!fsQuien || (fsQuien === "_todas" ? s.quienes.length === 0 : s.quienes.includes(fsQuien))),
+  );
+  const filtrosP = [fpCategoria, fpTipo, fpColor, fpLargo, fpStock, fpEstado].some(Boolean);
+  const filtrosS = [fsCategoria, fsDuracion, fsDeposito, fsVisible, fsEstado, fsQuien].some(Boolean);
   const stockLowCount = productos.filter((p) => p.stock <= p.stock_minimo).length;
 
   return (
@@ -224,6 +283,29 @@ export default function CatalogoPage() {
             </Link>
           </div>
 
+          {/* Filtros */}
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
+            <Filtro label="Categoría" value={fpCategoria} onChange={setFpCategoria} opciones={unicos(productos.map((p) => p.categoria))} />
+            <Filtro label="Tipo de cabello" value={fpTipo} onChange={setFpTipo} opciones={unicos(productos.map((p) => p.tipo_cabello))} />
+            <Filtro label="Color" value={fpColor} onChange={setFpColor} opciones={unicos(productos.map((p) => p.color))} />
+            <Filtro
+              label="Largo"
+              value={fpLargo}
+              onChange={setFpLargo}
+              opciones={[...new Set(productos.map((p) => p.largo_pulgadas).filter((l): l is number => l !== null))].sort((a, b) => a - b).map((l) => ({ valor: String(l), texto: `${l}"` }))}
+            />
+            <Filtro label="Stock" value={fpStock} onChange={setFpStock} opciones={[{ valor: "bajo", texto: "Stock bajo" }, { valor: "agotado", texto: "Agotado" }, { valor: "ok", texto: "Stock suficiente" }]} />
+            <Filtro label="Estado" value={fpEstado} onChange={setFpEstado} opciones={[{ valor: "activo", texto: "Publicado" }, { valor: "inactivo", texto: "Inactivo" }]} />
+            {filtrosP && (
+              <button
+                onClick={() => { setFpCategoria(""); setFpTipo(""); setFpColor(""); setFpLargo(""); setFpStock(""); setFpEstado(""); }}
+                className="text-xs font-semibold text-zinc-500 hover:text-zinc-900 px-2"
+              >
+                Limpiar filtros · {filteredProducts.length} de {productos.length}
+              </button>
+            )}
+          </div>
+
           {/* Tabla productos */}
           <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm overflow-hidden">
             <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_1fr_1.4fr_1fr_72px] gap-x-4 px-5 sm:px-6 py-3 border-b border-zinc-100">
@@ -234,7 +316,7 @@ export default function CatalogoPage() {
 
             {filteredProducts.length === 0 && (
               <p className="px-6 py-10 text-sm text-zinc-400 text-center">
-                {productos.length === 0 ? "Todavía no has publicado productos." : "Ningún producto coincide con la búsqueda."}
+                {productos.length === 0 ? "Todavía no has publicado productos." : "Ningún producto coincide con la búsqueda o los filtros."}
               </p>
             )}
 
@@ -336,6 +418,34 @@ export default function CatalogoPage() {
             </Link>
           </div>
 
+          {/* Filtros */}
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
+            <Filtro label="Categoría" value={fsCategoria} onChange={setFsCategoria} opciones={[...unicos(servicios.map((s) => s.categoria)), { valor: "_sin", texto: "Sin categoría" }]} />
+            <Filtro
+              label="Duración"
+              value={fsDuracion}
+              onChange={setFsDuracion}
+              opciones={[{ valor: "corto", texto: "Hasta 30 min" }, { valor: "medio", texto: "31 a 60 min" }, { valor: "largo", texto: "1 a 2 horas" }, { valor: "muylargo", texto: "Más de 2 horas" }]}
+            />
+            <Filtro label="Depósito" value={fsDeposito} onChange={setFsDeposito} opciones={[{ valor: "con", texto: "Con depósito" }, { valor: "sin", texto: "Sin depósito" }]} />
+            <Filtro label="Visibilidad" value={fsVisible} onChange={setFsVisible} opciones={[{ valor: "web", texto: "Visible en web y app" }, { valor: "salon", texto: "Solo salón (sin cita)" }]} />
+            <Filtro
+              label="Quién lo ofrece"
+              value={fsQuien}
+              onChange={setFsQuien}
+              opciones={[{ valor: "_todas", texto: "Cualquiera (sin asignar)" }, ...unicos(servicios.flatMap((s) => s.quienes))]}
+            />
+            <Filtro label="Estado" value={fsEstado} onChange={setFsEstado} opciones={[{ valor: "activo", texto: "Publicado" }, { valor: "inactivo", texto: "Inactivo" }]} />
+            {filtrosS && (
+              <button
+                onClick={() => { setFsCategoria(""); setFsDuracion(""); setFsDeposito(""); setFsVisible(""); setFsEstado(""); setFsQuien(""); }}
+                className="text-xs font-semibold text-zinc-500 hover:text-zinc-900 px-2"
+              >
+                Limpiar filtros · {filteredServices.length} de {servicios.length}
+              </button>
+            )}
+          </div>
+
           {/* Tabla servicios */}
           <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm overflow-hidden">
             <div className="hidden sm:grid grid-cols-[2fr_1.1fr_1fr_1fr_1fr_1fr_72px] gap-x-4 px-5 sm:px-6 py-3 border-b border-zinc-100">
@@ -346,7 +456,7 @@ export default function CatalogoPage() {
 
             {filteredServices.length === 0 && (
               <p className="px-6 py-10 text-sm text-zinc-400 text-center">
-                {servicios.length === 0 ? "Todavía no has publicado servicios." : "Ningún servicio coincide con la búsqueda."}
+                {servicios.length === 0 ? "Todavía no has publicado servicios." : "Ningún servicio coincide con la búsqueda o los filtros."}
               </p>
             )}
 
