@@ -654,42 +654,48 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
                 <span className="text-zinc-800 font-medium">{money(Number(factura.subtotal))}</span>
               </div>
               {(Number(factura.descuento) > 0 || (abierta && puedeDescuento)) && (
-                <div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-zinc-500">Descuento</span>
-                    {abierta && puedeDescuento && (
-                      <div className="flex items-center gap-1.5 ml-auto print:hidden">
-                        <input
-                          type="number"
-                          min={0}
-                          step="any"
-                          value={descValor}
-                          onChange={(e) => setDescValor(e.target.value)}
-                          onBlur={() => guardarDescuento(descTipo, descValor)}
-                          onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-                          disabled={procesando}
-                          placeholder="0"
-                          aria-label="Descuento"
-                          className="w-20 px-2 py-1 text-sm text-right bg-zinc-50 border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400"
-                        />
-                        <select
-                          value={descTipo}
-                          onChange={(e) => {
-                            const t = e.target.value as "monto" | "porcentaje";
-                            setDescTipo(t);
-                            guardarDescuento(t, descValor);
-                          }}
-                          disabled={procesando}
-                          aria-label="Tipo de descuento"
-                          className="px-1.5 py-1 text-sm bg-zinc-50 border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400"
-                        >
-                          <option value="monto">RD$</option>
-                          <option value="porcentaje">%</option>
-                        </select>
-                      </div>
-                    )}
-                    <span className="text-green-700 font-medium min-w-[72px] text-right">− {money(Number(factura.descuento))}</span>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-zinc-500">
+                      Descuento
+                      {factura.descuento_tipo === "porcentaje" && Number(factura.descuento_valor) > 0 ? ` (${Number(factura.descuento_valor)}%)` : ""}
+                    </span>
+                    <span className={`font-semibold ${Number(factura.descuento) > 0 ? "text-green-700" : "text-zinc-400"}`}>
+                      {Number(factura.descuento) > 0 ? "− " : ""}
+                      {money(Number(factura.descuento))}
+                    </span>
                   </div>
+                  {abierta && puedeDescuento && (
+                    <div className="flex items-center gap-2 print:hidden">
+                      <input
+                        type="number"
+                        min={0}
+                        step="any"
+                        value={descValor}
+                        onChange={(e) => setDescValor(e.target.value)}
+                        onBlur={() => guardarDescuento(descTipo, descValor)}
+                        onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+                        disabled={procesando}
+                        placeholder="Escribe el descuento"
+                        aria-label="Descuento"
+                        className="flex-1 min-w-0 px-3 py-2 text-sm bg-zinc-50 border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400"
+                      />
+                      <select
+                        value={descTipo}
+                        onChange={(e) => {
+                          const t = e.target.value as "monto" | "porcentaje";
+                          setDescTipo(t);
+                          guardarDescuento(t, descValor);
+                        }}
+                        disabled={procesando}
+                        aria-label="Tipo de descuento"
+                        className="shrink-0 px-2 py-2 text-sm bg-zinc-50 border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400"
+                      >
+                        <option value="monto">RD$</option>
+                        <option value="porcentaje">%</option>
+                      </select>
+                    </div>
+                  )}
                 </div>
               )}
               {clienta && registroApp && (
