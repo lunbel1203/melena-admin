@@ -35,3 +35,27 @@ export async function recortarImagen(
   if (blob.size > maxBytes) throw new Error("No se logró comprimir la imagen al peso pedido. Prueba con una foto con menos ruido o detalle.");
   return { blob, ancho: outAncho, alto: outAlto };
 }
+
+/** Reduce una foto sin recortarla: lado mayor a `maxLado` px y JPEG bajando la calidad hasta `maxBytes`. */
+export async function reducirImagen(file: File, { maxLado = 1200, maxBytes = 300 * 1024 } = {}): Promise<Blob> {
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type)) throw new Error("Usa una imagen JPG, PNG o WebP.");
+  if (file.size > 25 * 1024 * 1024) throw new Error("La imagen pesa más de 25 MB. Usa una más liviana.");
+  const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
+  const escala = Math.min(1, maxLado / Math.max(bmp.width, bmp.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bmp.width * escala);
+  canvas.height = Math.round(bmp.height * escala);
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Tu navegador no pudo procesar la imagen.");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+  let calidad = 0.9;
+  let blob = await aBlob(canvas, calidad);
+  while (blob.size > maxBytes && calidad > 0.5) {
+    calidad -= 0.05;
+    blob = await aBlob(canvas, calidad);
+  }
+  return blob;
+}

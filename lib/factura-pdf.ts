@@ -8,6 +8,8 @@ export interface DatosFacturaPdf {
   cobradaAt: string | null;
   metodoPago: string | null;
   subtotal: number;
+  /** Descuento aplicado (RD$), antes del ITBIS */
+  descuento?: number;
   itbis: number;
   itbisPorcentaje: number;
   depositoAplicado: number;
@@ -172,9 +174,11 @@ export function generarFacturaPdf(d: DatosFacturaPdf) {
   y = (docAny.lastAutoTable?.finalY ?? y) + 8;
 
   // ── Totales (a la derecha)
-  const totalBruto = d.subtotal + d.itbis;
+  const descuento = d.descuento ?? 0;
+  const totalBruto = d.subtotal - descuento + d.itbis;
   const filasTotales: [string, string, boolean?][] = [
     ["Subtotal", dinero(d.subtotal)],
+    ...(descuento > 0 ? ([["Descuento", `- ${dinero(descuento)}`]] as [string, string][]) : []),
     [`ITBIS (${d.itbisPorcentaje}%)`, dinero(d.itbis)],
     ["Total de la factura", dinero(totalBruto)],
   ];

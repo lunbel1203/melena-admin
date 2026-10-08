@@ -32,6 +32,41 @@ export type Database = {
         }
         Relationships: []
       }
+      categoria_colores: {
+        Row: {
+          categoria_id: string
+          created_at: string
+          foto_url: string | null
+          id: string
+          nombre: string
+          orden: number
+        }
+        Insert: {
+          categoria_id: string
+          created_at?: string
+          foto_url?: string | null
+          id?: string
+          nombre: string
+          orden?: number
+        }
+        Update: {
+          categoria_id?: string
+          created_at?: string
+          foto_url?: string | null
+          id?: string
+          nombre?: string
+          orden?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "categoria_colores_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "categorias_productos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categorias_productos: {
         Row: {
           activo: boolean
@@ -687,6 +722,9 @@ export type Database = {
           cobrada_por: string | null
           created_at: string
           deposito_aplicado: number
+          descuento: number
+          descuento_tipo: string
+          descuento_valor: number
           estado: Database["public"]["Enums"]["estado_factura"]
           id: string
           itbis: number
@@ -702,6 +740,9 @@ export type Database = {
           cobrada_por?: string | null
           created_at?: string
           deposito_aplicado?: number
+          descuento?: number
+          descuento_tipo?: string
+          descuento_valor?: number
           estado?: Database["public"]["Enums"]["estado_factura"]
           id?: string
           itbis?: number
@@ -717,6 +758,9 @@ export type Database = {
           cobrada_por?: string | null
           created_at?: string
           deposito_aplicado?: number
+          descuento?: number
+          descuento_tipo?: string
+          descuento_valor?: number
           estado?: Database["public"]["Enums"]["estado_factura"]
           id?: string
           itbis?: number
@@ -1669,6 +1713,14 @@ export type Database = {
           p_telefono: string
         }
         Returns: undefined
+      }
+      aplicar_descuento_factura: {
+        Args: { p_factura_id: string; p_tipo: string; p_valor: number }
+        Returns: undefined
+      }
+      registro_app_clienta: {
+        Args: { p_clienta_id: string }
+        Returns: { registrada: boolean; fecha: string | null }[]
       }
       app_imagen_bienvenida: { Args: never; Returns: string }
       agregar_linea_factura: {

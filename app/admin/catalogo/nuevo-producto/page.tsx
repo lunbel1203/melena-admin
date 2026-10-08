@@ -67,6 +67,7 @@ export default function NuevoProductoPage() {
   const [tipoCabello, setTipoCabello] = useState<"" | "virgin" | "remy">("");
   const [color, setColor] = useState("");
   const [largos, setLargos] = useState<number[]>([]);
+  const [coloresLinea, setColoresLinea] = useState<string[]>([]);
 
   const [precio, setPrecio] = useState("");
   const [costo, setCosto] = useState("");
@@ -93,6 +94,13 @@ export default function NuevoProductoPage() {
       setCategorias(cats ?? []);
     })();
   }, [supabase]);
+
+  // colores ya definidos para la línea elegida (sugerencias; se pueden escribir otros)
+  useEffect(() => {
+    const id = categoriaSeleccionada?.id;
+    if (!id || !categoriaSeleccionada?.es_cabello) return setColoresLinea([]);
+    supabase.from("categoria_colores").select("nombre").eq("categoria_id", id).order("orden").then(({ data }) => setColoresLinea((data ?? []).map((c) => c.nombre)));
+  }, [supabase, categoriaSeleccionada?.id, categoriaSeleccionada?.es_cabello]);
 
   function toggleLargo(l: number) {
     setLargos((prev) => (prev.includes(l) ? prev.filter((x) => x !== l) : [...prev, l]));
@@ -157,6 +165,11 @@ export default function NuevoProductoPage() {
         ];
 
     const { error: insertError } = await supabase.from("productos").insert(filas);
+
+    // un color nuevo entra a la lista de colores de la línea (si ya existe, se ignora)
+    if (!insertError && esCabello && color.trim() && categoriaSeleccionada && !coloresLinea.some((c) => c.toLowerCase() === color.trim().toLowerCase())) {
+      await supabase.from("categoria_colores").insert({ categoria_id: categoriaSeleccionada.id, nombre: color.trim(), orden: coloresLinea.length + 1 });
+    }
 
     if (insertError) {
       setEnviando(false);
@@ -276,8 +289,16 @@ export default function NuevoProductoPage() {
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-zinc-500 mb-1.5 block">Color</label>
-                  <input value={color} onChange={(e) => setColor(e.target.value)} placeholder="Rubio con raíz oscura"
+                  <input value={color} onChange={(e) => setColor(e.target.value)} placeholder="Rubio con raíz oscura" list="colores-linea"
                     className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-zinc-400 transition-colors" />
+                  <datalist id="colores-linea">
+                    {coloresLinea.map((c) => (
+                      <option key={c} value={c} />
+                    ))}
+                  </datalist>
+                  <p className="text-[11px] text-zinc-400 mt-1">
+                    Elige uno de los colores de la línea (así aparece con su foto) o escribe uno nuevo; los nuevos se agregan a la lista de colores.
+                  </p>
                 </div>
               </div>
 

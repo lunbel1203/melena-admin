@@ -47,6 +47,9 @@ type Factura = {
   itbis: number;
   total: number;
   deposito_aplicado: number;
+  descuento: number;
+  descuento_tipo: "monto" | "porcentaje";
+  descuento_valor: number;
   metodo_pago: MetodoPago | null;
   cobrada_at: string | null;
   created_at: string;
@@ -68,8 +71,20 @@ type Factura = {
 
 type Catalogo = { id: string; nombre: string; precio: number; detalle?: string; foto?: string | null };
 
+/** "Se registró hoy" · "5 días de registro" · "3 meses de registro" · "1 año y 2 meses de registro" */
+function tiempoDeRegistro(iso: string) {
+  const dias = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000));
+  if (dias === 0) return "se registró hoy";
+  if (dias < 60) return `${dias} ${dias === 1 ? "día" : "días"} de registro`;
+  const meses = Math.floor(dias / 30.44);
+  if (meses < 12) return `${meses} meses de registro`;
+  const anios = Math.floor(meses / 12);
+  const resto = meses % 12;
+  return `${anios} ${anios === 1 ? "año" : "años"}${resto ? ` y ${resto} ${resto === 1 ? "mes" : "meses"}` : ""} de registro`;
+}
+
 const FACTURA_SELECT = `
-  id, numero, estado, subtotal, itbis, total, deposito_aplicado, metodo_pago, cobrada_at, created_at,
+  id, numero, estado, subtotal, itbis, total, deposito_aplicado, descuento, descuento_tipo, descuento_valor, metodo_pago, cobrada_at, created_at,
   clientas ( id, nombre, telefono, email, notas, created_at ),
   cobrador:empleados!facturas_cobrada_por_fkey ( nombre ),
   lineas_factura ( id, tipo, descripcion, cantidad, precio_unitario, subtotal, porcentaje_comision, created_at, empleado_id,
@@ -151,6 +166,13 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
   // permiso de Seguridad: ver todos los servicios y registrarlos a nombre de otra persona
   const [puedeAgregarAOtros, setPuedeAgregarAOtros] = useState(false);
 
+  // descuento: permiso de Seguridad y lo que se digita (se guarda al salir del campo)
+  const [puedeDescuento, setPuedeDescuento] = useState(false);
+  const [descTipo, setDescTipo] = useState<"monto" | "porcentaje">("monto");
+  const [descValor, setDescValor] = useState("");
+  // si la clienta tiene cuenta en la app y desde cuándo
+  const [registroApp, setRegistroApp] = useState<{ registrada: boolean; fecha: string | null } | null>(null);
+
   const estilistaVisitaId = factura?.visitas?.estilista?.id ?? null;
 
   const cargar = useCallback(async () => {
@@ -167,6 +189,12 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
     setFactura(fac);
     if (cfg.data) setItbisPct(Number(cfg.data.itbis_porcentaje));
     if (fac.metodo_pago) setMetodoPago(fac.metodo_pago);
+    setDescTipo(fac.descuento_tipo);
+    setDescValor(Number(fac.descuento_valor) > 0 ? String(Number(fac.descuento_valor)) : "");
+    supabase.rpc("tiene_permiso", { p_clave: "facturacion.descuento" }).then(({ data }) => setPuedeDescuento(data === true));
+    if (fac.clientas) {
+      supabase.rpc("registro_app_clienta", { p_clienta_id: fac.clientas.id }).then(({ data }) => setRegistroApp(data?.[0] ?? null));
+    }
 
     if (fac.clientas) {
       const { data } = await supabase
@@ -227,6 +255,20 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
       setCantidad(1);
       await cargar();
     }
+    setProcesando(false);
+  }
+
+  async function guardarDescuento(tipo: "monto" | "porcentaje", texto: string) {
+    if (!factura) return;
+    const valor = Number(texto || 0);
+    if (!Number.isFinite(valor) || valor < 0) return avisar("Descuento inválido", "Escribe un número mayor o igual a 0.");
+    if (tipo === "porcentaje" && valor > 100) return avisar("Descuento inválido", "El porcentaje no puede pasar de 100.");
+    // sin cambios: no se llama a la base
+    if (tipo === factura.descuento_tipo && valor === Number(factura.descuento_valor)) return;
+    setProcesando(true);
+    const { error } = await supabase.rpc("aplicar_descuento_factura", { p_factura_id: factura.id, p_tipo: tipo, p_valor: valor });
+    if (error) await avisar("No se pudo aplicar el descuento", error.message);
+    else await cargar();
     setProcesando(false);
   }
 
@@ -336,6 +378,7 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
       cobradaAt: factura.cobrada_at,
       metodoPago: factura.metodo_pago,
       subtotal: Number(factura.subtotal),
+      descuento: Number(factura.descuento),
       itbis: Number(factura.itbis),
       itbisPorcentaje: Number(cfg?.itbis_porcentaje ?? itbisPct),
       depositoAplicado: Number(factura.deposito_aplicado),
@@ -610,6 +653,54 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
                 <span className="text-zinc-500">Subtotal</span>
                 <span className="text-zinc-800 font-medium">{money(Number(factura.subtotal))}</span>
               </div>
+              {(Number(factura.descuento) > 0 || (abierta && puedeDescuento)) && (
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-zinc-500">Descuento</span>
+                    {abierta && puedeDescuento && (
+                      <div className="flex items-center gap-1.5 ml-auto print:hidden">
+                        <input
+                          type="number"
+                          min={0}
+                          step="any"
+                          value={descValor}
+                          onChange={(e) => setDescValor(e.target.value)}
+                          onBlur={() => guardarDescuento(descTipo, descValor)}
+                          onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+                          disabled={procesando}
+                          placeholder="0"
+                          aria-label="Descuento"
+                          className="w-20 px-2 py-1 text-sm text-right bg-zinc-50 border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400"
+                        />
+                        <select
+                          value={descTipo}
+                          onChange={(e) => {
+                            const t = e.target.value as "monto" | "porcentaje";
+                            setDescTipo(t);
+                            guardarDescuento(t, descValor);
+                          }}
+                          disabled={procesando}
+                          aria-label="Tipo de descuento"
+                          className="px-1.5 py-1 text-sm bg-zinc-50 border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400"
+                        >
+                          <option value="monto">RD$</option>
+                          <option value="porcentaje">%</option>
+                        </select>
+                      </div>
+                    )}
+                    <span className="text-green-700 font-medium min-w-[72px] text-right">− {money(Number(factura.descuento))}</span>
+                  </div>
+                </div>
+              )}
+              {clienta && registroApp && (
+                <p className={`text-xs rounded-lg px-3 py-2 ${registroApp.registrada ? "bg-teal-50 text-teal-700" : "bg-zinc-50 text-zinc-400"}`}>
+                  {registroApp.registrada && registroApp.fecha
+                    ? `Se registró en la app el ${new Date(registroApp.fecha).toLocaleDateString("es-DO", { day: "numeric", month: "long", year: "numeric" })} · ${tiempoDeRegistro(registroApp.fecha)}`
+                    : registroApp.registrada
+                      ? "Registrada en la app"
+                      : "No está registrada en la app"}
+                </p>
+              )}
               <div className="flex justify-between">
                 <span className="text-zinc-500">Itbis {itbisPct}%</span>
                 <span className="text-zinc-800 font-medium">{money(Number(factura.itbis))}</span>
