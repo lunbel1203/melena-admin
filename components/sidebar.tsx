@@ -151,6 +151,8 @@ export default function Sidebar() {
   const supabase = useMemo(() => createClient(), []);
   const [usuario, setUsuario] = useState<{ nombre: string; rolNombre: string } | null>(null);
   const [esAdmin, setEsAdmin] = useState(false);
+  // solicitudes de cuenta de la app esperando respuesta (globito en Clientas)
+  const [solicitudes, setSolicitudes] = useState(0);
   const [modulosVisibles, setModulosVisibles] = useState<Set<string> | null>(null);
 
   useEffect(() => {
@@ -183,6 +185,11 @@ export default function Sidebar() {
       }
     })();
   }, [supabase]);
+
+  // se vuelve a contar al cambiar de pantalla (al resolver una solicitud el globito baja)
+  useEffect(() => {
+    supabase.from("solicitudes_cuenta").select("id", { count: "exact", head: true }).eq("estado", "pendiente").then(({ count }) => setSolicitudes(count ?? 0));
+  }, [supabase, pathname]);
 
   const itemsVisibles = modulosVisibles ? navItems.filter((item) => modulosVisibles.has(item.modulo)) : navItems;
 
@@ -220,6 +227,11 @@ export default function Sidebar() {
                     <Icon />
                   </span>
                   {name}
+                  {href === "/admin/clientas" && solicitudes > 0 && (
+                    <span className="ml-auto min-w-5 h-5 px-1.5 inline-flex items-center justify-center rounded-full bg-red-500 text-white text-[11px] font-bold">
+                      {solicitudes}
+                    </span>
+                  )}
                 </Link>
               </li>
             );

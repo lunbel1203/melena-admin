@@ -1383,6 +1383,53 @@ export type Database = {
         }
         Relationships: []
       }
+      solicitudes_cuenta: {
+        Row: {
+          clienta_id: string | null
+          created_at: string
+          email: string
+          estado: string
+          id: string
+          nombre: string
+          nota: string | null
+          resuelta_at: string | null
+          resuelta_por: string | null
+          telefono: string
+        }
+        Insert: {
+          clienta_id?: string | null
+          created_at?: string
+          email: string
+          estado?: string
+          id?: string
+          nombre: string
+          nota?: string | null
+          resuelta_at?: string | null
+          resuelta_por?: string | null
+          telefono: string
+        }
+        Update: {
+          clienta_id?: string | null
+          created_at?: string
+          email?: string
+          estado?: string
+          id?: string
+          nombre?: string
+          nota?: string | null
+          resuelta_at?: string | null
+          resuelta_por?: string | null
+          telefono?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solicitudes_cuenta_clienta_id_fkey"
+            columns: ["clienta_id"]
+            isOneToOne: false
+            referencedRelation: "clientas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       servicios: {
         Row: {
           activo: boolean
@@ -1721,6 +1768,35 @@ export type Database = {
       registro_app_clienta: {
         Args: { p_clienta_id: string }
         Returns: { registrada: boolean; fecha: string | null }[]
+      }
+      solicitar_cuenta_app: {
+        Args: { p_email: string; p_nombre: string; p_telefono: string }
+        Returns: undefined
+      }
+      listar_solicitudes_cuenta: {
+        Args: { p_estado?: string }
+        Returns: {
+          id: string
+          nombre: string
+          telefono: string
+          email: string
+          estado: string
+          nota: string | null
+          created_at: string
+          resuelta_at: string | null
+          clienta_id: string | null
+          clienta_nombre: string | null
+          clienta_telefono: string | null
+          clienta_email: string | null
+          clienta_tiene_cuenta: boolean | null
+          clienta_visitas: number | null
+          clienta_ultima_visita: string | null
+          coincide_por: string | null
+        }[]
+      }
+      resolver_solicitud_cuenta: {
+        Args: { p_estado: string; p_id: string; p_nota?: string }
+        Returns: undefined
       }
       app_imagen_bienvenida: { Args: never; Returns: string }
       agregar_linea_factura: {

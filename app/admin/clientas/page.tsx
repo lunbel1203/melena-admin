@@ -54,6 +54,11 @@ export default function ClientasPage() {
   const [ticketsAbiertos, setTicketsAbiertos] = useState<Set<string>>(new Set());
   const [cargando, setCargando] = useState(true);
   const [search, setSearch] = useState("");
+  const [solicitudesPendientes, setSolicitudesPendientes] = useState(0);
+
+  useEffect(() => {
+    supabase.from("solicitudes_cuenta").select("id", { count: "exact", head: true }).eq("estado", "pendiente").then(({ count }) => setSolicitudesPendientes(count ?? 0));
+  }, [supabase]);
 
   useEffect(() => {
     (async () => {
@@ -126,6 +131,17 @@ export default function ClientasPage() {
           </div>
 
           <div className="ml-auto flex items-center gap-3">
+            <Link
+              href="/admin/clientas/solicitudes"
+              className="relative text-sm font-semibold text-zinc-700 border border-zinc-200 bg-white px-4 py-2.5 rounded-xl hover:bg-zinc-50 transition-colors whitespace-nowrap"
+            >
+              Solicitudes de cuenta
+              {solicitudesPendientes > 0 && (
+                <span className="ml-2 inline-flex min-w-5 h-5 px-1.5 items-center justify-center rounded-full bg-red-500 text-white text-[11px] font-bold">
+                  {solicitudesPendientes}
+                </span>
+              )}
+            </Link>
             <Link
               href="/admin/clientas/nueva"
               className="bg-zinc-900 text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-zinc-700 transition-colors whitespace-nowrap"
