@@ -62,7 +62,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   }, [supabase, router]);
 
   const modulo = (pathname.split("/")[2] ?? "").replace(/-/g, "_");
-  const esRutaSeguridad = modulo === "seguridad";
+  const esRutaSeguridad = modulo === "seguridad" || modulo === "bitacora";
   const rutaControlada = MODULOS_CONTROLADOS.has(modulo);
   const permitido = esRutaSeguridad
     ? esAdmin

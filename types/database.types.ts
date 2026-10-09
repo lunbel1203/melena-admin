@@ -32,6 +32,48 @@ export type Database = {
         }
         Relationships: []
       }
+      bitacora: {
+        Row: {
+          accion: string
+          actor: string
+          categoria: string
+          created_at: string
+          descripcion: string
+          detalle: Json | null
+          empleado_id: string | null
+          entidad: string | null
+          entidad_id: string | null
+          id: number
+          usuario_id: string | null
+        }
+        Insert: {
+          accion: string
+          actor: string
+          categoria: string
+          created_at?: string
+          descripcion: string
+          detalle?: Json | null
+          empleado_id?: string | null
+          entidad?: string | null
+          entidad_id?: string | null
+          id?: never
+          usuario_id?: string | null
+        }
+        Update: {
+          accion?: string
+          actor?: string
+          categoria?: string
+          created_at?: string
+          descripcion?: string
+          detalle?: Json | null
+          empleado_id?: string | null
+          entidad?: string | null
+          entidad_id?: string | null
+          id?: never
+          usuario_id?: string | null
+        }
+        Relationships: []
+      }
       categoria_colores: {
         Row: {
           categoria_id: string
@@ -1798,6 +1840,7 @@ export type Database = {
         Args: { p_estado: string; p_id: string; p_nota?: string }
         Returns: undefined
       }
+      registrar_acceso: { Args: { p_origen: string }; Returns: undefined }
       app_imagen_bienvenida: { Args: never; Returns: string }
       agregar_linea_factura: {
         Args: {

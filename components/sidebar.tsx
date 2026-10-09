@@ -122,6 +122,17 @@ function PhoneIcon() {
   );
 }
 
+function ListIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5.5 4h8M5.5 8h8M5.5 12h8" />
+      <circle cx="2.5" cy="4" r=".6" fill="currentColor" />
+      <circle cx="2.5" cy="8" r=".6" fill="currentColor" />
+      <circle cx="2.5" cy="12" r=".6" fill="currentColor" />
+    </svg>
+  );
+}
+
 function GlobeIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -253,6 +264,21 @@ export default function Sidebar() {
                   <ShieldIcon />
                 </span>
                 Seguridad
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/admin/bitacora"
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  pathname.startsWith("/admin/bitacora")
+                    ? "bg-white text-zinc-900"
+                    : "text-zinc-400 hover:text-white hover:bg-zinc-800"
+                }`}
+              >
+                <span className="shrink-0">
+                  <ListIcon />
+                </span>
+                Bitácora
               </Link>
             </li>
           </ul>

@@ -81,6 +81,8 @@ export default function AccesoPage() {
       return;
     }
 
+    // queda en la bitácora (Seguridad → Bitácora); si falla no impide entrar
+    await supabase.rpc("registrar_acceso", { p_origen: "panel" });
     router.push("/admin/resumen");
     router.refresh();
   }

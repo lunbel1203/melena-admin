@@ -10,6 +10,7 @@ type FacturaRow = {
   id: string;
   cobrada_at: string;
   subtotal: number;
+  descuento: number;
   itbis: number;
   total: number;
   metodo_pago: string | null;
@@ -33,7 +34,8 @@ const ORIGENES: Record<string, string> = { web: "Sitio web", app: "App", whatsap
 const rd = (n: number) => `RD$${Math.round(n).toLocaleString("es-DO")}`;
 const compacto = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${Math.round(n / 1000)}K` : `${Math.round(n)}`);
 const compactoRD = (n: number) => (n >= 10_000 ? `RD$${compacto(n)}` : rd(n));
-const bruto = (f: Pick<FacturaRow, "subtotal" | "itbis">) => Number(f.subtotal) + Number(f.itbis);
+// lo facturado: subtotal menos el descuento, más el ITBIS (antes de restar el depósito)
+const bruto = (f: Pick<FacturaRow, "subtotal" | "descuento" | "itbis">) => Number(f.subtotal) - Number(f.descuento ?? 0) + Number(f.itbis);
 
 function rangos(periodo: PeriodId, hoy: Date): Rango {
   const h0 = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
@@ -88,7 +90,7 @@ function Delta({ v, vs }: { v: ReturnType<typeof variacion>; vs: string }) {
 function descargarCSV(rows: FacturaRow[], nombre: string) {
   const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
   const lineas = [
-    ["Fecha", "Hora", "Clienta", "Servicios", "Productos", "Subtotal", "ITBIS", "Total (antes de depósito)", "Método de pago"].map(esc).join(","),
+    ["Fecha", "Hora", "Clienta", "Servicios", "Productos", "Subtotal", "Descuento", "ITBIS", "Total (antes de depósito)", "Método de pago"].map(esc).join(","),
     ...rows.map((f) => {
       const d = new Date(f.cobrada_at);
       return [
@@ -98,6 +100,7 @@ function descargarCSV(rows: FacturaRow[], nombre: string) {
         f.lineas_factura.filter((l) => l.tipo === "servicio").map((l) => `${l.descripcion} x${l.cantidad}`).join("; "),
         f.lineas_factura.filter((l) => l.tipo === "producto").map((l) => `${l.descripcion} x${l.cantidad}`).join("; "),
         Number(f.subtotal),
+        Number(f.descuento ?? 0),
         Number(f.itbis),
         bruto(f),
         f.metodo_pago ?? "",
@@ -130,7 +133,7 @@ export default function ReportesPage() {
       const [f, c] = await Promise.all([
         supabase
           .from("facturas")
-          .select(`id, cobrada_at, subtotal, itbis, total, metodo_pago, clientas ( nombre ),
+          .select(`id, cobrada_at, subtotal, descuento, itbis, total, metodo_pago, clientas ( nombre ),
             lineas_factura ( tipo, descripcion, cantidad, subtotal, porcentaje_comision, empleado_id, empleados ( nombre ) )`)
           .eq("estado", "cobrada")
           .gte("cobrada_at", desde.toISOString())
@@ -220,6 +223,31 @@ export default function ReportesPage() {
     const top = orden.slice(0, 3);
     const resto = orden.slice(3).reduce((s, e) => s + e.monto, 0);
     return resto > 0 ? [...top, { nombre: "Otras", monto: resto }] : top;
+  }, [periodo]);
+
+  const topProductos = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const l of periodo.flatMap((f) => f.lineas_factura)) {
+      if (l.tipo === "producto") m.set(l.descripcion, (m.get(l.descripcion) ?? 0) + l.cantidad);
+    }
+    return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+  }, [periodo]);
+
+  const comisionesPorEmpleada = useMemo(() => {
+    const m = new Map<string, { nombre: string; monto: number }>();
+    for (const l of periodo.flatMap((f) => f.lineas_factura)) {
+      const e = m.get(l.empleado_id) ?? { nombre: l.empleados?.nombre ?? "—", monto: 0 };
+      e.monto += (Number(l.subtotal) * Number(l.porcentaje_comision)) / 100;
+      m.set(l.empleado_id, e);
+    }
+    return [...m.values()].filter((e) => e.monto > 0).sort((a, b) => b.monto - a.monto);
+  }, [periodo]);
+
+  const descuentos = useMemo(() => {
+    const con = periodo.filter((f) => Number(f.descuento) > 0);
+    const total = con.reduce((s, f) => s + Number(f.descuento), 0);
+    const subtotal = periodo.reduce((s, f) => s + Number(f.subtotal), 0);
+    return { total, facturas: con.length, pct: subtotal > 0 ? (total / subtotal) * 100 : 0 };
   }, [periodo]);
 
   const totalCitas = Object.values(origenes).reduce((s, n) => s + n, 0);
@@ -391,6 +419,51 @@ export default function ReportesPage() {
                 <div className="h-1.5 bg-zinc-100 rounded-full overflow-hidden">
                   <div className="h-full bg-zinc-700 rounded-full" style={{ width: `${o.pct}%` }} />
                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Segunda fila: descuentos, productos y comisiones ── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+        <div className="bg-white rounded-2xl border border-zinc-200 p-5">
+          <h2 className="text-sm font-bold text-zinc-900 mb-4">Descuentos otorgados</h2>
+          {!cargando && descuentos.facturas === 0 ? (
+            <p className="text-sm text-zinc-400">No se dieron descuentos en este período.</p>
+          ) : (
+            <>
+              <p className="text-2xl font-bold text-zinc-900">{cargando ? "—" : rd(descuentos.total)}</p>
+              {!cargando && (
+                <p className="text-xs text-zinc-400 mt-1.5">
+                  En {descuentos.facturas} {descuentos.facturas === 1 ? "factura" : "facturas"} · {descuentos.pct.toFixed(1)}% de lo vendido
+                </p>
+              )}
+            </>
+          )}
+        </div>
+
+        <div className="bg-white rounded-2xl border border-zinc-200 p-5">
+          <h2 className="text-sm font-bold text-zinc-900 mb-4">Productos más vendidos</h2>
+          <div className="space-y-3">
+            {!cargando && topProductos.length === 0 && <p className="text-sm text-zinc-400">Sin productos vendidos en este período.</p>}
+            {topProductos.map(([nombre, n]) => (
+              <div key={nombre} className="flex items-center justify-between gap-3">
+                <span className="text-sm text-zinc-700">{nombre}</span>
+                <span className="text-sm font-semibold text-zinc-900">{n}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-zinc-200 p-5">
+          <h2 className="text-sm font-bold text-zinc-900 mb-4">Comisiones por empleada</h2>
+          <div className="space-y-3">
+            {!cargando && comisionesPorEmpleada.length === 0 && <p className="text-sm text-zinc-400">Sin comisiones en este período.</p>}
+            {comisionesPorEmpleada.map((e) => (
+              <div key={e.nombre} className="flex items-center justify-between gap-3">
+                <span className="text-sm text-zinc-700">{e.nombre}</span>
+                <span className="text-sm font-semibold text-zinc-900">{rd(e.monto)}</span>
               </div>
             ))}
           </div>

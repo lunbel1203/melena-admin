@@ -160,18 +160,24 @@ export default function EditarEmpleadaPage({ params }: { params: Promise<{ id: s
       return setError(empError.message);
     }
 
-    // roles: se reemplazan por los elegidos (el principal es el primero)
-    const { error: quitarRolesError } = await supabase.from("empleados_roles").delete().eq("empleado_id", id);
-    if (quitarRolesError) {
-      setGuardando(false);
-      return setError(quitarRolesError.message);
+    // roles: solo se tocan los que cambiaron (así la bitácora registra únicamente lo que cambió)
+    const { data: rolesActuales } = await supabase.from("empleados_roles").select("rol_id").eq("empleado_id", id);
+    const actualesRoles = new Set((rolesActuales ?? []).map((r) => r.rol_id));
+    const rolesQuitar = [...actualesRoles].filter((r) => !rolIds.includes(r));
+    const rolesAgregar = rolIds.filter((r) => !actualesRoles.has(r));
+    if (rolesQuitar.length > 0) {
+      const { error: quitarRolesError } = await supabase.from("empleados_roles").delete().eq("empleado_id", id).in("rol_id", rolesQuitar);
+      if (quitarRolesError) {
+        setGuardando(false);
+        return setError(quitarRolesError.message);
+      }
     }
-    const { error: rolesError } = await supabase
-      .from("empleados_roles")
-      .insert(rolIds.map((rol_id) => ({ empleado_id: id, rol_id })));
-    if (rolesError) {
-      setGuardando(false);
-      return setError(rolesError.message);
+    if (rolesAgregar.length > 0) {
+      const { error: rolesError } = await supabase.from("empleados_roles").insert(rolesAgregar.map((rol_id) => ({ empleado_id: id, rol_id })));
+      if (rolesError) {
+        setGuardando(false);
+        return setError(rolesError.message);
+      }
     }
 
     const { data: actuales } = await supabase.from("servicios_empleados").select("servicio_id").eq("empleado_id", id);
