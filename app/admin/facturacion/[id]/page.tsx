@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { use, useCallback, useEffect, useMemo, useState } from "react";
+import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { avisar, confirmar, enlaceWhatsApp } from "@/lib/alerts";
 import { cargarLogo, descargarPdf, generarFacturaPdf, imprimirPdf } from "@/lib/factura-pdf";
@@ -170,6 +170,9 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
   const [puedeDescuento, setPuedeDescuento] = useState(false);
   const [descTipo, setDescTipo] = useState<"monto" | "porcentaje">("monto");
   const [descValor, setDescValor] = useState("");
+  // el descuento se guarda solo mientras se escribe; esta marca evita que la recarga pise lo digitado
+  const descEditado = useRef(false);
+  const [guardandoDesc, setGuardandoDesc] = useState(false);
   // si la clienta tiene cuenta en la app y desde cuándo
   const [registroApp, setRegistroApp] = useState<{ registrada: boolean; fecha: string | null } | null>(null);
 
@@ -189,8 +192,10 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
     setFactura(fac);
     if (cfg.data) setItbisPct(Number(cfg.data.itbis_porcentaje));
     if (fac.metodo_pago) setMetodoPago(fac.metodo_pago);
-    setDescTipo(fac.descuento_tipo);
-    setDescValor(Number(fac.descuento_valor) > 0 ? String(Number(fac.descuento_valor)) : "");
+    if (!descEditado.current) {
+      setDescTipo(fac.descuento_tipo);
+      setDescValor(Number(fac.descuento_valor) > 0 ? String(Number(fac.descuento_valor)) : "");
+    }
     supabase.rpc("tiene_permiso", { p_clave: "facturacion.descuento" }).then(({ data }) => setPuedeDescuento(data === true));
     if (fac.clientas) {
       supabase.rpc("registro_app_clienta", { p_clienta_id: fac.clientas.id }).then(({ data }) => setRegistroApp(data?.[0] ?? null));
@@ -261,16 +266,23 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
   async function guardarDescuento(tipo: "monto" | "porcentaje", texto: string) {
     if (!factura) return;
     const valor = Number(texto || 0);
-    if (!Number.isFinite(valor) || valor < 0) return avisar("Descuento inválido", "Escribe un número mayor o igual a 0.");
-    if (tipo === "porcentaje" && valor > 100) return avisar("Descuento inválido", "El porcentaje no puede pasar de 100.");
-    // sin cambios: no se llama a la base
+    // valores a medio escribir (vacío, negativo, más de 100 %) no se guardan ni molestan con avisos
+    if (!Number.isFinite(valor) || valor < 0 || (tipo === "porcentaje" && valor > 100)) return;
     if (tipo === factura.descuento_tipo && valor === Number(factura.descuento_valor)) return;
-    setProcesando(true);
+    setGuardandoDesc(true);
     const { error } = await supabase.rpc("aplicar_descuento_factura", { p_factura_id: factura.id, p_tipo: tipo, p_valor: valor });
     if (error) await avisar("No se pudo aplicar el descuento", error.message);
     else await cargar();
-    setProcesando(false);
+    setGuardandoDesc(false);
   }
+
+  // guarda 0,4 s después de la última tecla
+  useEffect(() => {
+    if (!descEditado.current) return;
+    const t = setTimeout(() => guardarDescuento(descTipo, descValor), 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [descValor, descTipo]);
 
   async function quitarLinea(l: Linea) {
     if (!(await confirmar({ titulo: "¿Quitar esta línea?", texto: l.descripcion, confirmarTexto: "Quitar", peligroso: true }))) return;
@@ -357,6 +369,20 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
   const v = factura.visitas;
   const clienta = factura.clientas;
   const abierta = factura.estado === "abierta";
+  // Vista previa inmediata del descuento mientras se escribe (la base lo confirma 0,4 s después)
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  const editaDescuento = abierta && puedeDescuento;
+  const valorDesc = Number(descValor || 0);
+  const descValido = Number.isFinite(valorDesc) && valorDesc >= 0 && (descTipo !== "porcentaje" || valorDesc <= 100);
+  const subtotalN = Number(factura.subtotal);
+  const usarPrevia = editaDescuento && descValido;
+  const descuentoN = usarPrevia ? (descTipo === "porcentaje" ? r2((subtotalN * valorDesc) / 100) : Math.min(valorDesc, subtotalN)) : Number(factura.descuento);
+  const itbisN = usarPrevia ? r2(((subtotalN - descuentoN) * itbisPct) / 100) : Number(factura.itbis);
+  const totalN = usarPrevia ? r2((subtotalN - descuentoN) * (1 + itbisPct / 100) - Number(factura.deposito_aplicado)) : Number(factura.total);
+  const tipoMostrado = usarPrevia ? descTipo : factura.descuento_tipo;
+  const valorMostrado = usarPrevia ? valorDesc : Number(factura.descuento_valor);
+  // hay un descuento escrito que todavía no se guardó: no se puede cobrar hasta que se confirme
+  const descPendiente = usarPrevia && (descTipo !== factura.descuento_tipo || valorDesc !== Number(factura.descuento_valor));
   const servicios = lineas.filter((l) => l.tipo === "servicio");
   const productos = lineas.filter((l) => l.tipo === "producto");
   const suma = (ls: Linea[]) => ls.reduce((s, l) => s + Number(l.subtotal), 0);
@@ -653,16 +679,16 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
                 <span className="text-zinc-500">Subtotal</span>
                 <span className="text-zinc-800 font-medium">{money(Number(factura.subtotal))}</span>
               </div>
-              {(Number(factura.descuento) > 0 || (abierta && puedeDescuento)) && (
+              {(Number(factura.descuento) > 0 || editaDescuento) && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-zinc-500">
                       Descuento
-                      {factura.descuento_tipo === "porcentaje" && Number(factura.descuento_valor) > 0 ? ` (${Number(factura.descuento_valor)}%)` : ""}
+                      {tipoMostrado === "porcentaje" && valorMostrado > 0 ? ` (${valorMostrado}%)` : ""}
                     </span>
-                    <span className={`font-semibold ${Number(factura.descuento) > 0 ? "text-green-700" : "text-zinc-400"}`}>
-                      {Number(factura.descuento) > 0 ? "− " : ""}
-                      {money(Number(factura.descuento))}
+                    <span className={`font-semibold ${descuentoN > 0 ? "text-green-700" : "text-zinc-400"}`}>
+                      {descuentoN > 0 ? "− " : ""}
+                      {money(descuentoN)}
                     </span>
                   </div>
                   {abierta && puedeDescuento && (
@@ -672,10 +698,10 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
                         min={0}
                         step="any"
                         value={descValor}
-                        onChange={(e) => setDescValor(e.target.value)}
-                        onBlur={() => guardarDescuento(descTipo, descValor)}
-                        onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-                        disabled={procesando}
+                        onChange={(e) => {
+                          descEditado.current = true;
+                          setDescValor(e.target.value);
+                        }}
                         placeholder="Escribe el descuento"
                         aria-label="Descuento"
                         className="flex-1 min-w-0 px-3 py-2 text-sm bg-zinc-50 border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400"
@@ -683,11 +709,9 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
                       <select
                         value={descTipo}
                         onChange={(e) => {
-                          const t = e.target.value as "monto" | "porcentaje";
-                          setDescTipo(t);
-                          guardarDescuento(t, descValor);
+                          descEditado.current = true;
+                          setDescTipo(e.target.value as "monto" | "porcentaje");
                         }}
-                        disabled={procesando}
                         aria-label="Tipo de descuento"
                         className="shrink-0 px-2 py-2 text-sm bg-zinc-50 border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400"
                       >
@@ -696,6 +720,12 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
                       </select>
                     </div>
                   )}
+                  {editaDescuento && !descValido && (
+                    <p className="text-xs text-red-500">
+                      {descTipo === "porcentaje" ? "Escribe un porcentaje entre 0 y 100." : "Escribe un monto mayor o igual a 0."}
+                    </p>
+                  )}
+                  {editaDescuento && descValido && (guardandoDesc || descPendiente) && <p className="text-[11px] text-zinc-400">Guardando…</p>}
                 </div>
               )}
               {clienta && registroApp && (
@@ -709,7 +739,7 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
               )}
               <div className="flex justify-between">
                 <span className="text-zinc-500">Itbis {itbisPct}%</span>
-                <span className="text-zinc-800 font-medium">{money(Number(factura.itbis))}</span>
+                <span className="text-zinc-800 font-medium">{money(itbisN)}</span>
               </div>
               {Number(factura.deposito_aplicado) > 0 && (
                 <div className="flex justify-between">
@@ -721,17 +751,17 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
 
             <div className="flex items-center justify-between bg-zinc-900 text-white rounded-xl px-4 py-3 mb-3">
               <span className="text-xs font-semibold text-zinc-400">{abierta ? "Total a cobrar" : "Total"}</span>
-              <span className="text-lg font-bold">{money(Number(factura.total))}</span>
+              <span className="text-lg font-bold">{money(totalN)}</span>
             </div>
 
             {abierta ? (
               <>
                 <button
                   onClick={cobrar}
-                  disabled={procesando || lineas.length === 0}
+                  disabled={procesando || lineas.length === 0 || guardandoDesc || descPendiente || (editaDescuento && !descValido)}
                   className="w-full py-2.5 text-sm font-semibold text-white bg-zinc-900 rounded-xl hover:bg-zinc-700 disabled:opacity-50 transition-colors print:hidden"
                 >
-                  Cobrar {money(Number(factura.total))}
+                  Cobrar {money(totalN)}
                 </button>
                 <p className="text-[10px] text-zinc-400 text-center mt-2 print:hidden">
                   Al cobrar se cierra la factura y se calculan las comisiones.
