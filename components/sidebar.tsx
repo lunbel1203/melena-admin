@@ -133,6 +133,16 @@ function ListIcon() {
   );
 }
 
+function HelpIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="8" cy="8" r="6.5" />
+      <path d="M6.2 6.2a1.9 1.9 0 1 1 2.7 1.7c-.6.3-.9.7-.9 1.3" />
+      <circle cx="8" cy="11.6" r=".5" fill="currentColor" />
+    </svg>
+  );
+}
+
 function GlobeIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -284,6 +294,21 @@ export default function Sidebar() {
           </ul>
         )}
       </nav>
+
+      {/* Ayuda: la ve todo el equipo */}
+      <div className="px-3 pb-2">
+        <Link
+          href="/admin/ayuda"
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+            pathname.startsWith("/admin/ayuda") ? "bg-white text-zinc-900" : "text-zinc-400 hover:text-white hover:bg-zinc-800"
+          }`}
+        >
+          <span className="shrink-0">
+            <HelpIcon />
+          </span>
+          Ayuda
+        </Link>
+      </div>
 
       {/* User */}
       <Link
