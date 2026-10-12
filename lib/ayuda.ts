@@ -472,3 +472,233 @@ export function temasParaRoles(roles: string[], todos: boolean): Tema[] {
   if (todos) return TEMAS;
   return TEMAS.filter((t) => !t.roles || t.roles.length === 0 || t.roles.some((r) => roles.includes(r)));
 }
+
+// ───────────────────────── Centro de ayuda ─────────────────────────
+
+export const VERSION_MANUAL = "1.0.0";
+export const FECHA_MANUAL = "octubre de 2026";
+
+/** "Todos" o la lista de roles a los que va dirigido el tema */
+export const paraQuien = (t: Tema) => (t.roles && t.roles.length > 0 ? t.roles.join(", ") : "Todos");
+
+export const TEMAS_TECNICOS: Tema[] = [
+  {
+    id: "arquitectura",
+    titulo: "Arquitectura general",
+    resumen: "Las piezas del sistema y cómo se conectan.",
+    roles: ["Admin"],
+    bloques: [
+      {
+        titulo: "Las tres aplicaciones",
+        notas: [
+          "Panel administrativo (Next.js): lo que estás usando. Entra el equipo con su usuario y ve los módulos que su rol permite.",
+          "Página web pública (Next.js): melenahumanhair.com. Muestra servicios, catálogo y el formulario para agendar. Su contenido se edita desde el panel.",
+          "App móvil (Expo / React Native): una sola app con dos modos, clienta y personal; la base de datos decide cuál se muestra según la cuenta.",
+        ],
+      },
+      {
+        titulo: "Base de datos y servicios",
+        notas: [
+          "Supabase aloja todo lo demás: base de datos Postgres, inicio de sesión (Auth), almacenamiento de fotos y comprobantes (Storage), funciones de borde (Edge Functions) y tareas programadas.",
+          "Las tres aplicaciones hablan con el mismo proyecto de Supabase; ninguna guarda datos por su cuenta.",
+        ],
+      },
+      {
+        titulo: "Hospedaje",
+        notas: [
+          "El panel y la web corren en un servidor propio (VPS) con Docker, detrás de Nginx Proxy Manager, que gestiona los certificados HTTPS de Let's Encrypt.",
+          "Cloudflare administra el DNS de los dominios y puede actuar de proxy.",
+          "La app móvil se distribuye con Expo (EAS): TestFlight / App Store en iPhone y Google Play en Android.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "datos",
+    titulo: "Datos principales",
+    resumen: "Qué se guarda y dónde.",
+    roles: ["Admin"],
+    bloques: [
+      {
+        titulo: "Tablas clave",
+        notas: [
+          "clientas, citas, depósitos (comprobantes y su estado), visitas (la clienta que llegó al salón).",
+          "facturas y líneas de factura (cada línea lleva quién la hizo y su porcentaje de comisión), comisiones (se generan al cobrar).",
+          "servicios y productos (con categorías, colores de cabello y fotos), servicios_empleados (quién ofrece cada servicio).",
+          "empleados, roles, permisos por rol y roles por empleada (una empleada puede tener varios).",
+          "solicitudes de cuenta, bitácora y contenido editable de la web.",
+        ],
+      },
+      {
+        titulo: "Reglas que conviene saber",
+        notas: [
+          "El descuento se resta antes del ITBIS; el depósito validado se resta del total.",
+          "La comisión de una línea se calcula con el porcentaje de la empleada o, si no tiene, el más alto entre los de sus roles.",
+          "Los permisos de una empleada con varios roles son la suma de los de todos.",
+          "Agregar el mismo artículo a una factura (misma persona y mismo precio) suma la cantidad.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "seguridad-tecnica",
+    titulo: "Seguridad",
+    resumen: "Cómo se protegen los datos y qué se registra.",
+    roles: ["Admin"],
+    bloques: [
+      {
+        notas: [
+          "Cada tabla tiene seguridad por filas (RLS): aunque alguien conozca la dirección de la base de datos, solo ve lo que su rol permite.",
+          "Las claves públicas (anon) van en la web y la app por diseño; la clave de servicio nunca sale del servidor ni va en el código.",
+          "Los comprobantes de depósito están en un almacenamiento privado; el panel los abre con enlaces temporales.",
+          "La Bitácora guarda quién hizo qué y no se puede editar ni borrar desde el panel.",
+          "Las contraseñas temporales se muestran una sola vez; la clienta o la empleada elige la suya al entrar.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "despliegue",
+    titulo: "Actualizaciones y despliegue",
+    resumen: "Cómo llegan los cambios a producción.",
+    roles: ["Admin"],
+    bloques: [
+      {
+        titulo: "Panel y web",
+        pasos: [
+          "Los cambios de código se suben al repositorio (rama develop).",
+          "En el servidor se ejecuta el script de despliegue: descarga los cambios, reconstruye las imágenes de Docker y reinicia los contenedores.",
+          "Se comprueba que el panel y la web respondan.",
+        ],
+      },
+      {
+        titulo: "Base de datos",
+        pasos: [
+          "Los cambios de estructura son archivos de migración SQL, guardados en el repositorio de la base de datos.",
+          "Se ejecutan en el SQL Editor de Supabase (de una sola vez; si algo falla, no se aplica nada).",
+          "Si una pantalla dice que no encuentra una tabla o función, falta ejecutar la migración correspondiente.",
+        ],
+      },
+      {
+        titulo: "App móvil",
+        notas: ["Se publica con Expo (EAS): una compilación nueva para las tiendas o una actualización inmediata (EAS Update) cuando el cambio es solo de código."],
+      },
+    ],
+  },
+  {
+    id: "automatizaciones",
+    titulo: "Tareas automáticas",
+    resumen: "Lo que el sistema hace solo.",
+    roles: ["Admin"],
+    bloques: [
+      {
+        notas: [
+          "Recordatorios de cita a la clienta, un día antes y dos horas antes (omite el de 24 horas si la cita ya está dentro de esa ventana).",
+          "Avisos dentro de la app: cita confirmada, depósito rechazado, cita cancelada.",
+          "Preguntas de seguimiento después de cada servicio (“¿Cómo te sientes con tus extensiones?”).",
+          "Creación de cuentas de clientas y de empleadas, y eliminación de la cuenta de una clienta que la pide.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "respaldo",
+    titulo: "Copias de seguridad",
+    resumen: "Cómo proteger la información del salón.",
+    roles: ["Admin"],
+    bloques: [
+      {
+        notas: [
+          "Las copias automáticas diarias de Supabase dependen del plan contratado: en el plan gratuito no existen. Se recomienda el plan Pro.",
+          "Conviene guardar aparte los archivos de migración (están en el repositorio) y exportar periódicamente los datos importantes.",
+          "En el servidor, la configuración de Nginx Proxy Manager también debe copiarse fuera del servidor.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "errores-tecnicos",
+    titulo: "Errores frecuentes",
+    resumen: "Qué significan y cómo se resuelven.",
+    roles: ["Admin"],
+    bloques: [
+      {
+        notas: [
+          "“Could not find the table …”: falta ejecutar una migración en Supabase.",
+          "Error 525 de Cloudflare: el dominio apunta al servidor pero no hay certificado HTTPS para ese nombre.",
+          "Error 502: el contenedor del panel o de la web se está reiniciando; se normaliza en unos segundos.",
+          "“No tienes permiso…”: la acción necesita un permiso que el rol de esa persona no tiene (Seguridad).",
+          "La app dice “Tu usuario no tiene acceso a la app”: su rol no incluye el permiso de acceso a la app móvil.",
+        ],
+      },
+    ],
+  },
+];
+
+export const TEMAS_TERMINOS: Tema[] = [
+  {
+    id: "terminos",
+    titulo: "Normas de uso del sistema",
+    resumen: "Condiciones para el equipo que usa el panel y la app del personal.",
+    bloques: [
+      {
+        titulo: "1. Quién puede usarlo",
+        notas: ["El sistema es solo para el personal autorizado de Melena Human Hair. Cada persona usa su propia cuenta; la cuenta es personal e intransferible."],
+      },
+      {
+        titulo: "2. Cuentas y contraseñas",
+        notas: [
+          "No compartas tu contraseña ni dejes tu sesión abierta en equipos compartidos: cierra sesión al terminar.",
+          "Si crees que alguien conoce tu contraseña, cámbiala y avisa al administrador.",
+        ],
+      },
+      {
+        titulo: "3. Uso adecuado",
+        notas: [
+          "Úsalo solo para las tareas del salón y registra los datos con veracidad (servicios hechos, cantidades y quién los hizo).",
+          "Los cobros, descuentos, cambios de precio y de permisos solo los hace quien tiene autorización para ello.",
+        ],
+      },
+      {
+        titulo: "4. Datos de las clientas",
+        notas: [
+          "Los datos de las clientas (nombre, teléfono, correo, historial, fotos y comprobantes) son confidenciales: úsalos únicamente para atenderlas.",
+          "No los copies, fotografíes ni compartas fuera del salón. El tratamiento de datos sigue la política de privacidad publicada en melenahumanhair.com/privacidad.",
+        ],
+      },
+      {
+        titulo: "5. Registro de actividad",
+        notas: ["El sistema registra en la Bitácora los accesos y las acciones importantes (quién, qué y cuándo). La administración puede revisarla."],
+      },
+      {
+        titulo: "6. Cambios y fallas",
+        notas: ["El sistema puede actualizarse sin previo aviso. Si algo falla o ves información que no corresponde, avisa al administrador."],
+      },
+      {
+        titulo: "7. Incumplimiento",
+        notas: ["El uso indebido del sistema puede llevar a la suspensión del acceso y a las medidas que el salón considere necesarias."],
+      },
+      {
+        notas: ["Este es un texto base de normas internas. Conviene que lo revise un abogado antes de darlo por definitivo."],
+      },
+    ],
+  },
+];
+
+export const TEMAS_ACERCA: Tema[] = [
+  {
+    id: "acerca",
+    titulo: "Acerca de Melena",
+    resumen: "Qué es este sistema.",
+    bloques: [
+      {
+        notas: [
+          `Melena · Plataforma del salón. Versión del manual ${VERSION_MANUAL} (${FECHA_MANUAL}).`,
+          "Incluye: panel administrativo (este), página web pública, app móvil para clientas y para el personal.",
+          "Sitio web: melenahumanhair.com · Panel: admin.melenahumanhair.com.",
+          "Para consultas o cambios en el sistema, habla con el administrador.",
+        ],
+      },
+    ],
+  },
+];
