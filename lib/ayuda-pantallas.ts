@@ -779,8 +779,12 @@ const PANTALLAS: [RegExp, AyudaPantalla][] = [
             "Crea o edita una categoría: nombre, si se muestra en la web y en qué orden.",
             "Marca “Es cabello” si pide tipo, color y largo (se crea un producto por cada largo).",
             "Para dar fotos a los colores, abre la ficha de la línea de cabello y agrégalos en “Colores y fotos”.",
+            "Más abajo, en “Fotos por color y largo”, sube una foto para cada largo de cada color (por ejemplo, el 16\" castaño).",
           ],
-          notas: ["Los productos de cada color (con sus largos y precios) se crean en Catálogo."],
+          notas: [
+            "Los productos de cada color (con sus largos y precios) se crean en Catálogo.",
+            "En la web y en la app se ve la foto del color y largo elegidos; si no hay, la del color y, si tampoco, la de la línea.",
+          ],
         },
       ],
     },

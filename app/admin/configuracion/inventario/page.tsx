@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { confirmar } from "@/lib/alerts";
 import { Area, SubirFoto } from "@/components/pagina-web/campos";
 import ColoresLinea from "@/components/catalogo/colores-linea";
+import FotosLargoColor from "@/components/catalogo/fotos-largo-color";
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400 mb-1">{children}</p>;
@@ -220,6 +221,9 @@ export default function InventarioPage() {
                   </div>
                   <div className="border-t border-zinc-200 pt-4">
                     <ColoresLinea categoriaId={c.id} categoriaNombre={c.nombre} />
+                  </div>
+                  <div className="border-t border-zinc-200 pt-4">
+                    <FotosLargoColor categoriaNombre={c.nombre} />
                   </div>
                 </div>
               )}

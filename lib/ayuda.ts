@@ -338,7 +338,10 @@ export const TEMAS: Tema[] = [
           "En “Colores y fotos” agrega un color y sube su foto.",
           "Crea los productos de ese color en Catálogo (así tienen largos y precios).",
         ],
-        notas: ["En la web y en la app, al elegir un color la foto principal cambia a la de ese color."],
+        notas: [
+          "En la web y en la app, al elegir un color la foto principal cambia a la de ese color.",
+          "Para una foto por cada largo de un color (por ejemplo, el 16\" castaño), usa “Fotos por color y largo” en la misma ficha. Al elegir color y largo se ve esa foto; si no hay, la del color y, si tampoco, la de la línea.",
+        ],
       },
     ],
   },
