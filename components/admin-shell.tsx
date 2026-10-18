@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Sidebar from "@/components/sidebar";
+import AyudaPantallaBoton from "@/components/ayuda-pantalla";
+import { ayudaDePantalla } from "@/lib/ayuda-pantallas";
 import { createClient } from "@/lib/supabase/client";
 
 function MenuIcon() {
@@ -61,6 +63,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     })();
   }, [supabase, router]);
 
+  const ayuda = ayudaDePantalla(pathname);
   const modulo = (pathname.split("/")[2] ?? "").replace(/-/g, "_");
   const esRutaSeguridad = modulo === "seguridad" || modulo === "bitacora";
   const rutaControlada = MODULOS_CONTROLADOS.has(modulo);
@@ -90,7 +93,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       {/* Columna de contenido */}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         {/* Barra superior solo en móvil */}
-        <header className="md:hidden flex items-center gap-3 px-4 h-14 bg-zinc-900 shrink-0">
+        <header className="md:hidden flex items-center gap-3 px-4 h-14 bg-zinc-900 shrink-0 print:hidden">
           <button
             onClick={() => setOpen(true)}
             className="text-zinc-400 hover:text-white transition-colors"
@@ -99,7 +102,20 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             <MenuIcon />
           </button>
           <span className="text-white text-sm font-bold tracking-[0.18em]">MELENA</span>
+          {ayuda && permitido && !cargandoAcceso && (
+            <span className="ml-auto">
+              <AyudaPantallaBoton ayuda={ayuda} compacto />
+            </span>
+          )}
         </header>
+
+        {/* Cabecera en escritorio: el botón de ayuda explica solo la pantalla actual */}
+        {ayuda && permitido && !cargandoAcceso && (
+          <header className="hidden md:flex items-center justify-between gap-4 px-8 h-12 bg-white border-b border-zinc-100 shrink-0 print:hidden">
+            <span className="text-sm text-zinc-400 truncate">{ayuda.titulo}</span>
+            <AyudaPantallaBoton ayuda={ayuda} />
+          </header>
+        )}
 
         <main className="flex-1 overflow-y-auto">
           {cargandoAcceso ? null : permitido ? (
