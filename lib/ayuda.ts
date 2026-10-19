@@ -327,8 +327,8 @@ export const TEMAS: Tema[] = [
         titulo: "Productos y cabello",
         pasos: [
           "Pestaña Productos → “+ Nuevo producto”.",
-          "Elige la categoría. Si es cabello, elige tipo, color y los largos: se crea un producto por cada largo.",
-          "Escribe precio, costo, existencias y mínimo; sube la foto.",
+          "Elige la categoría. Si es cabello, elige tipo, color (de la lista de la línea; si falta, “+ Agregar un color nuevo…”) y los largos: se crea un producto por cada largo.",
+          "Escribe precio, costo, existencias y mínimo. El cabello no lleva foto de producto: la principal es la de la línea y las de color y largo se cargan en Inventario.",
         ],
       },
       {
@@ -339,7 +339,7 @@ export const TEMAS: Tema[] = [
           "Crea los productos de ese color en Catálogo (así tienen largos y precios).",
         ],
         notas: [
-          "En la web y en la app, al elegir un color la foto principal cambia a la de ese color.",
+          "En la web y en la app se ve primero la foto principal de la línea (Inventario → ficha de la línea → Foto), distinta a las de los colores. Al elegir un color cambia a la de ese color.",
           "Para una foto por cada largo de un color (por ejemplo, el 16\" castaño), usa “Fotos por color y largo” en la misma ficha. Al elegir color y largo se ve esa foto; si no hay, la del color y, si tampoco, la de la línea.",
         ],
       },

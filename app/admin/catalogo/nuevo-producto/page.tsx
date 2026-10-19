@@ -31,6 +31,8 @@ const tiposCabello = [
   { id: "remy", label: "Remy" },
 ] as const;
 const largosOpts = [12, 14, 16, 18, 20, 22, 24, 26];
+/** Valor de la opción del select que abre el campo para escribir un color nuevo */
+const COLOR_NUEVO = "__nuevo__";
 
 interface Proveedor {
   id: string;
@@ -66,6 +68,7 @@ export default function NuevoProductoPage() {
 
   const [tipoCabello, setTipoCabello] = useState<"" | "virgin" | "remy">("");
   const [color, setColor] = useState("");
+  const [colorNuevo, setColorNuevo] = useState(false);
   const [largos, setLargos] = useState<number[]>([]);
   const [coloresLinea, setColoresLinea] = useState<string[]>([]);
 
@@ -95,7 +98,7 @@ export default function NuevoProductoPage() {
     })();
   }, [supabase]);
 
-  // colores ya definidos para la línea elegida (sugerencias; se pueden escribir otros)
+  // colores definidos para la línea elegida (la opción "nuevo" permite sumar uno)
   useEffect(() => {
     const id = categoriaSeleccionada?.id;
     if (!id || !categoriaSeleccionada?.es_cabello) return setColoresLinea([]);
@@ -139,7 +142,8 @@ export default function NuevoProductoPage() {
       costo: costo ? Number(costo) : null,
       proveedor_id: proveedorId || null,
       stock_minimo: Math.max(0, Math.round(Number(stockMinimo) || 0)),
-      foto_url: fotoUrl,
+      // el cabello no lleva foto de producto: la de cada color y largo se carga en Inventario
+      foto_url: esCabello ? null : fotoUrl,
     };
 
     const filas: TablesInsert<"productos">[] = esCabello
@@ -194,40 +198,51 @@ export default function NuevoProductoPage() {
         {/* LEFT */}
         <div className="flex-1 min-w-0 space-y-4">
 
-          <div className="bg-white rounded-2xl border border-zinc-200 p-5">
-            <SectionLabel>Foto</SectionLabel>
-            <div className="flex items-center gap-4">
-              <div className="w-20 h-20 rounded-xl overflow-hidden bg-zinc-100 flex items-center justify-center border border-zinc-200 shrink-0">
-                {fotoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={fotoUrl} alt="Foto del producto" className="w-full h-full object-cover" />
-                ) : (
-                  <CameraIcon />
-                )}
-              </div>
-              <div>
-                <button
-                  type="button"
-                  onClick={() => fotoInputRef.current?.click()}
-                  disabled={subiendoFoto}
-                  className="text-sm font-semibold text-zinc-700 border border-zinc-200 px-4 py-2 rounded-xl hover:bg-zinc-50 transition-colors disabled:opacity-50"
-                >
-                  {subiendoFoto ? "Subiendo…" : fotoUrl ? "Cambiar foto" : "Subir foto"}
-                </button>
-                <input
-                  ref={fotoInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) subirFoto(file);
-                    e.target.value = "";
-                  }}
-                />
+          {esCabello ? (
+            <div className="bg-white rounded-2xl border border-zinc-200 p-5">
+              <SectionLabel>Foto</SectionLabel>
+              <p className="text-xs text-zinc-500">
+                En el cabello no hay una foto del producto: la foto principal es la de la línea y cada color y largo tiene la suya. Se cargan en Configuración → Inventario
+                (la principal en la ficha de la línea; las de color y largo en “Colores y fotos” y “Fotos por color y largo”).
+              </p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-zinc-200 p-5">
+              <SectionLabel>Foto</SectionLabel>
+              <div className="flex items-center gap-4">
+                <div className="w-20 h-20 rounded-xl overflow-hidden bg-zinc-100 flex items-center justify-center border border-zinc-200 shrink-0">
+                  {fotoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={fotoUrl} alt="Foto del producto" className="w-full h-full object-cover" />
+                  ) : (
+                    <CameraIcon />
+                  )}
+                </div>
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => fotoInputRef.current?.click()}
+                    disabled={subiendoFoto}
+                    className="text-sm font-semibold text-zinc-700 border border-zinc-200 px-4 py-2 rounded-xl hover:bg-zinc-50 transition-colors disabled:opacity-50"
+                  >
+                    {subiendoFoto ? "Subiendo…" : fotoUrl ? "Cambiar foto" : "Subir foto"}
+                  </button>
+                  <input
+                    ref={fotoInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) subirFoto(file);
+                      e.target.value = "";
+                    }}
+                  />
+                </div>
               </div>
             </div>
-          </div>
+
+          )}
 
           <div className="bg-white rounded-2xl border border-zinc-200 p-5">
             <SectionLabel>1 · Información básica</SectionLabel>
@@ -258,7 +273,7 @@ export default function NuevoProductoPage() {
 
           <div className="bg-white rounded-2xl border border-zinc-200 p-5">
             <SectionLabel>2 · Categoría</SectionLabel>
-            <select value={categoria} onChange={(e) => setCategoria(e.target.value)}
+            <select value={categoria} onChange={(e) => { setCategoria(e.target.value); setColor(""); setColorNuevo(false); }}
               className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 focus:outline-none focus:border-zinc-400 transition-colors bg-white">
               <option value="">Selecciona una categoría</option>
               {categorias.map((c) => (
@@ -289,15 +304,26 @@ export default function NuevoProductoPage() {
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-zinc-500 mb-1.5 block">Color</label>
-                  <input value={color} onChange={(e) => setColor(e.target.value)} placeholder="Rubio con raíz oscura" list="colores-linea"
-                    className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-zinc-400 transition-colors" />
-                  <datalist id="colores-linea">
+                  <select
+                    value={colorNuevo ? COLOR_NUEVO : color}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setColorNuevo(v === COLOR_NUEVO);
+                      setColor(v === COLOR_NUEVO ? "" : v);
+                    }}
+                    className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 focus:outline-none focus:border-zinc-400 transition-colors bg-white">
+                    <option value="">Elige un color</option>
                     {coloresLinea.map((c) => (
-                      <option key={c} value={c} />
+                      <option key={c} value={c}>{c}</option>
                     ))}
-                  </datalist>
+                    <option value={COLOR_NUEVO}>+ Agregar un color nuevo…</option>
+                  </select>
+                  {colorNuevo && (
+                    <input value={color} onChange={(e) => setColor(e.target.value)} placeholder="Nombre del color nuevo (ej. Rubio ceniza)" autoFocus
+                      className="w-full mt-2 px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-zinc-400 transition-colors" />
+                  )}
                   <p className="text-[11px] text-zinc-400 mt-1">
-                    Elige uno de los colores de la línea (así aparece con su foto) o escribe uno nuevo; los nuevos se agregan a la lista de colores.
+                    Los colores son los de la línea (cada uno con su foto). Si falta uno, agrégalo aquí y se suma a la lista de colores.
                   </p>
                 </div>
               </div>

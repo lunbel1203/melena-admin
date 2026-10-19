@@ -474,11 +474,12 @@ function EditarProducto({ producto, slug }: { producto: ProductoRow; slug: strin
   const [nombre, setNombre] = useState(producto.nombre);
   const [descripcion, setDescripcion] = useState(producto.descripcion ?? "");
   const [categoria, setCategoria] = useState(producto.categoria);
-  const [categorias, setCategorias] = useState<{ id: string; nombre: string }[]>([]);
+  const [categorias, setCategorias] = useState<{ id: string; nombre: string; es_cabello: boolean }[]>([]);
   const [tipoCabello, setTipoCabello] = useState<"" | "virgin" | "remy">(
     producto.tipo_cabello === "virgin" || producto.tipo_cabello === "remy" ? producto.tipo_cabello : "",
   );
   const [color, setColor] = useState(producto.color ?? "");
+  const [coloresLinea, setColoresLinea] = useState<string[]>([]);
   const [largo, setLargo] = useState(producto.largo_pulgadas != null ? String(producto.largo_pulgadas) : "");
   const [precio, setPrecio] = useState(String(producto.precio));
   const [costo, setCosto] = useState(producto.costo != null ? String(producto.costo) : "");
@@ -491,13 +492,35 @@ function EditarProducto({ producto, slug }: { producto: ProductoRow; slug: strin
   const [guardando, setGuardando] = useState(false);
   const [guardado, setGuardado] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const esCabello = categorias.find((c) => c.nombre === categoria)?.es_cabello ?? false;
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("categorias_productos").select("id, nombre").eq("activo", true).order("nombre");
+      const { data } = await supabase.from("categorias_productos").select("id, nombre, es_cabello").eq("activo", true).order("nombre");
       setCategorias(data ?? []);
     })();
   }, [supabase]);
+
+  // colores de la línea elegida; si el producto ya tiene uno que no está en la lista, también se ofrece
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      const { data } = await supabase
+        .from("categoria_colores")
+        .select("nombre, categorias_productos!inner(nombre)")
+        .eq("categorias_productos.nombre", categoria)
+        .order("orden");
+      if (!cancelado) setColoresLinea((data ?? []).map((c) => c.nombre));
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [supabase, categoria]);
+
+  const opcionesColor = useMemo(
+    () => (color && !coloresLinea.some((c) => c.toLowerCase() === color.toLowerCase()) ? [color, ...coloresLinea] : coloresLinea),
+    [color, coloresLinea],
+  );
 
   async function subirFoto(file: File) {
     setSubiendoFoto(true);
@@ -562,41 +585,61 @@ function EditarProducto({ producto, slug }: { producto: ProductoRow; slug: strin
       <div className="p-5 lg:p-7 flex flex-col lg:flex-row gap-5 max-w-[940px] mx-auto">
         <div className="flex-1 min-w-0 space-y-4">
 
-          {/* Foto */}
-          <div className="bg-white rounded-2xl border border-zinc-200 p-5">
-            <SectionLabel>Foto</SectionLabel>
-            <div className="flex items-center gap-4">
-              <div className="w-20 h-20 rounded-xl overflow-hidden bg-zinc-100 flex items-center justify-center border border-zinc-200 shrink-0">
-                {fotoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={fotoUrl} alt={producto.nombre} className="w-full h-full object-cover" />
-                ) : (
-                  <CameraIcon />
-                )}
-              </div>
-              <div>
-                <button
-                  type="button"
-                  onClick={() => fotoInputRef.current?.click()}
-                  disabled={subiendoFoto}
-                  className="text-sm font-semibold text-zinc-700 border border-zinc-200 px-4 py-2 rounded-xl hover:bg-zinc-50 transition-colors disabled:opacity-50"
-                >
-                  {subiendoFoto ? "Subiendo…" : fotoUrl ? "Cambiar foto" : "Subir foto"}
-                </button>
-                <input
-                  ref={fotoInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) subirFoto(f);
-                    e.target.value = "";
-                  }}
-                />
+          {/* Foto: en el cabello la de cada color y largo se carga en Inventario */}
+          {esCabello ? (
+            <div className="bg-white rounded-2xl border border-zinc-200 p-5">
+              <SectionLabel>Foto</SectionLabel>
+              <div className="flex items-center gap-4">
+                <div className="w-20 h-20 rounded-xl overflow-hidden bg-zinc-100 flex items-center justify-center border border-zinc-200 shrink-0">
+                  {fotoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={fotoUrl} alt={producto.nombre} className="w-full h-full object-cover" />
+                  ) : (
+                    <CameraIcon />
+                  )}
+                </div>
+                <p className="text-xs text-zinc-500">
+                  La foto de este color y largo se carga en Configuración → Inventario → “Fotos por color y largo”. La foto principal es la de la línea.
+                </p>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-zinc-200 p-5">
+              <SectionLabel>Foto</SectionLabel>
+              <div className="flex items-center gap-4">
+                <div className="w-20 h-20 rounded-xl overflow-hidden bg-zinc-100 flex items-center justify-center border border-zinc-200 shrink-0">
+                  {fotoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={fotoUrl} alt={producto.nombre} className="w-full h-full object-cover" />
+                  ) : (
+                    <CameraIcon />
+                  )}
+                </div>
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => fotoInputRef.current?.click()}
+                    disabled={subiendoFoto}
+                    className="text-sm font-semibold text-zinc-700 border border-zinc-200 px-4 py-2 rounded-xl hover:bg-zinc-50 transition-colors disabled:opacity-50"
+                  >
+                    {subiendoFoto ? "Subiendo…" : fotoUrl ? "Cambiar foto" : "Subir foto"}
+                  </button>
+                  <input
+                    ref={fotoInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) subirFoto(f);
+                      e.target.value = "";
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+          )}
 
           <div className="bg-white rounded-2xl border border-zinc-200 p-5">
             <SectionLabel>Información básica</SectionLabel>
@@ -642,8 +685,13 @@ function EditarProducto({ producto, slug }: { producto: ProductoRow; slug: strin
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-semibold text-zinc-500 mb-1.5 block">Color</label>
-                <input value={color} onChange={(e) => setColor(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 focus:outline-none focus:border-zinc-400 transition-colors" />
+                <select value={color} onChange={(e) => setColor(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 focus:outline-none focus:border-zinc-400 transition-colors bg-white">
+                  <option value="">Sin color</option>
+                  {opcionesColor.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="text-xs font-semibold text-zinc-500 mb-1.5 block">Largo (pulgadas)</label>

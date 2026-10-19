@@ -405,11 +405,14 @@ const PANTALLAS: [RegExp, AyudaPantalla][] = [
       bloques: [
         {
           pasos: [
-            "Elige la categoría. Si es cabello, elige tipo, color y los largos: se crea un producto por cada largo.",
+            "Elige la categoría. Si es cabello, elige tipo, color (de la lista de colores de la línea) y los largos: se crea un producto por cada largo.",
             "Escribe precio, costo, existencias y mínimo.",
-            "Sube la foto y guarda.",
+            "Si no es cabello, sube la foto. Guarda.",
           ],
-          notas: ["El color con foto se configura en Configuración → Inventario."],
+          notas: [
+            "Si falta un color, elige “+ Agregar un color nuevo…” y escríbelo: se suma a la lista de la línea.",
+            "El cabello no lleva foto de producto: la foto principal es la de la línea y las de cada color y largo se cargan en Configuración → Inventario.",
+          ],
         },
       ],
     },
@@ -779,11 +782,12 @@ const PANTALLAS: [RegExp, AyudaPantalla][] = [
             "Crea o edita una categoría: nombre, si se muestra en la web y en qué orden.",
             "Marca “Es cabello” si pide tipo, color y largo (se crea un producto por cada largo).",
             "Para dar fotos a los colores, abre la ficha de la línea de cabello y agrégalos en “Colores y fotos”.",
+            "En la ficha de la línea, “Foto” es la foto principal: es la que se ve al abrir el producto y es distinta a las fotos de los colores.",
             "Más abajo, en “Fotos por color y largo”, sube una foto para cada largo de cada color (por ejemplo, el 16\" castaño).",
           ],
           notas: [
             "Los productos de cada color (con sus largos y precios) se crean en Catálogo.",
-            "En la web y en la app se ve la foto del color y largo elegidos; si no hay, la del color y, si tampoco, la de la línea.",
+            "En la web y en la app se ve primero la foto principal; al elegir color y largo cambia a la de esa combinación y, si no hay, a la del color.",
           ],
         },
       ],
