@@ -291,6 +291,7 @@ const PANTALLAS: [RegExp, AyudaPantalla][] = [
           pasos: [
             "Elige el método de pago (tarjeta, efectivo, transferencia o mixto) y pulsa “Cobrar”.",
             "Después puedes imprimir, descargar el PDF o enviar la factura por WhatsApp.",
+            "En el historial de la factura, “Servicio terminado” indica cuánto duró la atención.",
             "“Quitar” elimina una línea de una factura abierta. “Cancelar factura” cierra la visita sin cobro.",
           ],
           notas: ["Si la clienta pagó un depósito validado, se descuenta del total automáticamente."],
@@ -512,6 +513,7 @@ const PANTALLAS: [RegExp, AyudaPantalla][] = [
             "Revisa lo facturado, los servicios, el ticket promedio y las comisiones, comparados con el período anterior.",
             "Más abajo: servicios más solicitados, ingreso por estilista, origen de las citas, descuentos otorgados, productos más vendidos y comisiones por empleada.",
             "“Exportar” descarga el período en un archivo para Excel.",
+            "Al final, “Tiempo de atención por servicio” muestra cuánto dura en promedio cada servicio (con la atención más corta y la más larga).",
           ],
         },
       ],

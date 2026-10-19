@@ -1667,6 +1667,7 @@ export type Database = {
       }
       visitas: {
         Row: {
+          duracion_segundos: number | null
           atencion_inicio_at: string | null
           cita_id: string | null
           clienta_id: string
@@ -1810,7 +1811,18 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      tiempos_atencion_servicio: {
+        Row: {
+          atenciones: number | null
+          maximo_min: number | null
+          mediana_min: number | null
+          minimo_min: number | null
+          promedio_min: number | null
+          servicio: string | null
+          servicio_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       actualizar_mis_datos: {

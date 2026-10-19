@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { avisar, confirmar, enlaceWhatsApp } from "@/lib/alerts";
 import { cargarLogo, descargarPdf, generarFacturaPdf, imprimirPdf } from "@/lib/factura-pdf";
 import { cantidadTexto, precioPorTexto, totalPorUnidad, unidadDe } from "@/lib/unidades";
+import { duracionTexto } from "@/lib/tiempo";
 
 function ChevronLeft() {
   return (
@@ -374,7 +375,10 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
     ];
     if (v.atencion_inicio_at) ev.push({ at: v.atencion_inicio_at, texto: `${v.estilista?.nombre ?? "La estilista"} inició la atención` });
     for (const l of lineas) ev.push({ at: l.created_at, texto: `${l.empleados?.nombre ?? "Alguien"} agregó ${l.descripcion}` });
-    if (v.servicio_fin_at) ev.push({ at: v.servicio_fin_at, texto: "Servicio terminado" });
+    if (v.servicio_fin_at) {
+      const dur = v.atencion_inicio_at ? Math.round((new Date(v.servicio_fin_at).getTime() - new Date(v.atencion_inicio_at).getTime()) / 1000) : null;
+      ev.push({ at: v.servicio_fin_at, texto: dur != null && dur >= 0 ? `Servicio terminado · duró ${duracionTexto(dur)}` : "Servicio terminado" });
+    }
     if (factura.cobrada_at) ev.push({ at: factura.cobrada_at, texto: `${factura.cobrador?.nombre ?? "Caja"} cobró la factura` });
     return ev.sort((a, b) => a.at.localeCompare(b.at));
   }, [factura, lineas]);

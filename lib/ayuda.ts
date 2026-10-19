@@ -359,6 +359,7 @@ export const TEMAS: Tema[] = [
           "Revisa lo facturado, los servicios, el ticket promedio y las comisiones, comparados con el período anterior.",
           "Más abajo: servicios más solicitados, ingreso por estilista, origen de las citas, descuentos otorgados, productos más vendidos y comisiones por empleada.",
           "“Exportar” descarga el período en un archivo para Excel.",
+          "Al final, “Tiempo de atención por servicio”: promedio, atención más corta y más larga de cada servicio. El tiempo se mide desde “Atender” hasta “Terminar servicio” con la hora del servidor.",
         ],
       },
     ],

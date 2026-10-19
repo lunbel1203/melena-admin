@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { addDays, startOfWeekMonday, toISODate } from "@/lib/dates";
 import { cantidadTexto } from "@/lib/unidades";
+import { minutosTexto } from "@/lib/tiempo";
 
 type PeriodId = "dia" | "semana" | "mes";
 
@@ -127,8 +128,24 @@ export default function ReportesPage() {
   const [rows, setRows] = useState<FacturaRow[] | null>(null);
   const [origenes, setOrigenes] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
+  // historial de cuánto dura la atención de cada servicio (todas las visitas, sin importar el período)
+  const [tiempos, setTiempos] = useState<{ servicio: string | null; atenciones: number | null; promedio_min: number | null; minimo_min: number | null; maximo_min: number | null }[] | null>(null);
 
   const rango = useMemo(() => rangos(period, new Date()), [period]);
+
+  useEffect(() => {
+    let vivo = true;
+    (async () => {
+      const { data } = await supabase
+        .from("tiempos_atencion_servicio")
+        .select("servicio, atenciones, promedio_min, minimo_min, maximo_min")
+        .order("atenciones", { ascending: false });
+      if (vivo) setTiempos(data ?? []);
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [supabase]);
 
   useEffect(() => {
     let vivo = true;
@@ -472,6 +489,40 @@ export default function ReportesPage() {
               </div>
             ))}
           </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-zinc-200 p-5 md:col-span-3">
+          <h2 className="text-sm font-bold text-zinc-900">Tiempo de atención por servicio</h2>
+          <p className="text-xs text-zinc-400 mt-0.5 mb-4">
+            Cuánto dura la atención desde que se inicia hasta que se termina el servicio. Historial completo; cuenta atenciones de 1 minuto a 12 horas.
+          </p>
+          {tiempos && tiempos.length === 0 && <p className="text-sm text-zinc-400">Todavía no hay atenciones terminadas con su tiempo.</p>}
+          {tiempos && tiempos.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-zinc-400">
+                    <th className="font-semibold pb-2 pr-4">Servicio</th>
+                    <th className="font-semibold pb-2 pr-4 text-right">Atenciones</th>
+                    <th className="font-semibold pb-2 pr-4 text-right">Promedio</th>
+                    <th className="font-semibold pb-2 pr-4 text-right">Más corta</th>
+                    <th className="font-semibold pb-2 text-right">Más larga</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tiempos.map((t) => (
+                    <tr key={t.servicio} className="border-t border-zinc-100">
+                      <td className="py-2 pr-4 text-zinc-700">{t.servicio}</td>
+                      <td className="py-2 pr-4 text-right text-zinc-700">{t.atenciones}</td>
+                      <td className="py-2 pr-4 text-right font-semibold text-zinc-900">{minutosTexto(Number(t.promedio_min ?? 0))}</td>
+                      <td className="py-2 pr-4 text-right text-zinc-700">{minutosTexto(Number(t.minimo_min ?? 0))}</td>
+                      <td className="py-2 text-right text-zinc-700">{minutosTexto(Number(t.maximo_min ?? 0))}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     </div>
