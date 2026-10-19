@@ -865,6 +865,8 @@ export type Database = {
       }
       lineas_factura: {
         Row: {
+          agregado_por: string | null
+          unidad: string
           cantidad: number
           created_at: string
           descripcion: string
@@ -879,6 +881,8 @@ export type Database = {
           tipo: Database["public"]["Enums"]["tipo_linea_factura"]
         }
         Insert: {
+          agregado_por?: string | null
+          unidad?: string
           cantidad?: number
           created_at?: string
           descripcion: string
@@ -893,6 +897,8 @@ export type Database = {
           tipo: Database["public"]["Enums"]["tipo_linea_factura"]
         }
         Update: {
+          agregado_por?: string | null
+          unidad?: string
           cantidad?: number
           created_at?: string
           descripcion?: string
@@ -1146,6 +1152,8 @@ export type Database = {
       }
       productos: {
         Row: {
+          unidad: string
+          unidad_base: number
           activo: boolean
           categoria: string
           color: string | null
@@ -1164,6 +1172,8 @@ export type Database = {
           tipo_cabello: Database["public"]["Enums"]["tipo_cabello"] | null
         }
         Insert: {
+          unidad?: string
+          unidad_base?: number
           activo?: boolean
           categoria?: string
           color?: string | null
@@ -1182,6 +1192,8 @@ export type Database = {
           tipo_cabello?: Database["public"]["Enums"]["tipo_cabello"] | null
         }
         Update: {
+          unidad?: string
+          unidad_base?: number
           activo?: boolean
           categoria?: string
           color?: string | null
@@ -1474,6 +1486,8 @@ export type Database = {
       }
       servicios: {
         Row: {
+          unidad: string
+          unidad_base: number
           activo: boolean
           categoria: string | null
           created_at: string
@@ -1499,6 +1513,8 @@ export type Database = {
           web_retoque: string | null
         }
         Insert: {
+          unidad?: string
+          unidad_base?: number
           activo?: boolean
           categoria?: string | null
           created_at?: string
@@ -1524,6 +1540,8 @@ export type Database = {
           web_retoque?: string | null
         }
         Update: {
+          unidad?: string
+          unidad_base?: number
           activo?: boolean
           categoria?: string | null
           created_at?: string

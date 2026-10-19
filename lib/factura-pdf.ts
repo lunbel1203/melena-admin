@@ -1,5 +1,6 @@
 import { GState, jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { cantidadTexto } from "@/lib/unidades";
 
 export interface DatosFacturaPdf {
   numero: number;
@@ -17,7 +18,7 @@ export interface DatosFacturaPdf {
   clienta: { nombre: string; telefono: string | null; email: string | null } | null;
   atendidaPor: string[];
   cobradaPor: string | null;
-  lineas: { descripcion: string; tipo: "servicio" | "producto"; cantidad: number; precioUnitario: number; subtotal: number; empleado: string | null }[];
+  lineas: { descripcion: string; tipo: "servicio" | "producto"; cantidad: number; unidad?: string; precioUnitario: number; subtotal: number; empleado: string | null }[];
   negocio: {
     nombre: string;
     razonSocial: string | null;
@@ -157,7 +158,7 @@ export function generarFacturaPdf(d: DatosFacturaPdf) {
     head: [["Descripción", "Cant.", "Precio", "Subtotal"]],
     body: d.lineas.map((l) => [
       `${l.descripcion}\n${l.tipo === "servicio" ? "Servicio" : "Producto"}${l.empleado ? ` · ${l.empleado}` : ""}`,
-      String(l.cantidad),
+      cantidadTexto(l.cantidad, l.unidad).replace(/^x/, ""),
       dinero(l.precioUnitario),
       dinero(l.subtotal),
     ]),

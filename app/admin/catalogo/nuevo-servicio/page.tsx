@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import CampoUnidad from "@/components/catalogo/campo-unidad";
 
 function BackIcon() {
   return (
@@ -48,6 +49,8 @@ export default function NuevoServicioPage() {
   const [categoria, setCategoria] = useState("");
   const [duracion, setDuracion] = useState("");
   const [precio, setPrecio] = useState("");
+  const [unidad, setUnidad] = useState("unidad");
+  const [unidadBase, setUnidadBase] = useState("1");
   const [deposito, setDeposito] = useState("");
   const [sinDeposito, setSinDeposito] = useState(false);
   const [pideGramos, setPideGramos] = useState(false);
@@ -94,6 +97,8 @@ export default function NuevoServicioPage() {
         categoria,
         duracion_minutos: Math.round(Number(duracion)),
         precio: Number(precio),
+        unidad,
+        unidad_base: Math.max(1, Math.round(Number(unidadBase)) || 1),
         deposito_requerido: !sinDeposito,
         pide_gramos: pideGramos,
         mostrar_en_web: mostrarEnWeb,
@@ -179,6 +184,9 @@ export default function NuevoServicioPage() {
                 <input type="number" min={0} value={precio} onChange={(e) => setPrecio(e.target.value)} placeholder="3200"
                   className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-zinc-400 transition-colors" />
               </div>
+            </div>
+            <div className="mb-3">
+              <CampoUnidad unidad={unidad} base={unidadBase} onChange={(u, b) => { setUnidad(u); setUnidadBase(b); }} />
             </div>
             <div>
               <label className="text-xs font-semibold text-zinc-500 mb-1.5 block">Depósito de reserva (RD$)</label>

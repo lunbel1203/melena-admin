@@ -5,6 +5,7 @@ import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { avisar, confirmar, enlaceWhatsApp } from "@/lib/alerts";
 import { cargarLogo, descargarPdf, generarFacturaPdf, imprimirPdf } from "@/lib/factura-pdf";
+import { cantidadTexto, precioPorTexto, totalPorUnidad, unidadDe } from "@/lib/unidades";
 
 function ChevronLeft() {
   return (
@@ -31,6 +32,8 @@ type Linea = {
   tipo: "servicio" | "producto";
   descripcion: string;
   cantidad: number;
+  unidad: string;
+  agregado_por: string | null;
   precio_unitario: number;
   subtotal: number;
   porcentaje_comision: number;
@@ -69,7 +72,7 @@ type Factura = {
   } | null;
 };
 
-type Catalogo = { id: string; nombre: string; precio: number; detalle?: string; foto?: string | null };
+type Catalogo = { id: string; nombre: string; precio: number; detalle?: string; foto?: string | null; unidad?: string; unidadBase?: number };
 
 /** "Se registró hoy" · "5 días de registro" · "3 meses de registro" · "1 año y 2 meses de registro" */
 function tiempoDeRegistro(iso: string) {
@@ -87,7 +90,7 @@ const FACTURA_SELECT = `
   id, numero, estado, subtotal, itbis, total, deposito_aplicado, descuento, descuento_tipo, descuento_valor, metodo_pago, cobrada_at, created_at,
   clientas ( id, nombre, telefono, email, notas, created_at ),
   cobrador:empleados!facturas_cobrada_por_fkey ( nombre ),
-  lineas_factura ( id, tipo, descripcion, cantidad, precio_unitario, subtotal, porcentaje_comision, created_at, empleado_id,
+  lineas_factura ( id, tipo, descripcion, cantidad, unidad, agregado_por, precio_unitario, subtotal, porcentaje_comision, created_at, empleado_id,
     empleados ( nombre, roles!empleados_rol_id_fkey ( nombre ) ) ),
   visitas ( id, estado, created_at, atencion_inicio_at, servicio_fin_at, notas,
     recepcion:empleados!visitas_empleado_recepcion_id_fkey ( nombre ),
@@ -165,6 +168,12 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
   const [quienHizo, setQuienHizo] = useState("");
   // permiso de Seguridad: ver todos los servicios y registrarlos a nombre de otra persona
   const [puedeAgregarAOtros, setPuedeAgregarAOtros] = useState(false);
+  // quién soy: cada quien solo puede quitar lo que él mismo agregó (el administrador, cualquiera)
+  const [miEmpleadoId, setMiEmpleadoId] = useState<string | null>(null);
+  const [esAdmin, setEsAdmin] = useState(false);
+  // artículo que se cobra por gramo (u otra unidad): se pide la cantidad antes de agregarlo
+  const [pendiente, setPendiente] = useState<Catalogo | null>(null);
+  const [cantidadUnidad, setCantidadUnidad] = useState("");
 
   // descuento: permiso de Seguridad y lo que se digita (se guarda al salir del campo)
   const [puedeDescuento, setPuedeDescuento] = useState(false);
@@ -197,6 +206,8 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
       setDescValor(Number(fac.descuento_valor) > 0 ? String(Number(fac.descuento_valor)) : "");
     }
     supabase.rpc("tiene_permiso", { p_clave: "facturacion.descuento" }).then(({ data }) => setPuedeDescuento(data === true));
+    supabase.rpc("empleado_id_actual").then(({ data }) => setMiEmpleadoId(data ?? null));
+    supabase.rpc("es_admin").then(({ data }) => setEsAdmin(data === true));
     if (fac.clientas) {
       supabase.rpc("registro_app_clienta", { p_clienta_id: fac.clientas.id }).then(({ data }) => setRegistroApp(data?.[0] ?? null));
     }
@@ -221,10 +232,11 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
 
   async function abrirAgregar() {
     setAgregando(true);
+    setPendiente(null);
     if (catalogo) return;
     const [s, p, e, asignados, yo, permiso] = await Promise.all([
-      supabase.from("servicios").select("id, nombre, precio, foto_url").eq("activo", true).order("nombre"),
-      supabase.from("productos").select("id, nombre, precio, stock, foto_url").eq("activo", true).order("nombre"),
+      supabase.from("servicios").select("id, nombre, precio, foto_url, unidad, unidad_base").eq("activo", true).order("nombre"),
+      supabase.from("productos").select("id, nombre, precio, stock, foto_url, unidad, unidad_base").eq("activo", true).order("nombre"),
       supabase.from("empleados").select("id, nombre").eq("activo", true).order("nombre"),
       supabase.from("servicios_empleados").select("servicio_id, empleado_id"),
       supabase.rpc("empleado_id_actual"),
@@ -239,23 +251,34 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
     const mios = new Set((asignados.data ?? []).filter((a) => a.empleado_id === yo.data).map((a) => a.servicio_id));
     const ofrece = (sid: string) => todos || !conAsignadas.has(sid) || mios.has(sid);
     setCatalogo({
-      servicio: (s.data ?? []).filter((x) => ofrece(x.id)).map((x) => ({ id: x.id, nombre: x.nombre, precio: Number(x.precio), foto: x.foto_url })),
-      producto: (p.data ?? []).map((x) => ({ id: x.id, nombre: x.nombre, precio: Number(x.precio), detalle: `${x.stock} en stock`, foto: x.foto_url })),
+      servicio: (s.data ?? []).filter((x) => ofrece(x.id)).map((x) => ({ id: x.id, nombre: x.nombre, precio: Number(x.precio), foto: x.foto_url, unidad: x.unidad, unidadBase: x.unidad_base, detalle: x.unidad !== "unidad" ? precioPorTexto(x.unidad, x.unidad_base) : undefined })),
+      producto: (p.data ?? []).map((x) => ({ id: x.id, nombre: x.nombre, precio: Number(x.precio), detalle: `${x.stock} en stock${x.unidad !== "unidad" ? ` · ${precioPorTexto(x.unidad, x.unidad_base)}` : ""}`, foto: x.foto_url, unidad: x.unidad, unidadBase: x.unidad_base })),
     });
   }
 
-  async function agregar(item: Catalogo) {
+  // los artículos que se cobran por gramo (u otra unidad) piden primero la cantidad
+  function elegir(item: Catalogo) {
+    if (item.unidad && item.unidad !== "unidad") {
+      setPendiente(item);
+      setCantidadUnidad("");
+      return;
+    }
+    agregar(item, cantidad);
+  }
+
+  async function agregar(item: Catalogo, cant: number) {
     setProcesando(true);
     const { error } = await supabase.rpc("agregar_linea_factura", {
       p_factura_id: id,
       p_tipo: tipoAgregar,
       p_item_id: item.id,
-      p_cantidad: cantidad,
+      p_cantidad: cant,
       ...(tipoAgregar === "servicio" && puedeAgregarAOtros && (quienHizo || estilistaVisitaId) ? { p_empleado_id: quienHizo || estilistaVisitaId! } : {}),
     });
     if (error) await avisar("No se pudo agregar", error.message);
     else {
       setAgregando(false);
+      setPendiente(null);
       setBusqueda("");
       setCantidad(1);
       await cargar();
@@ -307,7 +330,7 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
       await avisar("No se pudo cobrar", error.message);
     } else {
       if (whatsapp && factura.clientas) {
-        const detalle = factura.lineas_factura.map((l) => `• ${l.descripcion} x${l.cantidad}`).join("\n");
+        const detalle = factura.lineas_factura.map((l) => `• ${l.descripcion} ${cantidadTexto(l.cantidad, l.unidad)}`).join("\n");
         const msg = `Hola ${factura.clientas.nombre.split(" ")[0]}, gracias por visitarnos 💛\n\n${detalle}\n\nTotal pagado: ${money(Number(factura.total))}`;
         window.open(enlaceWhatsApp(factura.clientas.telefono, msg), "_blank");
       }
@@ -418,6 +441,7 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
           descripcion: l.descripcion,
           tipo: l.tipo,
           cantidad: l.cantidad,
+          unidad: l.unidad,
           precioUnitario: Number(l.precio_unitario),
           subtotal: Number(l.subtotal),
           empleado: l.empleados?.nombre ?? null,
@@ -625,8 +649,8 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
                 <div>
                   <p className="text-sm font-medium text-zinc-900">{item.descripcion}</p>
                   <p className="text-xs text-zinc-400 mt-0.5">
-                    {money(Number(item.precio_unitario))} c/u
-                    {abierta && (
+                    {money(Number(item.precio_unitario))} {item.unidad === "unidad" ? "c/u" : `por ${unidadDe(item.unidad).nombre.toLowerCase()}`}
+                    {abierta && (esAdmin || (item.agregado_por ?? item.empleado_id) === miEmpleadoId) && (
                       <button onClick={() => quitarLinea(item)} disabled={procesando} className="ml-2 text-red-500 hover:text-red-700 print:hidden">
                         Quitar
                       </button>
@@ -650,7 +674,7 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
                   </div>
                 </div>
                 <span className="text-sm text-zinc-500 sm:block hidden">{hora(item.created_at)}</span>
-                <span className="text-sm text-zinc-700 font-medium sm:block hidden">{item.cantidad}</span>
+                <span className="text-sm text-zinc-700 font-medium sm:block hidden">{item.unidad === "unidad" ? item.cantidad : cantidadTexto(item.cantidad, item.unidad)}</span>
                 <span className="text-sm font-semibold text-zinc-900 sm:text-right">{money(Number(item.subtotal))}</span>
               </div>
             ))}
@@ -915,13 +939,48 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
                 />
               </div>
             </div>
-            <div className="overflow-y-auto">
+            {pendiente && (
+              <div className="px-5 py-5 border-t border-zinc-100">
+                <p className="text-sm font-semibold text-zinc-900">{pendiente.nombre}</p>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  {money(pendiente.precio)} {precioPorTexto(pendiente.unidad, pendiente.unidadBase)}
+                </p>
+                <label className="text-xs font-semibold text-zinc-500 mt-4 mb-1.5 block">¿Cuántos {unidadDe(pendiente.unidad).plural}?</label>
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  autoFocus
+                  value={cantidadUnidad}
+                  onChange={(e) => setCantidadUnidad(e.target.value)}
+                  placeholder={unidadDe(pendiente.unidad).clave === "gramo" ? "Ej. 250" : "Ej. 2"}
+                  aria-label={`Cantidad de ${unidadDe(pendiente.unidad).plural}`}
+                  className="w-full px-3 py-2.5 text-base bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:border-zinc-400"
+                />
+                <p className="text-sm text-zinc-500 mt-3">
+                  Monto: <span className="font-semibold text-zinc-900">{money(totalPorUnidad(pendiente.precio, pendiente.unidadBase, Math.floor(Number(cantidadUnidad) || 0)))}</span>
+                </p>
+                <div className="grid grid-cols-2 gap-2 mt-4">
+                  <button onClick={() => setPendiente(null)} className="py-2.5 text-sm font-semibold rounded-xl border border-zinc-200 text-zinc-700 hover:bg-zinc-50">
+                    Volver
+                  </button>
+                  <button
+                    onClick={() => agregar(pendiente, Math.floor(Number(cantidadUnidad)))}
+                    disabled={procesando || !(Math.floor(Number(cantidadUnidad)) >= 1)}
+                    className="py-2.5 text-sm font-semibold rounded-xl bg-zinc-900 text-white hover:bg-zinc-700 disabled:opacity-40"
+                  >
+                    Agregar
+                  </button>
+                </div>
+              </div>
+            )}
+            <div className={`overflow-y-auto ${pendiente ? "hidden" : ""}`}>
               {!catalogo && <p className="px-5 py-6 text-sm text-zinc-400">Cargando…</p>}
               {catalogo && lista.length === 0 && <p className="px-5 py-6 text-sm text-zinc-400">Sin resultados.</p>}
               {lista.map((c) => (
                 <button
                   key={c.id}
-                  onClick={() => agregar(c)}
+                  onClick={() => elegir(c)}
                   disabled={procesando}
                   className="w-full flex items-center justify-between gap-3 px-5 py-3 text-left border-b border-zinc-100 last:border-0 hover:bg-zinc-50 disabled:opacity-50 transition-colors"
                 >

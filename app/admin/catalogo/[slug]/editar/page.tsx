@@ -5,6 +5,7 @@ import { use, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { SubirFoto } from "@/components/pagina-web/campos";
+import CampoUnidad from "@/components/catalogo/campo-unidad";
 
 function CameraIcon() {
   return (
@@ -46,6 +47,8 @@ interface ServicioRow {
   precio: number;
   deposito_requerido: boolean;
   pide_gramos?: boolean;
+  unidad?: string;
+  unidad_base?: number;
   deposito_monto: number | null;
   dias_seguimiento: number[];
   activo: boolean;
@@ -89,6 +92,8 @@ interface ProductoRow {
   stock_minimo: number;
   foto_url: string | null;
   activo: boolean;
+  unidad?: string;
+  unidad_base?: number;
 }
 
 export default function EditarCatalogoPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -127,6 +132,8 @@ function EditarServicio({ servicio, slug }: { servicio: ServicioRow; slug: strin
   const [categoria, setCategoria] = useState(servicio.categoria ?? "");
   const [duracion, setDuracion] = useState(String(servicio.duracion_minutos));
   const [precio, setPrecio] = useState(String(servicio.precio));
+  const [unidad, setUnidad] = useState(servicio.unidad ?? "unidad");
+  const [unidadBase, setUnidadBase] = useState(String(servicio.unidad_base ?? 1));
   const [deposito, setDeposito] = useState(servicio.deposito_monto != null ? String(servicio.deposito_monto) : "");
   const [sinDeposito, setSinDeposito] = useState(!servicio.deposito_requerido);
   const [pideGramos, setPideGramos] = useState(!!servicio.pide_gramos);
@@ -188,6 +195,8 @@ function EditarServicio({ servicio, slug }: { servicio: ServicioRow; slug: strin
         categoria: categoria || null,
         duracion_minutos: Math.round(Number(duracion)) || servicio.duracion_minutos,
         precio: Number(precio) || 0,
+        unidad,
+        unidad_base: Math.max(1, Math.round(Number(unidadBase)) || 1),
         deposito_requerido: !sinDeposito,
         pide_gramos: pideGramos,
         deposito_monto: sinDeposito ? null : deposito ? Number(deposito) : null,
@@ -293,6 +302,9 @@ function EditarServicio({ servicio, slug }: { servicio: ServicioRow; slug: strin
                 <input type="number" min={0} value={precio} onChange={(e) => setPrecio(e.target.value)}
                   className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 focus:outline-none focus:border-zinc-400 transition-colors" />
               </div>
+            </div>
+            <div className="mb-3">
+              <CampoUnidad unidad={unidad} base={unidadBase} onChange={(u, b) => { setUnidad(u); setUnidadBase(b); }} />
             </div>
             <div>
               <label className="text-xs font-semibold text-zinc-500 mb-1.5 block">Depósito de reserva (RD$)</label>
@@ -482,6 +494,8 @@ function EditarProducto({ producto, slug }: { producto: ProductoRow; slug: strin
   const [coloresLinea, setColoresLinea] = useState<string[]>([]);
   const [largo, setLargo] = useState(producto.largo_pulgadas != null ? String(producto.largo_pulgadas) : "");
   const [precio, setPrecio] = useState(String(producto.precio));
+  const [unidad, setUnidad] = useState(producto.unidad ?? "unidad");
+  const [unidadBase, setUnidadBase] = useState(String(producto.unidad_base ?? 1));
   const [costo, setCosto] = useState(producto.costo != null ? String(producto.costo) : "");
   const [stock, setStock] = useState(String(producto.stock));
   const [stockMinimo, setStockMinimo] = useState(String(producto.stock_minimo));
@@ -552,6 +566,8 @@ function EditarProducto({ producto, slug }: { producto: ProductoRow; slug: strin
         color: color.trim() || null,
         largo_pulgadas: largo ? Math.round(Number(largo)) : null,
         precio: Number(precio) || 0,
+        unidad,
+        unidad_base: Math.max(1, Math.round(Number(unidadBase)) || 1),
         costo: costo ? Number(costo) : null,
         stock: Math.max(0, Math.round(Number(stock) || 0)),
         stock_minimo: Math.max(0, Math.round(Number(stockMinimo) || 0)),
@@ -714,6 +730,9 @@ function EditarProducto({ producto, slug }: { producto: ProductoRow; slug: strin
                 <input type="number" min={0} value={costo} onChange={(e) => setCosto(e.target.value)}
                   className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 focus:outline-none focus:border-zinc-400 transition-colors" />
               </div>
+            </div>
+            <div className="mb-3">
+              <CampoUnidad unidad={unidad} base={unidadBase} onChange={(u, b) => { setUnidad(u); setUnidadBase(b); }} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { addDays, startOfWeekMonday, toISODate } from "@/lib/dates";
+import { cantidadTexto } from "@/lib/unidades";
 
 type PeriodId = "dia" | "semana" | "mes";
 
@@ -19,6 +20,7 @@ type FacturaRow = {
     tipo: "servicio" | "producto";
     descripcion: string;
     cantidad: number;
+    unidad: string;
     subtotal: number;
     porcentaje_comision: number;
     empleado_id: string;
@@ -66,7 +68,7 @@ function rangos(periodo: PeriodId, hoy: Date): Rango {
 function resumir(rows: FacturaRow[]) {
   const lineas = rows.flatMap((f) => f.lineas_factura);
   const facturado = rows.reduce((s, f) => s + bruto(f), 0);
-  const servicios = lineas.filter((l) => l.tipo === "servicio").reduce((s, l) => s + l.cantidad, 0);
+  const servicios = lineas.filter((l) => l.tipo === "servicio").reduce((s, l) => s + vecesVendidas(l), 0);
   const comisiones = lineas.reduce((s, l) => s + (Number(l.subtotal) * Number(l.porcentaje_comision)) / 100, 0);
   return { facturado, servicios, comisiones, ticket: rows.length ? facturado / rows.length : 0, facturas: rows.length };
 }
@@ -97,8 +99,8 @@ function descargarCSV(rows: FacturaRow[], nombre: string) {
         toISODate(d),
         d.toLocaleTimeString("es-DO", { hour: "2-digit", minute: "2-digit" }),
         f.clientas?.nombre ?? "",
-        f.lineas_factura.filter((l) => l.tipo === "servicio").map((l) => `${l.descripcion} x${l.cantidad}`).join("; "),
-        f.lineas_factura.filter((l) => l.tipo === "producto").map((l) => `${l.descripcion} x${l.cantidad}`).join("; "),
+        f.lineas_factura.filter((l) => l.tipo === "servicio").map((l) => `${l.descripcion} ${cantidadTexto(l.cantidad, l.unidad)}`).join("; "),
+        f.lineas_factura.filter((l) => l.tipo === "producto").map((l) => `${l.descripcion} ${cantidadTexto(l.cantidad, l.unidad)}`).join("; "),
         Number(f.subtotal),
         Number(f.descuento ?? 0),
         Number(f.itbis),
@@ -116,6 +118,9 @@ function descargarCSV(rows: FacturaRow[], nombre: string) {
 }
 
 /* ── Page ── */
+/** Cuántas veces se vendió una línea: las que se cobran por gramo u otra unidad cuentan como 1 venta, no como 250 */
+const vecesVendidas = (l: { cantidad: number; unidad: string }) => (l.unidad === "unidad" ? l.cantidad : 1);
+
 export default function ReportesPage() {
   const supabase = useMemo(() => createClient(), []);
   const [period, setPeriod] = useState<PeriodId>("mes");
@@ -134,7 +139,7 @@ export default function ReportesPage() {
         supabase
           .from("facturas")
           .select(`id, cobrada_at, subtotal, descuento, itbis, total, metodo_pago, clientas ( nombre ),
-            lineas_factura ( tipo, descripcion, cantidad, subtotal, porcentaje_comision, empleado_id, empleados ( nombre ) )`)
+            lineas_factura ( tipo, descripcion, cantidad, unidad, subtotal, porcentaje_comision, empleado_id, empleados ( nombre ) )`)
           .eq("estado", "cobrada")
           .gte("cobrada_at", desde.toISOString())
           .lt("cobrada_at", rango.fin.toISOString())
@@ -207,7 +212,7 @@ export default function ReportesPage() {
   const topServicios = useMemo(() => {
     const m = new Map<string, number>();
     for (const l of periodo.flatMap((f) => f.lineas_factura)) {
-      if (l.tipo === "servicio") m.set(l.descripcion, (m.get(l.descripcion) ?? 0) + l.cantidad);
+      if (l.tipo === "servicio") m.set(l.descripcion, (m.get(l.descripcion) ?? 0) + vecesVendidas(l));
     }
     return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
   }, [periodo]);
@@ -228,7 +233,7 @@ export default function ReportesPage() {
   const topProductos = useMemo(() => {
     const m = new Map<string, number>();
     for (const l of periodo.flatMap((f) => f.lineas_factura)) {
-      if (l.tipo === "producto") m.set(l.descripcion, (m.get(l.descripcion) ?? 0) + l.cantidad);
+      if (l.tipo === "producto") m.set(l.descripcion, (m.get(l.descripcion) ?? 0) + vecesVendidas(l));
     }
     return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
   }, [periodo]);

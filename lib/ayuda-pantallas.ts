@@ -268,10 +268,12 @@ const PANTALLAS: [RegExp, AyudaPantalla][] = [
           pasos: [
             "Pulsa “Agregar a la factura” y elige Servicio o Producto.",
             "Busca y toca el artículo (puedes poner la cantidad antes).",
+            "Si el artículo se cobra por gramo (u otra unidad), te pide la cantidad (por ejemplo, 250 gramos) y muestra el monto antes de agregarlo.",
             "Si a alguien se le olvidó su servicio, en “¿Quién hizo el servicio? (recibe la comisión)” elige a la persona: la línea y la comisión quedan a su nombre.",
           ],
           notas: [
-            "Si agregas el mismo artículo otra vez (misma persona y mismo precio), se suma la cantidad en la línea existente.",
+            "Si agregas el mismo artículo otra vez (misma persona y mismo precio), se suma la cantidad (o los gramos) en la línea existente.",
+            "Si agregaste algo por error, pulsa “Quitar” en esa línea. Cada quien solo puede quitar lo que él mismo agregó, y solo mientras la factura está abierta; el administrador puede quitar cualquiera.",
             "Cada empleada solo ve los servicios que ella ofrece. Caja, con permiso, ve todos.",
           ],
         },
@@ -392,7 +394,9 @@ const PANTALLAS: [RegExp, AyudaPantalla][] = [
             "Activa “Pedir gramos al agendar” si la clienta debe indicar cuántos gramos se pone.",
             "Apaga “Mostrar en la web y en la app” si el servicio solo se hace en el salón, sin cita.",
             "Marca quién lo ofrece: esto filtra lo que ve cada empleada al facturar.",
+            "Elige la unidad de cobro: unidad, gramo, paquete, capa, línea, pulgada o libra. Si no es “unidad”, escribe de cuántas unidades es el precio (por ejemplo, gramo por cada 100: el precio es el de 100 g).",
           ],
+          notas: ["Al facturar, un servicio por gramo pide cuántos gramos son y cobra proporcional: con precio $600 por cada 100 g, 250 g cuestan $1,500."],
         },
       ],
     },
@@ -407,6 +411,7 @@ const PANTALLAS: [RegExp, AyudaPantalla][] = [
           pasos: [
             "Elige la categoría. Si es cabello, elige tipo, color (de la lista de colores de la línea) y los largos: se crea un producto por cada largo.",
             "Escribe precio, costo, existencias y mínimo.",
+            "Elige la unidad de cobro (unidad, gramo, paquete…) y, si no es “unidad”, de cuántas unidades es el precio. Las existencias se llevan en esa misma unidad.",
             "Si no es cabello, sube la foto. Guarda.",
           ],
           notas: [

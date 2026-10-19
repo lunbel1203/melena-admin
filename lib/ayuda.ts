@@ -239,6 +239,8 @@ export const TEMAS: Tema[] = [
         ],
         notas: [
           "Si agregas el mismo artículo otra vez (misma persona y mismo precio), no se crea otra línea: se suma la cantidad.",
+          "Los artículos que se cobran por gramo (u otra unidad) piden la cantidad al agregarlos y muestran el monto. La unidad se elige en el Catálogo.",
+          "Quitar una línea equivocada: cada quien solo puede quitar lo que él mismo agregó, y solo con la factura abierta. El administrador puede quitar cualquiera.",
           "Cada empleada solo ve los servicios que ella ofrece. Caja (con el permiso “Agregar servicios a nombre de otra persona”) ve todos.",
         ],
       },

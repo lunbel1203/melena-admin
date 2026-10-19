@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { TablesInsert } from "@/types/database.types";
+import CampoUnidad from "@/components/catalogo/campo-unidad";
 
 function CameraIcon() {
   return (
@@ -73,6 +74,8 @@ export default function NuevoProductoPage() {
   const [coloresLinea, setColoresLinea] = useState<string[]>([]);
 
   const [precio, setPrecio] = useState("");
+  const [unidad, setUnidad] = useState("unidad");
+  const [unidadBase, setUnidadBase] = useState("1");
   const [costo, setCosto] = useState("");
   const [stock, setStock] = useState("");
   const [stockMinimo, setStockMinimo] = useState("5");
@@ -139,6 +142,8 @@ export default function NuevoProductoPage() {
       categoria,
       descripcion: descripcion.trim() || null,
       precio: Number(precio),
+      unidad,
+      unidad_base: Math.max(1, Math.round(Number(unidadBase)) || 1),
       costo: costo ? Number(costo) : null,
       proveedor_id: proveedorId || null,
       stock_minimo: Math.max(0, Math.round(Number(stockMinimo) || 0)),
@@ -356,6 +361,9 @@ export default function NuevoProductoPage() {
                 <input type="number" min={0} value={costo} onChange={(e) => setCosto(e.target.value)} placeholder="2400"
                   className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-zinc-400 transition-colors" />
               </div>
+            </div>
+            <div className="mb-3">
+              <CampoUnidad unidad={unidad} base={unidadBase} onChange={(u, b) => { setUnidad(u); setUnidadBase(b); }} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
