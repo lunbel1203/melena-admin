@@ -784,6 +784,34 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
 
             {abierta ? (
               <>
+                {/* Método de pago: arriba del botón, para elegirlo y cobrar sin subir ni bajar la pantalla */}
+                <div className="mb-4 print:hidden">
+                  <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-2">Método de pago</p>
+                  <div className="grid grid-cols-2 gap-2 mb-3">
+                    {(["tarjeta", "efectivo", "transferencia", "mixto"] as MetodoPago[]).map((m) => (
+                      <button
+                        key={m}
+                        onClick={() => setMetodoPago(m)}
+                        className={`py-2.5 text-sm font-semibold rounded-xl border-2 transition-colors ${
+                          metodoPago === m
+                            ? "border-zinc-900 bg-zinc-50 text-zinc-900"
+                            : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300"
+                        }`}
+                      >
+                        {m.charAt(0).toUpperCase() + m.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                  <label className="flex items-center gap-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={whatsapp}
+                      onChange={(e) => setWhatsapp(e.target.checked)}
+                      className="w-4 h-4 rounded border-zinc-300 accent-zinc-900"
+                    />
+                    <span className="text-sm text-zinc-600">Enviar factura por WhatsApp</span>
+                  </label>
+                </div>
                 <button
                   onClick={cobrar}
                   disabled={procesando || lineas.length === 0 || guardandoDesc || descPendiente || (editaDescuento && !descValido)}
@@ -835,41 +863,6 @@ export default function DetalleFacturaPage({ params }: { params: Promise<{ id: s
               ))}
             </div>
           </div>
-
-          {/* Método de pago */}
-          {abierta && (
-            <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-5 print:hidden">
-              <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-3">
-                Método de pago
-              </p>
-
-              <div className="grid grid-cols-2 gap-2 mb-3">
-                {(["tarjeta", "efectivo", "transferencia", "mixto"] as MetodoPago[]).map((m) => (
-                  <button
-                    key={m}
-                    onClick={() => setMetodoPago(m)}
-                    className={`py-2.5 text-sm font-semibold rounded-xl border-2 transition-colors ${
-                      metodoPago === m
-                        ? "border-zinc-900 bg-zinc-50 text-zinc-900"
-                        : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300"
-                    }`}
-                  >
-                    {m.charAt(0).toUpperCase() + m.slice(1)}
-                  </button>
-                ))}
-              </div>
-
-              <label className="flex items-center gap-2.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={whatsapp}
-                  onChange={(e) => setWhatsapp(e.target.checked)}
-                  className="w-4 h-4 rounded border-zinc-300 accent-zinc-900"
-                />
-                <span className="text-sm text-zinc-600">Enviar factura por WhatsApp</span>
-              </label>
-            </div>
-          )}
 
           {/* Bitácora */}
           <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-5">
