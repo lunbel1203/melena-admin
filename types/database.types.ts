@@ -1486,6 +1486,7 @@ export type Database = {
       }
       servicios: {
         Row: {
+          es_sin_definir: boolean
           unidad: string
           unidad_base: number
           activo: boolean
@@ -1513,6 +1514,7 @@ export type Database = {
           web_retoque: string | null
         }
         Insert: {
+          es_sin_definir?: boolean
           unidad?: string
           unidad_base?: number
           activo?: boolean
@@ -1540,6 +1542,7 @@ export type Database = {
           web_retoque?: string | null
         }
         Update: {
+          es_sin_definir?: boolean
           unidad?: string
           unidad_base?: number
           activo?: boolean
@@ -1902,11 +1905,11 @@ export type Database = {
         Args: {
           p_comprobante_path?: string
           p_gramos?: number
-          p_empleado_id: string
+          p_empleado_id: string | null
           p_fecha: string
           p_hora_inicio: string
           p_notas?: string
-          p_servicio_id: string
+          p_servicio_id: string | null
         }
         Returns: string
       }
@@ -1915,13 +1918,13 @@ export type Database = {
           p_comprobante_url: string
           p_email: string
           p_gramos?: number
-          p_empleado_id: string
+          p_empleado_id: string | null
           p_fecha: string
           p_hora_fin: string
           p_hora_inicio: string
           p_nombre: string
           p_notas: string
-          p_servicio_id: string
+          p_servicio_id: string | null
           p_telefono: string
         }
         Returns: string
@@ -1994,6 +1997,24 @@ export type Database = {
         }
         Returns: {
           hora_fin: string
+          hora_inicio: string
+        }[]
+      }
+      horarios_disponibles_sin_servicio: {
+        Args: {
+          p_fecha: string
+        }
+        Returns: {
+          hora_fin: string
+          hora_inicio: string
+        }[]
+      }
+      horarios_disponibles_sin_servicio_rango: {
+        Args: {
+          p_dias?: number
+        }
+        Returns: {
+          fecha: string
           hora_inicio: string
         }[]
       }

@@ -64,7 +64,7 @@ const PANTALLAS: [RegExp, AyudaPantalla][] = [
         {
           pasos: [
             "1 · Clienta: búscala por nombre o teléfono. Si no existe, escribe su nombre y teléfono para crearla.",
-            "2 · Servicio: elige el servicio. Si pide gramos (método suizo, postura o mantenimiento de tape), escribe cuántos.",
+            "2 · Servicio: elige el servicio. Si pide gramos (método suizo, postura o mantenimiento de tape), escribe cuántos. Si la clienta aún no sabe qué se hará, elige “Sin servicio definido”: reservas la hora sin servicio ni estilista.",
             "3 · Personal disponible: elige la estilista; solo salen las que ofrecen ese servicio.",
             "4 · Fecha y hora: elige un horario libre de esa estilista.",
             "5 · Depósito de reserva: si la cita se paga en el salón se confirma de inmediato; si lleva depósito, adjunta el comprobante y quedará pendiente hasta validarlo.",
@@ -72,6 +72,7 @@ const PANTALLAS: [RegExp, AyudaPantalla][] = [
           ],
           notas: [
             "Si el horario ya lo tomaron mientras tanto, el sistema te avisa y debes elegir otro.",
+            "Una cita “Sin servicio definido” bloquea 60 minutos del horario del salón. No hay estilista, así que varias citas pueden compartir hora hasta que se asignen.",
             "Si el teléfono ya existe, el sistema te avisa para que uses la ficha que ya está creada.",
           ],
         },
@@ -88,6 +89,7 @@ const PANTALLAS: [RegExp, AyudaPantalla][] = [
           titulo: "Qué puedes hacer",
           pasos: [
             "Marcar llegada: cuando la clienta llega. Pasa a la lista de espera y se abre su factura (la cita necesita una estilista asignada).",
+            "Si la cita dice “Falta definir”, elige el servicio y la estilista en esa tarjeta y guarda: la hora de fin se ajusta a la duración del servicio. Hasta entonces no se puede marcar la llegada.",
             "Reagendar: elige una nueva fecha y hora libres.",
             "Cancelar cita: libera el horario y la acción no se puede deshacer.",
             "Enviar recordatorio a la app: avisa a la clienta dentro de la app. Si no usa la app, envíaselo por WhatsApp.",

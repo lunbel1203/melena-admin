@@ -125,7 +125,7 @@ export const TEMAS: Tema[] = [
         pasos: [
           "En Agenda pulsa “Nueva cita”.",
           "Elige la clienta (o crea una nueva con nombre y teléfono).",
-          "Elige el servicio. Si el servicio pide gramos (método suizo, postura o mantenimiento de tape), escribe cuántos: el sistema muestra los paquetes de 100 g.",
+          "Elige el servicio (o “Sin servicio definido” si todavía no se sabe: se reserva la hora sin servicio ni estilista y se definen después desde la cita). Si el servicio pide gramos (método suizo, postura o mantenimiento de tape), escribe cuántos: el sistema muestra los paquetes de 100 g.",
           "Elige la estilista: solo salen las que ofrecen ese servicio.",
           "Elige el día y una hora libre.",
           "Elige cómo se paga: “Se paga en el salón” confirma la cita de inmediato; con depósito, sube el comprobante y la cita queda pendiente hasta validarlo.",

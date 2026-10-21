@@ -1,6 +1,7 @@
 "use client";
 
 import { resumenGramos } from "@/lib/gramos";
+import DefinirServicioCita from "@/components/agenda/definir-servicio";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { use } from "react";
@@ -54,7 +55,7 @@ interface CitaDetalle {
   created_at: string;
   empleado_id: string | null;
   clienta: { id: string; nombre: string; telefono: string; email: string | null };
-  servicio: { id: string; nombre: string; duracion_minutos: number; precio: number };
+  servicio: { id: string; nombre: string; duracion_minutos: number; precio: number; es_sin_definir: boolean };
   empleado: { id: string; nombre: string } | null;
 }
 
@@ -145,7 +146,7 @@ export default function CitaDetailPage({ params }: { params: Promise<{ id: strin
     const { data, error } = await supabase
       .from("citas")
       .select(
-        "id, fecha, hora_inicio, hora_fin, estado, notas, gramos, created_at, empleado_id, clientas(id, nombre, telefono, email), servicios(id, nombre, duracion_minutos, precio), empleados(id, nombre)",
+        "id, fecha, hora_inicio, hora_fin, estado, notas, gramos, created_at, empleado_id, clientas(id, nombre, telefono, email), servicios(id, nombre, duracion_minutos, precio, es_sin_definir), empleados(id, nombre)",
       )
       .eq("id", id)
       .single();
@@ -214,18 +215,20 @@ export default function CitaDetailPage({ params }: { params: Promise<{ id: strin
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  /* Reagendar: horarios disponibles del estilista asignado */
+  /* Reagendar: horarios disponibles del estilista asignado (o del salón, si la cita aún no tiene estilista) */
   useEffect(() => {
-    if (!mostrarReagendar || !nuevaFecha || !cita?.empleado_id) return;
+    if (!mostrarReagendar || !nuevaFecha || !cita) return;
     let cancelado = false;
     (async () => {
       setCargandoHoras(true);
       setNuevaHora(null);
-      const { data } = await supabase.rpc("horarios_disponibles_estilista", {
-        p_empleado_id: cita.empleado_id!,
-        p_fecha: toISODate(nuevaFecha),
-        p_duracion_minutos: cita.servicio.duracion_minutos,
-      });
+      const { data } = cita.empleado_id
+        ? await supabase.rpc("horarios_disponibles_estilista", {
+            p_empleado_id: cita.empleado_id,
+            p_fecha: toISODate(nuevaFecha),
+            p_duracion_minutos: cita.servicio.duracion_minutos,
+          })
+        : await supabase.rpc("horarios_disponibles_sin_servicio", { p_fecha: toISODate(nuevaFecha) });
       if (cancelado) return;
       setHorasDisponibles((data ?? []).map((s: { hora_inicio: string }) => s.hora_inicio.slice(0, 5)));
       setCargandoHoras(false);
@@ -233,7 +236,7 @@ export default function CitaDetailPage({ params }: { params: Promise<{ id: strin
     return () => {
       cancelado = true;
     };
-  }, [mostrarReagendar, nuevaFecha, cita?.empleado_id, cita?.servicio.duracion_minutos, supabase]);
+  }, [mostrarReagendar, nuevaFecha, cita, supabase]);
 
   const dias = useMemo(() => {
     const lista: Date[] = [];
@@ -295,6 +298,7 @@ export default function CitaDetailPage({ params }: { params: Promise<{ id: strin
   // Marcar llegada = hacer el check-in en Facturación: se crea la visita y la factura abierta
   async function marcarLlegada() {
     if (!cita) return;
+    if (cita.servicio.es_sin_definir) return avisar("Falta el servicio", "Define el servicio y la estilista de la cita antes de marcar la llegada.");
     if (!cita.empleado_id) return avisar("Falta la estilista", "Asigna una estilista a la cita antes de marcar la llegada.");
     const ok = await confirmar({
       titulo: "¿Marcar llegada?",
@@ -588,6 +592,11 @@ export default function CitaDetailPage({ params }: { params: Promise<{ id: strin
               </div>
             </div>
           </div>
+
+          {/* Cita reservada sin servicio ni estilista: se definen aquí */}
+          {cita.servicio.es_sin_definir && !visita && (cita.estado === "pendiente_confirmacion" || cita.estado === "confirmada") && (
+            <DefinirServicioCita citaId={cita.id} horaInicio={cita.hora_inicio} onGuardado={cargar} />
+          )}
 
           {/* Estado de la cita */}
           <div className="bg-white rounded-2xl border border-zinc-200 p-5">

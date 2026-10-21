@@ -129,6 +129,7 @@ export default function CatalogoPage() {
       supabase
         .from("servicios")
         .select("id, slug, nombre, categoria, duracion_minutos, precio, deposito_requerido, deposito_monto, activo, mostrar_en_web")
+        .eq("es_sin_definir", false) // el servicio especial "Sin servicio definido" no es del catálogo
         .order("nombre"),
       supabase.from("servicios_empleados").select("servicio_id, empleados(nombre)"),
     ]);

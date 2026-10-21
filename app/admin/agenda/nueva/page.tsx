@@ -150,6 +150,10 @@ function NuevaCitaForm() {
   const [servicios, setServicios] = useState<Servicio[]>([]);
   const [selectedServicioId, setSelectedServicioId] = useState<string | null>(null);
   const selectedServicio = servicios.find((s) => s.id === selectedServicioId) ?? null;
+  /* "Sin servicio definido": se reserva la hora sin servicio ni estilista; se definen después en el detalle de la cita */
+  const [sinServicio, setSinServicio] = useState(false);
+  const [servicioSinDefinir, setServicioSinDefinir] = useState<{ id: string; duracion_minutos: number } | null>(null);
+  const [horasSalon, setHorasSalon] = useState<string[]>([]);
 
   /* Paso 3/4: personal, fecha y hora */
   const [estilistas, setEstilistas] = useState<Estilista[]>([]);
@@ -175,7 +179,7 @@ function NuevaCitaForm() {
   /* Catálogo inicial */
   useEffect(() => {
     (async () => {
-      const [{ data: srv }, { data: emp }] = await Promise.all([
+      const [{ data: srv }, { data: emp }, { data: sinDef }] = await Promise.all([
         supabase.from("servicios").select("id, nombre, duracion_minutos, precio, pide_gramos").eq("activo", true).order("nombre"),
         supabase
           .from("empleados")
@@ -183,7 +187,9 @@ function NuevaCitaForm() {
           .eq("roles.nombre", "Estilista")
           .eq("activo", true)
           .order("nombre"),
+        supabase.from("servicios").select("id, duracion_minutos").eq("es_sin_definir", true).maybeSingle(),
       ]);
+      setServicioSinDefinir(sinDef ?? null);
       setServicios(srv ?? []);
       setEstilistas((emp ?? []).map((e) => ({ id: e.id, nombre: e.nombre, puesto: e.puesto })));
     })();
@@ -258,7 +264,31 @@ function NuevaCitaForm() {
     };
   }, [supabase, selectedServicio, selectedDate, estilistasDelServicio]);
 
-  const horasEstilistaSeleccionada = selectedEstilistaId ? horariosPorEstilista.get(selectedEstilistaId) ?? [] : [];
+  /* Sin servicio: horarios libres del salón para el día elegido */
+  useEffect(() => {
+    if (!sinServicio) {
+      setHorasSalon([]);
+      return;
+    }
+    let cancelado = false;
+    (async () => {
+      setCargandoHorarios(true);
+      setSelectedHora(null);
+      const { data } = await supabase.rpc("horarios_disponibles_sin_servicio", { p_fecha: toISODate(selectedDate) });
+      if (cancelado) return;
+      const ahora = new Date();
+      const minutosAhora = ahora.getHours() * 60 + ahora.getMinutes();
+      let slots = (data ?? []).map((x) => x.hora_inicio.slice(0, 5));
+      if (isSameISODate(selectedDate, ahora)) slots = slots.filter((h) => horaAMinutos(h) > minutosAhora);
+      setHorasSalon(slots);
+      setCargandoHorarios(false);
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [supabase, sinServicio, selectedDate]);
+
+  const horasEstilistaSeleccionada = sinServicio ? horasSalon : selectedEstilistaId ? horariosPorEstilista.get(selectedEstilistaId) ?? [] : [];
   const otrasConEspacio = estilistasDelServicio.filter(
     (e) => e.id !== selectedEstilistaId && (horariosPorEstilista.get(e.id)?.length ?? 0) > 0,
   );
@@ -276,15 +306,17 @@ function NuevaCitaForm() {
   const clientaLista = selectedClienta || (modoNueva && nuevoNombre.trim() && nuevoTelefono.trim());
   const puedeEnviar =
     clientaLista &&
-    selectedServicio &&
-    selectedEstilistaId &&
+    (sinServicio ? !!servicioSinDefinir : selectedServicio && selectedEstilistaId) &&
     selectedHora &&
-    (!selectedServicio.pide_gramos || gramosValidos(gramosTxt) !== null) &&
+    (sinServicio || !selectedServicio!.pide_gramos || gramosValidos(gramosTxt) !== null) &&
     (payInSalon || comprobante) &&
     !enviando;
 
   async function crearCita() {
-    if (!selectedServicio || !selectedEstilistaId || !selectedHora) return;
+    if (!selectedHora) return;
+    if (sinServicio ? !servicioSinDefinir : !selectedServicio || !selectedEstilistaId) return;
+    // el servicio y la duración: el real, o el especial "Sin servicio definido" (sin estilista)
+    const servicioCita = sinServicio ? servicioSinDefinir! : selectedServicio!;
     setEnviando(true);
     setErrorEnvio(null);
 
@@ -304,21 +336,21 @@ function NuevaCitaForm() {
       if (!clientaId) throw new Error("Selecciona o crea una clienta.");
 
       const horaInicio = selectedHora;
-      const horaFin = minutosAHora(horaAMinutos(selectedHora) + selectedServicio.duracion_minutos);
+      const horaFin = minutosAHora(horaAMinutos(selectedHora) + servicioCita.duracion_minutos);
       const fechaISO = toISODate(selectedDate);
 
       const { data: cita, error: citaError } = await supabase
         .from("citas")
         .insert({
           clienta_id: clientaId,
-          servicio_id: selectedServicio.id,
-          empleado_id: selectedEstilistaId,
+          servicio_id: servicioCita.id,
+          empleado_id: sinServicio ? null : selectedEstilistaId,
           fecha: fechaISO,
           hora_inicio: horaInicio,
           hora_fin: horaFin,
           estado: payInSalon ? "confirmada" : "pendiente_confirmacion",
           notas: note.trim() || null,
-          gramos: selectedServicio.pide_gramos ? gramosValidos(gramosTxt) : null,
+          gramos: !sinServicio && selectedServicio!.pide_gramos ? gramosValidos(gramosTxt) : null,
           origen: "panel",
         })
         .select("id")
@@ -459,11 +491,11 @@ function NuevaCitaForm() {
             ) : (
               <div className="grid grid-cols-2 gap-2.5">
                 {servicios.map((s) => {
-                  const isSelected = selectedServicioId === s.id;
+                  const isSelected = !sinServicio && selectedServicioId === s.id;
                   return (
                     <button
                       key={s.id}
-                      onClick={() => setSelectedServicioId(s.id)}
+                      onClick={() => { setSelectedServicioId(s.id); setSinServicio(false); }}
                       className={`text-left px-4 py-3.5 rounded-xl border-2 transition-all ${
                         isSelected ? "border-zinc-900 bg-white" : "border-zinc-100 bg-white hover:border-zinc-200"
                       }`}
@@ -477,7 +509,24 @@ function NuevaCitaForm() {
                 })}
               </div>
             )}
-            {selectedServicio?.pide_gramos && (
+            {servicioSinDefinir && (
+              <button
+                onClick={() => {
+                  setSinServicio(true);
+                  setSelectedServicioId(null);
+                  setSelectedEstilistaId(null);
+                  setSelectedHora(null);
+                  setGramosTxt("");
+                }}
+                className={`mt-2.5 w-full text-left px-4 py-3.5 rounded-xl border-2 transition-all ${
+                  sinServicio ? "border-zinc-900 bg-white" : "border-dashed border-zinc-200 bg-white hover:border-zinc-300"
+                }`}
+              >
+                <div className="text-sm font-semibold text-zinc-900">Sin servicio definido</div>
+                <div className="text-xs text-zinc-400 mt-1">Reserva la hora sin servicio ni estilista; se definen después en la cita.</div>
+              </button>
+            )}
+            {!sinServicio && selectedServicio?.pide_gramos && (
               <div className="mt-4">
                 <label className="text-xs font-semibold text-zinc-500 mb-1.5 block">Gramos (máx. {GRAMOS_MAX}; cada paquete son 100 g)</label>
                 <div className="flex items-center gap-3">
@@ -502,7 +551,9 @@ function NuevaCitaForm() {
           {/* 3 · Personal disponible */}
           <div className="bg-white rounded-2xl border border-zinc-200 p-5">
             <SectionLabel>3 · Personal disponible</SectionLabel>
-            {!selectedServicio ? (
+            {sinServicio ? (
+              <p className="text-sm text-zinc-400">Sin estilista por ahora: se asigna después, cuando se defina el servicio.</p>
+            ) : !selectedServicio ? (
               <p className="text-sm text-zinc-400">Elige un servicio primero.</p>
             ) : estilistasDelServicio.length === 0 ? (
               <p className="text-sm text-zinc-400">No hay estilistas asignadas a este servicio en el catálogo.</p>
@@ -558,7 +609,7 @@ function NuevaCitaForm() {
             {/* 4 · Fecha y hora */}
             <div className="p-5 border-b border-zinc-100">
               <SectionLabel>
-                4 · Fecha y hora{selectedEstilistaId && ` con ${estilistas.find((e) => e.id === selectedEstilistaId)?.nombre.split(" ")[0]}`}
+                4 · Fecha y hora{!sinServicio && selectedEstilistaId && ` con ${estilistas.find((e) => e.id === selectedEstilistaId)?.nombre.split(" ")[0]}`}
               </SectionLabel>
 
               <div className="grid grid-cols-4 gap-2 mb-4">
@@ -579,7 +630,7 @@ function NuevaCitaForm() {
                 })}
               </div>
 
-              {!selectedEstilistaId ? (
+              {!sinServicio && !selectedEstilistaId ? (
                 <p className="text-sm text-zinc-400">Elige una estilista para ver sus horarios.</p>
               ) : (
                 <div className="mb-1">
@@ -592,8 +643,8 @@ function NuevaCitaForm() {
                     <div className="flex items-start gap-2 bg-orange-50 border border-orange-100 rounded-xl px-3 py-2.5">
                       <span className="shrink-0 mt-0.5"><WarnIcon /></span>
                       <p className="text-xs text-zinc-600 leading-relaxed">
-                        No tiene espacio libre este día.
-                        {otrasConEspacio.length > 0 && (
+                        {sinServicio ? "No hay horarios libres este día." : "No tiene espacio libre este día."}
+                        {!sinServicio && otrasConEspacio.length > 0 && (
                           <>
                             {" "}Sí están libres:{" "}
                             {otrasConEspacio.map((e, i) => (
