@@ -6,6 +6,7 @@ import Sidebar from "@/components/sidebar";
 import AyudaPantallaBoton from "@/components/ayuda-pantalla";
 import { ayudaDePantalla } from "@/lib/ayuda-pantallas";
 import { createClient } from "@/lib/supabase/client";
+import CambiarPasswordObligatorio from "@/components/cambiar-password-obligatorio";
 
 function MenuIcon() {
   return (
@@ -30,6 +31,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const [esAdmin, setEsAdmin] = useState(true);
   const [modulosVisibles, setModulosVisibles] = useState<Set<string> | null>(null);
   const [cargandoAcceso, setCargandoAcceso] = useState(true);
+  // entró con la contraseña temporal: debe elegir la suya antes de ver el panel
+  const [debeCambiar, setDebeCambiar] = useState<{ nombre: string } | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -38,7 +41,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       } = await supabase.auth.getUser();
       if (!user) return setCargandoAcceso(false);
 
-      const { data: empleado } = await supabase.from("empleados").select("id").eq("user_id", user.id).single();
+      const { data: empleado } = await supabase.from("empleados").select("id, nombre, debe_cambiar_password").eq("user_id", user.id).single();
+      if (empleado?.debe_cambiar_password) setDebeCambiar({ nombre: empleado.nombre.split(" ")[0] });
       // es_admin y mis_permisos ya reúnen todos los roles de la empleada (principal + adicionales)
       const [{ data: admin }, { data: permisos }] = await Promise.all([supabase.rpc("es_admin"), supabase.rpc("mis_permisos")]);
       if (!empleado || admin) {
@@ -70,6 +74,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const permitido = esRutaSeguridad
     ? esAdmin
     : esAdmin || !rutaControlada || (modulosVisibles?.has(modulo) ?? false);
+
+  if (debeCambiar) return <CambiarPasswordObligatorio nombre={debeCambiar.nombre} onListo={() => setDebeCambiar(null)} />;
 
   return (
     <div className="flex h-full">

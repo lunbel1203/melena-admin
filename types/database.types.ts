@@ -654,6 +654,7 @@ export type Database = {
         Row: {
           activo: boolean
           created_at: string
+          debe_cambiar_password: boolean
           email: string | null
           foto_url: string | null
           id: string
@@ -667,6 +668,7 @@ export type Database = {
         Insert: {
           activo?: boolean
           created_at?: string
+          debe_cambiar_password?: boolean
           email?: string | null
           foto_url?: string | null
           id?: string
@@ -680,6 +682,7 @@ export type Database = {
         Update: {
           activo?: boolean
           created_at?: string
+          debe_cambiar_password?: boolean
           email?: string | null
           foto_url?: string | null
           id?: string
