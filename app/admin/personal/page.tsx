@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { coincide } from "@/lib/busqueda";
 
 function SearchIcon() {
   return (
@@ -31,6 +32,8 @@ interface Empleado {
   /** Todos sus roles (principal y adicionales) */
   rolesNombres: string[];
   puesto: string | null;
+  telefono: string | null;
+  email: string | null;
   activo: boolean;
   foto_url: string | null;
   /** Tiene una cuenta (correo y contraseña) para entrar */
@@ -69,7 +72,7 @@ export default function PersonalPage() {
       const inicioMesISO = inicioMes.toISOString();
 
       const [{ data: emps }, { data: lineas }, { data: comisiones }, { data: permisosRol }, { data: rolesData }] = await Promise.all([
-        supabase.from("empleados").select("id, nombre, puesto, activo, foto_url, user_id, rol_id, roles!empleados_rol_id_fkey(nombre, es_admin_total), empleados_roles(rol_id, roles(nombre, es_admin_total))").order("nombre"),
+        supabase.from("empleados").select("id, nombre, puesto, telefono, email, activo, foto_url, user_id, rol_id, roles!empleados_rol_id_fkey(nombre, es_admin_total), empleados_roles(rol_id, roles(nombre, es_admin_total))").order("nombre"),
         supabase
           .from("lineas_factura")
           .select("empleado_id, subtotal, tipo, facturas!inner(estado, cobrada_at)")
@@ -116,6 +119,8 @@ export default function PersonalPage() {
             id: e.id,
             nombre: e.nombre,
             puesto: e.puesto,
+            telefono: e.telefono,
+            email: e.email,
             activo: e.activo,
             foto_url: e.foto_url,
             rolNombre: todos.map((x) => x.rol?.nombre).filter(Boolean).join(" · "),
@@ -133,7 +138,7 @@ export default function PersonalPage() {
 
   const filtered = empleados.filter((e) => {
     const matchTab = activeTab === TODAS || e.rolesNombres.includes(activeTab);
-    const matchSearch = e.nombre.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = coincide(`${e.nombre} ${e.puesto ?? ""} ${e.rolNombre} ${e.telefono ?? ""} ${e.email ?? ""}`, search);
     const matchCuenta = filtroCuenta === "Todas" || (filtroCuenta === "Con cuenta" ? e.tieneCuenta : !e.tieneCuenta);
     return matchTab && matchSearch && matchCuenta;
   });
@@ -203,7 +208,7 @@ export default function PersonalPage() {
       </div>
 
       {/* ── Search ── */}
-      <div className="relative mb-4 max-w-xs">
+      <div className="relative mb-4 max-w-md">
         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none">
           <SearchIcon />
         </span>
@@ -211,7 +216,7 @@ export default function PersonalPage() {
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar empleada..."
+          placeholder="Buscar por nombre, teléfono, correo o rol..."
           className="w-full pl-9 pr-4 py-2 text-sm bg-white border border-zinc-200 rounded-xl text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-300"
         />
       </div>

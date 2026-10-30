@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { toISODate } from "@/lib/dates";
+import { coincide } from "@/lib/busqueda";
 
 function SearchIcon() {
   return (
@@ -26,6 +27,8 @@ interface Clienta {
   id: string;
   nombre: string;
   telefono: string;
+  email: string | null;
+  notas: string | null;
 }
 interface Cita {
   clienta_id: string;
@@ -63,7 +66,7 @@ export default function ClientasPage() {
   useEffect(() => {
     (async () => {
       const [{ data: cl }, { data: ct }, { data: tk }] = await Promise.all([
-        supabase.from("clientas").select("id, nombre, telefono").order("nombre"),
+        supabase.from("clientas").select("id, nombre, telefono, email, notas").order("nombre"),
         supabase.from("citas").select("clienta_id, fecha, hora_inicio, estado, servicios(nombre)").order("fecha", { ascending: false }),
         supabase.from("tickets_molestia").select("clienta_id").in("estado", ["abierto", "en_proceso"]),
       ]);
@@ -78,11 +81,7 @@ export default function ClientasPage() {
 
   const filas = useMemo(() => {
     return clientas
-      .filter((c) => {
-        const q = search.trim().toLowerCase();
-        if (!q) return true;
-        return c.nombre.toLowerCase().includes(q) || c.telefono.includes(q);
-      })
+      .filter((c) => coincide(`${c.nombre} ${c.telefono} ${c.email ?? ""} ${c.notas ?? ""}`, search))
       .map((c) => {
         const propias = citas.filter((ci) => ci.clienta_id === c.id);
         const completadas = propias.filter((ci) => ci.estado === "completada");
@@ -125,8 +124,8 @@ export default function ClientasPage() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar clienta..."
-              className="pl-9 pr-4 py-2 text-sm bg-white border border-zinc-200 rounded-xl w-52 text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-300"
+              placeholder="Buscar por nombre, teléfono o correo..."
+              className="pl-9 pr-4 py-2 text-sm bg-white border border-zinc-200 rounded-xl w-72 text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-300"
             />
           </div>
 
@@ -159,7 +158,7 @@ export default function ClientasPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar clienta..."
+            placeholder="Buscar por nombre, teléfono o correo..."
             className="w-full pl-9 pr-4 py-2.5 text-sm bg-white border border-zinc-200 rounded-xl text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-300"
           />
         </div>
@@ -220,7 +219,7 @@ export default function ClientasPage() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-zinc-900 truncate">{c.nombre}</p>
-                  <p className="text-xs text-zinc-400">{c.telefono}</p>
+                  <p className="text-xs text-zinc-400 truncate">{[c.telefono, c.email].filter(Boolean).join(" · ")}</p>
                 </div>
               </div>
 
