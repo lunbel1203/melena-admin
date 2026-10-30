@@ -41,11 +41,23 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       } = await supabase.auth.getUser();
       if (!user) return setCargandoAcceso(false);
 
-      const { data: empleado } = await supabase.from("empleados").select("id, nombre, debe_cambiar_password").eq("user_id", user.id).single();
-      if (empleado?.debe_cambiar_password) setDebeCambiar({ nombre: empleado.nombre.split(" ")[0] });
+      const { data: empleado, error: errorEmpleado } = await supabase.from("empleados").select("id, nombre, debe_cambiar_password").eq("user_id", user.id).maybeSingle();
+      // Sin ficha de empleada (p. ej. una clienta con sesión) no hay panel; si la consulta falla, no se da acceso de más
+      if (!errorEmpleado && !empleado) {
+        await supabase.auth.signOut();
+        router.replace("/acceso?motivo=sin-acceso");
+        return;
+      }
+      if (errorEmpleado || !empleado) {
+        setEsAdmin(false);
+        setModulosVisibles(new Set());
+        setCargandoAcceso(false);
+        return;
+      }
+      if (empleado.debe_cambiar_password) setDebeCambiar({ nombre: empleado.nombre.split(" ")[0] });
       // es_admin y mis_permisos ya reúnen todos los roles de la empleada (principal + adicionales)
       const [{ data: admin }, { data: permisos }] = await Promise.all([supabase.rpc("es_admin"), supabase.rpc("mis_permisos")]);
-      if (!empleado || admin) {
+      if (admin) {
         setEsAdmin(true);
         setCargandoAcceso(false);
         return;
