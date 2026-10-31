@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import CampoFecha from "@/components/campo-fecha";
+import { mensajeContacto, verificarContacto } from "@/lib/contacto";
 
 function BackIcon() {
   return (
@@ -66,6 +67,13 @@ export default function EditarClientaPage({ params }: { params: Promise<{ id: st
     if (fechaInvalida) return setError("La fecha de nacimiento no es válida. Usa día/mes/año, por ejemplo 18/03/1994.");
     setGuardando(true);
     setError(null);
+
+    // con cuenta en la app el correo no se cambia desde aquí, así que solo se comprueba el teléfono
+    const choques = await verificarContacto(supabase, { email: tieneCuenta ? null : correo, telefono, clientaId: id });
+    if (choques.length > 0) {
+      setGuardando(false);
+      return setError(mensajeContacto(choques));
+    }
 
     const cambios: { nombre: string; telefono: string; fecha_nacimiento: string | null; notas: string | null; email?: string | null } = {
       nombre: nombre.trim(),

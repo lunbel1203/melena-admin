@@ -4,6 +4,7 @@ import Link from "next/link";
 import { use, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { mensajeContacto, verificarContacto } from "@/lib/contacto";
 
 function BackIcon() {
   return (
@@ -142,6 +143,12 @@ export default function EditarEmpleadaPage({ params }: { params: Promise<{ id: s
   async function guardar() {
     setGuardando(true);
     setError(null);
+
+    const choques = await verificarContacto(supabase, { email: correo, telefono, empleadoId: id });
+    if (choques.length > 0) {
+      setGuardando(false);
+      return setError(mensajeContacto(choques));
+    }
 
     const { error: empError } = await supabase
       .from("empleados")

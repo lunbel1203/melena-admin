@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { mensajeContacto, verificarContacto } from "@/lib/contacto";
 
 function BackIcon() {
   return (
@@ -116,6 +117,12 @@ export default function NuevaEmpleadaPage() {
     }
     setGuardando(true);
     setError(null);
+
+    const choques = await verificarContacto(supabase, { email: correo, telefono });
+    if (choques.length > 0) {
+      setGuardando(false);
+      return setError(mensajeContacto(choques));
+    }
 
     const { data: nuevo, error: insError } = await supabase
       .from("empleados")
