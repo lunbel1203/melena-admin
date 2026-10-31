@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import CampoFecha from "@/components/campo-fecha";
-import { mensajeContacto, verificarContacto } from "@/lib/contacto";
+import { MENSAJE_SESION_VENCIDA, mensajeContacto, sesionActiva, verificarContacto } from "@/lib/contacto";
 
 function BackIcon() {
   return (
@@ -68,6 +68,10 @@ export default function EditarClientaPage({ params }: { params: Promise<{ id: st
     setGuardando(true);
     setError(null);
 
+    if (!(await sesionActiva(supabase))) {
+      setGuardando(false);
+      return setError(MENSAJE_SESION_VENCIDA);
+    }
     // con cuenta en la app el correo no se cambia desde aquí, así que solo se comprueba el teléfono
     const choques = await verificarContacto(supabase, { email: tieneCuenta ? null : correo, telefono, clientaId: id });
     if (choques.length > 0) {

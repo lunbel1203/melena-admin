@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import CampoFecha from "@/components/campo-fecha";
-import { mensajeContacto, verificarContacto } from "@/lib/contacto";
+import { MENSAJE_SESION_VENCIDA, mensajeContacto, sesionActiva, verificarContacto } from "@/lib/contacto";
 
 function BackIcon() {
   return (
@@ -44,6 +44,10 @@ export default function NuevaClientaPage() {
     setGuardando(true);
     setError(null);
 
+    if (!(await sesionActiva(supabase))) {
+      setGuardando(false);
+      return setError(MENSAJE_SESION_VENCIDA);
+    }
     const choques = await verificarContacto(supabase, { email: correo, telefono });
     if (choques.length > 0) {
       setGuardando(false);

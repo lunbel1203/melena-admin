@@ -39,3 +39,18 @@ export function mensajeContacto(choques: Choque[]): string {
   );
   return [...new Set(frases)].join(" ");
 }
+
+/**
+ * ¿Sigue activa la sesión? Sin sesión las peticiones van como usuario anónimo y la base responde
+ * "permission denied for function es_admin", que no le dice nada a quien está guardando.
+ */
+export async function sesionActiva(supabase: SupabaseClient): Promise<boolean> {
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    return !error && !!data.user;
+  } catch {
+    return false;
+  }
+}
+
+export const MENSAJE_SESION_VENCIDA = "Tu sesión venció. Recarga la página e inicia sesión de nuevo para guardar.";
