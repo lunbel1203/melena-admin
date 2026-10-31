@@ -11,6 +11,7 @@ import {
   useMensajeDepositoRechazado,
 } from "@/lib/whatsapp-citas";
 import { toISODate } from "@/lib/dates";
+import ImagenComprobante from "@/components/imagen-comprobante";
 
 /* ── Icons ── */
 function PdfIcon() {
@@ -360,8 +361,7 @@ export default function DepositosPage() {
                   rel="noreferrer"
                   className="border-2 border-dashed border-zinc-200 rounded-xl overflow-hidden flex flex-col items-center gap-2 mb-4 hover:border-zinc-300 transition-all"
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={selected.comprobante_url} alt="Comprobante de transferencia" className="w-full max-h-64 object-contain bg-zinc-50" />
+                  <ImagenComprobante src={selected.comprobante_url} alt="Comprobante de transferencia" />
                 </a>
               )}
 

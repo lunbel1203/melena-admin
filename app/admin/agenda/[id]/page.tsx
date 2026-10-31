@@ -7,6 +7,7 @@ import Link from "next/link";
 import { use } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { avisar, confirmar } from "@/lib/alerts";
+import ImagenComprobante from "@/components/imagen-comprobante";
 import {
   BOTON_WHATSAPP_CLASES,
   enlaceCitaConfirmada,
@@ -763,8 +764,7 @@ export default function CitaDetailPage({ params }: { params: Promise<{ id: strin
                     rel="noreferrer"
                     className="border-2 border-dashed border-zinc-200 rounded-xl overflow-hidden flex flex-col items-center gap-2 mb-4 hover:border-zinc-300 transition-all"
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={deposito.comprobante_url} alt="Comprobante de depósito" className="w-full max-h-64 object-contain bg-zinc-50" />
+                    <ImagenComprobante src={deposito.comprobante_url} alt="Comprobante de depósito" />
                   </a>
                 )}
 
