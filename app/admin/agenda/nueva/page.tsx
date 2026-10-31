@@ -489,7 +489,28 @@ function NuevaCitaForm() {
           {/* 2 · Servicio */}
           <div className="bg-white rounded-2xl border border-zinc-200 p-5">
             <SectionLabel>2 · Servicio</SectionLabel>
-            {servicios.length === 0 ? (
+            {servicioSinDefinir && (
+              <label className="mb-3 flex items-center justify-between gap-4 rounded-xl border border-zinc-200 px-4 py-3.5 cursor-pointer">
+                <span>
+                  <span className="block text-sm font-semibold text-zinc-900">Sin servicio definido</span>
+                  <span className="block text-xs text-zinc-400 mt-1">Reserva la hora sin servicio ni estilista; se definen después en la cita.</span>
+                </span>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  checked={sinServicio}
+                  onChange={(e) => {
+                    setSinServicio(e.target.checked);
+                    setSelectedServicioId(null);
+                    setSelectedEstilistaId(null);
+                    setSelectedHora(null);
+                    setGramosTxt("");
+                  }}
+                  className="h-5 w-9 shrink-0 cursor-pointer appearance-none rounded-full bg-zinc-200 transition-colors checked:bg-zinc-900 relative before:absolute before:left-0.5 before:top-0.5 before:h-4 before:w-4 before:rounded-full before:bg-white before:transition-transform checked:before:translate-x-4"
+                />
+              </label>
+            )}
+            {sinServicio ? null : servicios.length === 0 ? (
               <p className="text-sm text-zinc-400">No hay servicios activos configurados.</p>
             ) : (
               <div className="grid grid-cols-2 gap-2.5">
@@ -511,23 +532,6 @@ function NuevaCitaForm() {
                   );
                 })}
               </div>
-            )}
-            {servicioSinDefinir && (
-              <button
-                onClick={() => {
-                  setSinServicio(true);
-                  setSelectedServicioId(null);
-                  setSelectedEstilistaId(null);
-                  setSelectedHora(null);
-                  setGramosTxt("");
-                }}
-                className={`mt-2.5 w-full text-left px-4 py-3.5 rounded-xl border-2 transition-all ${
-                  sinServicio ? "border-zinc-900 bg-white" : "border-dashed border-zinc-200 bg-white hover:border-zinc-300"
-                }`}
-              >
-                <div className="text-sm font-semibold text-zinc-900">Sin servicio definido</div>
-                <div className="text-xs text-zinc-400 mt-1">Reserva la hora sin servicio ni estilista; se definen después en la cita.</div>
-              </button>
             )}
             {!sinServicio && selectedServicio?.pide_gramos && (
               <div className="mt-4">
