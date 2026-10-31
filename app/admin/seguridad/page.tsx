@@ -31,6 +31,7 @@ const MODULOS: { modulo: string; etiqueta: string }[] = [
   { modulo: "catalogo", etiqueta: "Catálogo" },
   { modulo: "proveedores", etiqueta: "Proveedores" },
   { modulo: "facturacion", etiqueta: "Facturación" },
+  { modulo: "cotizaciones", etiqueta: "Cotizaciones" },
   { modulo: "reportes", etiqueta: "Reportes" },
   { modulo: "configuracion", etiqueta: "Configuración" },
   { modulo: "pagina_web", etiqueta: "Página web" },

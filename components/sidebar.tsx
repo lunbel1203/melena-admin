@@ -96,6 +96,15 @@ function ReceiptIcon() {
   );
 }
 
+function QuoteIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3.5 1.5h6l3 3v10h-9v-13z" />
+      <path d="M9.5 1.5v3h3M5.5 8h5M5.5 10.5h5" />
+    </svg>
+  );
+}
+
 function GearIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -161,6 +170,7 @@ const navItems = [
   { name: "Catálogo",    href: "/admin/catalogo",    icon: LayersIcon,   modulo: "catalogo" },
   { name: "Proveedores", href: "/admin/proveedores",  icon: TruckIcon,   modulo: "proveedores" },
   { name: "Facturación", href: "/admin/facturacion", icon: ReceiptIcon,  modulo: "facturacion" },
+  { name: "Cotizaciones", href: "/admin/cotizaciones", icon: QuoteIcon,  modulo: "cotizaciones" },
   { name: "Reportes",    href: "/admin/reportes",    icon: ChartIcon,    modulo: "reportes" },
   { name: "Página web", href: "/admin/pagina-web", icon: GlobeIcon, modulo: "pagina_web" },
   { name: "App móvil", href: "/admin/app-movil", icon: PhoneIcon, modulo: "app_movil" },
