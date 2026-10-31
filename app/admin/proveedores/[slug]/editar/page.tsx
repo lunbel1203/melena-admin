@@ -5,6 +5,7 @@ import { use, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { avisar } from "@/lib/alerts";
+import { soloTelefono } from "@/lib/telefono";
 
 function ChevronLeft() {
   return (
@@ -209,7 +210,9 @@ function EditarForm({ id, base }: { id: string; base: SupplierBase }) {
                 <input
                   type="tel"
                   value={telefono}
-                  onChange={(e) => setTelefono(e.target.value)}
+                  onChange={(e) => setTelefono(soloTelefono(e.target.value))}
+                    inputMode="numeric"
+                    maxLength={10}
                   className="w-full px-3 py-2.5 text-sm bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-900 focus:outline-none focus:border-zinc-400"
                 />
               </div>

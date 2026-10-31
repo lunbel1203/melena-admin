@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { GRAMOS_MAX, gramosValidos, textoPaquetes } from "@/lib/gramos";
 import { addDays, diaAbbr, minutosAHora, horaAMinutos, toISODate } from "@/lib/dates";
+import { soloTelefono } from "@/lib/telefono";
 
 /* ── Icons ── */
 function BackIcon() {
@@ -465,7 +466,9 @@ function NuevaCitaForm() {
                 <input
                   type="tel"
                   value={nuevoTelefono}
-                  onChange={(e) => setNuevoTelefono(e.target.value)}
+                  onChange={(e) => setNuevoTelefono(soloTelefono(e.target.value))}
+                  inputMode="numeric"
+                  maxLength={10}
                   placeholder="Teléfono"
                   className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-zinc-400 transition-colors"
                 />

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { soloTelefono } from "@/lib/telefono";
 
 function ChevronLeft() {
   return (
@@ -355,7 +356,9 @@ export default function PerfilPage() {
                 <input
                   type="tel"
                   value={telefono}
-                  onChange={(e) => setTelefono(e.target.value)}
+                  onChange={(e) => setTelefono(soloTelefono(e.target.value))}
+                    inputMode="numeric"
+                    maxLength={10}
                   className="w-full px-4 py-2.5 text-sm bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-900 focus:outline-none focus:border-zinc-400 transition-colors"
                 />
               </div>

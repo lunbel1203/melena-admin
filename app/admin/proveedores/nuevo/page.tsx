@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { avisar } from "@/lib/alerts";
+import { soloTelefono } from "@/lib/telefono";
 
 function ChevronLeft() {
   return (
@@ -196,7 +197,9 @@ export default function NuevoProveedorPage() {
                 <input
                   type="tel"
                   value={telefono}
-                  onChange={(e) => setTelefono(e.target.value)}
+                  onChange={(e) => setTelefono(soloTelefono(e.target.value))}
+                    inputMode="numeric"
+                    maxLength={10}
                   placeholder="809 000 0000"
                   className="w-full px-3 py-2.5 text-sm bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400"
                 />

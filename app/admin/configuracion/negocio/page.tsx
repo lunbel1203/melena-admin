@@ -2,17 +2,19 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { soloTelefono } from "@/lib/telefono";
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400 mb-3">{children}</p>;
 }
-function Field({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
+function Field({ label, value, onChange, placeholder, telefono }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; telefono?: boolean }) {
   return (
     <div>
       <label className="text-xs font-semibold text-zinc-500 mb-1.5 block">{label}</label>
       <input
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => onChange(telefono ? soloTelefono(e.target.value) : e.target.value)}
+        {...(telefono ? { inputMode: "numeric" as const, maxLength: 10 } : {})}
         placeholder={placeholder}
         className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-zinc-400 transition-colors"
       />
@@ -94,8 +96,8 @@ export default function NegocioContactoPage() {
       <div className="grid sm:grid-cols-2 gap-4">
         <Field label="Nombre comercial" value={nombreComercial} onChange={setNombreComercial} placeholder="Melena Human Hair" />
         <Field label="Moneda" value={moneda} onChange={setMoneda} placeholder="Peso dominicano (RD$)" />
-        <Field label="Teléfono" value={telefono} onChange={setTelefono} placeholder="809 555 0100" />
-        <Field label="WhatsApp" value={whatsapp} onChange={setWhatsapp} placeholder="809 555 0101" />
+        <Field label="Teléfono" value={telefono} onChange={setTelefono} placeholder="8095550100" telefono />
+        <Field label="WhatsApp" value={whatsapp} onChange={setWhatsapp} placeholder="8095550101" telefono />
         <Field label="Dirección" value={direccion} onChange={setDireccion} placeholder="Av. Winston Churchill 1099, Santo Domingo" />
         <Field label="Instagram" value={instagram} onChange={setInstagram} placeholder="@melenahumanhair" />
       </div>

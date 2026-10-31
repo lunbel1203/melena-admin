@@ -5,6 +5,7 @@ import { use, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { MENSAJE_SESION_VENCIDA, mensajeContacto, sesionActiva, verificarContacto } from "@/lib/contacto";
+import { soloTelefono } from "@/lib/telefono";
 
 function BackIcon() {
   return (
@@ -269,7 +270,9 @@ export default function EditarEmpleadaPage({ params }: { params: Promise<{ id: s
                   <input
                     type="tel"
                     value={telefono}
-                    onChange={(e) => setTelefono(e.target.value)}
+                    onChange={(e) => setTelefono(soloTelefono(e.target.value))}
+                    inputMode="numeric"
+                    maxLength={10}
                     className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-800 focus:outline-none focus:border-zinc-400 transition-colors"
                   />
                 </div>
