@@ -268,14 +268,23 @@ export default function PerfilClientaPage({ params }: { params: Promise<{ id: st
             >
               Editar
             </Link>
-            <button
-              onClick={() => gestionarCuenta(clienta.user_id ? "restablecer" : "crear")}
-              disabled={gestionandoCuenta}
-              title={clienta.user_id ? "Ya tiene acceso a la app" : "Crea su acceso a la app"}
-              className="border border-zinc-200 text-zinc-700 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-zinc-50 disabled:opacity-50 transition-colors whitespace-nowrap"
-            >
-              {gestionandoCuenta ? "Procesando…" : clienta.user_id ? "Restablecer acceso a la app" : "Invitar a la app"}
-            </button>
+            <div className="flex flex-col items-end gap-0.5">
+              <button
+                onClick={() => gestionarCuenta(clienta.user_id ? "restablecer" : "crear")}
+                disabled={gestionandoCuenta || !clienta.email}
+                title={!clienta.email ? "Asígnale un correo para poder activar su acceso" : clienta.user_id ? "Ya tiene acceso a la app" : "Crea su acceso a la app"}
+                className="border border-zinc-200 text-zinc-700 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-zinc-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+              >
+                {gestionandoCuenta ? "Procesando…" : clienta.user_id ? "Restablecer acceso a la app" : "Invitar a la app"}
+              </button>
+              {clienta.email ? (
+                <span className="text-xs text-zinc-500 max-w-[260px] truncate">{clienta.email}</span>
+              ) : (
+                <Link href={`/admin/clientas/${clienta.id}/editar`} className="text-xs font-semibold text-red-600 hover:underline">
+                  Sin correo, debes asignar un correo
+                </Link>
+              )}
+            </div>
             <Link
               href={`/admin/agenda/nueva?clienta_id=${clienta.id}`}
               className="bg-zinc-900 text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-zinc-700 transition-colors whitespace-nowrap"

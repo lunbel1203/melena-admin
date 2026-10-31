@@ -568,10 +568,19 @@ export default function PerfilEmpleadaPage({ params }: { params: Promise<{ id: s
                 </p>
               </div>
             </div>
+            <div className="mt-4 rounded-xl bg-zinc-50 px-3 py-2 text-xs">
+              <span className="text-zinc-400">Correo: </span>
+              {empleado.email ? (
+                <span className="font-semibold text-zinc-900 break-all">{empleado.email}</span>
+              ) : (
+                <span className="font-semibold text-red-600">Sin correo, debes asignar un correo en Editar empleada</span>
+              )}
+            </div>
             <button
               onClick={() => gestionarCuenta(empleado.user_id ? "restablecer" : "crear")}
-              disabled={gestionandoCuenta}
-              className="w-full mt-4 py-2.5 rounded-xl bg-zinc-900 text-sm font-semibold text-white hover:bg-zinc-700 transition-colors disabled:opacity-50"
+              disabled={gestionandoCuenta || !empleado.email}
+              title={!empleado.email ? "Asígnale un correo para poder continuar" : undefined}
+              className="w-full mt-2 py-2.5 rounded-xl bg-zinc-900 text-sm font-semibold text-white hover:bg-zinc-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {gestionandoCuenta
                 ? "Procesando…"
