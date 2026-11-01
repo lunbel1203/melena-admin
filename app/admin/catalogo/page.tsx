@@ -279,7 +279,10 @@ export default function CatalogoPage() {
                 {stockLowCount} con stock bajo
               </span>
             )}
-            <Link href="/admin/catalogo/nuevo-producto" className="ml-auto bg-zinc-900 text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-zinc-700 transition-colors whitespace-nowrap">
+            <Link href="/admin/catalogo/importar" className="ml-auto text-sm font-semibold px-4 py-2.5 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 transition-colors whitespace-nowrap">
+              Importar Excel
+            </Link>
+            <Link href="/admin/catalogo/nuevo-producto" className=" bg-zinc-900 text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-zinc-700 transition-colors whitespace-nowrap">
               + Nuevo producto
             </Link>
           </div>

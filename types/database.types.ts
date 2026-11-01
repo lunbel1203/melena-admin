@@ -1329,6 +1329,7 @@ export type Database = {
           id: boolean
           permitir_cualquier_estilista: boolean
           reservar_hasta_dias: number
+          personal_reservar_hasta_dias: number
           sugerir_otra_estilista: boolean
           tiempo_entre_citas_minutos: number
           updated_at: string
@@ -1342,6 +1343,7 @@ export type Database = {
           id?: boolean
           permitir_cualquier_estilista?: boolean
           reservar_hasta_dias?: number
+          personal_reservar_hasta_dias?: number
           sugerir_otra_estilista?: boolean
           tiempo_entre_citas_minutos?: number
           updated_at?: string
@@ -1355,6 +1357,7 @@ export type Database = {
           id?: boolean
           permitir_cualquier_estilista?: boolean
           reservar_hasta_dias?: number
+          personal_reservar_hasta_dias?: number
           sugerir_otra_estilista?: boolean
           tiempo_entre_citas_minutos?: number
           updated_at?: string

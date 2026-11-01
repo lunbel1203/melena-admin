@@ -35,6 +35,7 @@ interface ReglasAgenda {
   tiempo_entre_citas_minutos: number;
   anticipacion_minima_horas: number;
   reservar_hasta_dias: number;
+  personal_reservar_hasta_dias: number;
   cancelar_sin_penalidad_horas: number;
   zona_horaria: string;
   aceptar_clientas_sin_cita: boolean;
@@ -333,6 +334,13 @@ export default function HorarioAgendaPage() {
               <input type="number" min={1} value={reglas.reservar_hasta_dias}
                 onChange={(e) => setReglas({ ...reglas, reservar_hasta_dias: Number(e.target.value) })}
                 className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 mb-1 block">Personal agenda hasta (días)</label>
+              <input type="number" min={1} max={730} value={reglas.personal_reservar_hasta_dias}
+                onChange={(e) => setReglas({ ...reglas, personal_reservar_hasta_dias: Math.min(730, Math.max(1, Number(e.target.value))) })}
+                className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm" />
+              <p className="text-[11px] text-zinc-400 mt-1">Cuánto adelanto tiene el personal al agendar: 90 = 3 meses, 183 = 6 meses, 365 = 1 año.</p>
             </div>
             <div>
               <label className="text-xs font-semibold text-zinc-500 mb-1 block">Cancelar sin penalidad (h antes)</label>
