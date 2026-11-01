@@ -277,13 +277,11 @@ export default function PerfilClientaPage({ params }: { params: Promise<{ id: st
               >
                 {gestionandoCuenta ? "Procesando…" : clienta.user_id ? "Restablecer acceso a la app" : "Invitar a la app"}
               </button>
-              {clienta.email ? (
-                <span className="text-xs text-zinc-500 max-w-[260px] truncate">{clienta.email}</span>
-              ) : (
+              {!clienta.email ? (
                 <Link href={`/admin/clientas/${clienta.id}/editar`} className="text-xs font-semibold text-red-600 hover:underline">
                   Sin correo, debes asignar un correo
                 </Link>
-              )}
+              ) : null}
             </div>
             <Link
               href={`/admin/agenda/nueva?clienta_id=${clienta.id}`}
