@@ -268,7 +268,7 @@ const PANTALLAS: [RegExp, AyudaPantalla][] = [
         {
           titulo: "Agregar servicios o productos",
           pasos: [
-            "Pulsa “Agregar a la factura” y elige Servicio o Producto.",
+            "Pulsa “Agregar a la factura” y elige Servicio o Producto (agregar productos requiere el permiso “Agregar productos”: lo tienen Cajera, Asesora Capilar y Gestora de citas).",
             "Busca y toca el artículo (puedes poner la cantidad antes).",
             "Si el artículo se cobra por gramo (u otra unidad), te pide la cantidad (por ejemplo, 250 gramos) y muestra el monto antes de agregarlo.",
             "Si a alguien se le olvidó su servicio, en “¿Quién hizo el servicio? (recibe la comisión)” elige a la persona: la línea y la comisión quedan a su nombre.",
@@ -377,6 +377,7 @@ const PANTALLAS: [RegExp, AyudaPantalla][] = [
             "Cambia entre las pestañas Servicios y Productos.",
             "Usa los filtros para encontrar lo que buscas (categoría, duración, depósito, visibilidad, quién lo ofrece).",
             "Pulsa un artículo para ver su ficha, o “Nuevo servicio” / “Nuevo producto” para crear uno.",
+            "Para cargar muchos productos de una vez, pulsa “Importar Excel” (pestaña Productos): sube un .xlsx con las columnas Nombre, Categoría, Precio, Stock, Costo, Stock mínimo y Descripción (hay una plantilla para descargar), revisa la vista previa y pulsa “Importar”. Si el nombre ya existe, se actualizan su precio, stock y costo.",
           ],
           notas: ["Lo que se ve en la web y en la app sale de aquí."],
         },
@@ -683,6 +684,7 @@ const PANTALLAS: [RegExp, AyudaPantalla][] = [
             "Agrega una pausa si hace falta (por ejemplo, el almuerzo).",
             "En “Días especiales y feriados” agrega los cierres u horarios reducidos.",
             "En “Reglas de agenda” ajusta los bloques de agenda, el tiempo entre citas y la anticipación mínima.",
+            "“Reservar hasta (días)” es lo que ven las clientas (60 como máximo); “Personal agenda hasta (días)” es hasta cuándo puede agendar el personal en la app (90 = 3 meses, 183 = 6 meses, 365 = 1 año; máximo 730) y es lo que recorre el calendario de la gestora.",
             "Guarda.",
           ],
         },
